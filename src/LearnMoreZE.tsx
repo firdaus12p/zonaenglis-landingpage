@@ -460,7 +460,7 @@ export default function LearnMoreZE() {
       {/* FLOATING WA BUTTON */}
       <a
         href={CTA_WHATSAPP}
-        className="fixed bottom-5 right-5 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-3 text-white shadow-lg hover:bg-emerald-600"
+        className="fixed bottom-5 left-5 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-3 text-white shadow-lg hover:bg-emerald-600 transition-colors z-30"
       >
         <MessageCircle className="h-5 w-5" /> Tanya Admin
       </a>
