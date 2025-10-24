@@ -21,7 +21,7 @@ import {
 // - This is a single-page component. Embed it in any React/Vite/Next app, or export as a static HTML via SSR.
 
 const CTA_WHATSAPP =
-  "https://wa.me/6282188080688?text=Halo%20Zona%20English%2C%20saya%20ingin%20konsultasi%20kelas"; // TODO: ganti dengan WA admin Zona English
+  "https://wa.me/6282399627276?text=Halo%20Zona%20English%2C%20saya%20ingin%20konsultasi%20kelas"; // TODO: ganti dengan WA admin Zona English
 const CTA_REGISTER = "#daftar"; // TODO: ganti ke form pendaftaran/landing utama
 const CTA_SCHEDULE = "#jadwal"; // TODO: ganti ke halaman jadwal & program
 const CTA_TRYFREE = "#trial"; // TODO: ganti ke form trial/class demo
