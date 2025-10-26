@@ -15,16 +15,19 @@ import {
   BookOpen,
 } from "lucide-react";
 
+// Import komponen universal dan konstanta
+import { Badge, Button, FloatingButton } from "./components";
+import {
+  CTA_WHATSAPP,
+  CTA_REGISTER,
+  CTA_SCHEDULE,
+  CTA_TRYFREE,
+} from "./constants/cta";
+
 // 💡 NOTES to Editor:
 // - Replace all links with your real URLs (WhatsApp, registration form, maps, brochures, IG reels, etc.)
 // - Tailwind is available. You can tweak colors to match ZE brand (light blue, dark blue, red, white).
 // - This is a single-page component. Embed it in any React/Vite/Next app, or export as a static HTML via SSR.
-
-const CTA_WHATSAPP =
-  "https://wa.me/6282399627276?text=Halo%20Zona%20English%2C%20saya%20ingin%20konsultasi%20kelas"; // TODO: ganti dengan WA admin Zona English
-const CTA_REGISTER = "#daftar"; // TODO: ganti ke form pendaftaran/landing utama
-const CTA_SCHEDULE = "#jadwal"; // TODO: ganti ke halaman jadwal & program
-const CTA_TRYFREE = "#trial"; // TODO: ganti ke form trial/class demo
 
 const Stat = ({ value, label }: { value: string; label: string }) => (
   <div className="text-center">
@@ -33,13 +36,6 @@ const Stat = ({ value, label }: { value: string; label: string }) => (
     </div>
     <div className="text-sm text-blue-900/70">{label}</div>
   </div>
-);
-
-const Pill = ({ children }: { children: React.ReactNode }) => (
-  <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-    <ShieldCheck className="h-4 w-4" />
-    {children}
-  </span>
 );
 
 const Feature = ({
@@ -86,12 +82,15 @@ const ProgramCard = ({
         ))}
       </ul>
     </div>
-    <a
+    <Button
       href={CTA_REGISTER}
-      className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+      variant="primary"
+      size="md"
+      icon={<ArrowRight className="h-4 w-4" />}
+      iconPosition="right"
     >
-      Lihat Detail & Daftar <ArrowRight className="h-4 w-4" />
-    </a>
+      Lihat Detail & Daftar
+    </Button>
   </div>
 );
 
@@ -127,7 +126,10 @@ export default function LearnMoreZE() {
         <div className="mx-auto max-w-6xl px-4 py-16 md:py-20">
           <div className="grid items-center gap-10 md:grid-cols-2">
             <div>
-              <Pill>Metode NBSN • Fun • Terukur</Pill>
+              <Badge variant="active">
+                <ShieldCheck className="h-4 w-4" />
+                Metode NBSN • Fun • Terukur
+              </Badge>
               <h1 className="mt-4 text-3xl font-extrabold leading-tight text-slate-900 md:text-5xl">
                 Belajar Inggris yang <span className="text-blue-700">Seru</span>
                 ,
@@ -140,24 +142,33 @@ export default function LearnMoreZE() {
                 terasa tiap minggu.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
-                <a
+                <Button
                   href={CTA_TRYFREE}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800"
+                  variant="primary"
+                  size="lg"
+                  icon={<Rocket className="h-4 w-4" />}
+                  iconPosition="right"
                 >
-                  Coba Kelas Gratis <Rocket className="h-4 w-4" />
-                </a>
-                <a
+                  Coba Kelas Gratis
+                </Button>
+                <Button
                   href={CTA_SCHEDULE}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-300 bg-white px-5 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+                  variant="outline-primary"
+                  size="lg"
+                  icon={<CalendarCheck className="h-4 w-4" />}
+                  iconPosition="right"
                 >
-                  Lihat Program & Jadwal <CalendarCheck className="h-4 w-4" />
-                </a>
-                <a
+                  Lihat Program & Jadwal
+                </Button>
+                <Button
                   href={CTA_WHATSAPP}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50"
+                  variant="outline-success"
+                  size="lg"
+                  icon={<MessageCircle className="h-4 w-4" />}
+                  iconPosition="right"
                 >
-                  Konsultasi Admin <MessageCircle className="h-4 w-4" />
-                </a>
+                  Konsultasi Admin
+                </Button>
               </div>
               <div className="mt-8 grid grid-cols-3 gap-5 rounded-2xl border border-blue-100 bg-white/70 p-4 backdrop-blur">
                 <Stat value="200+" label="Siswa Aktif" />
@@ -243,18 +254,18 @@ export default function LearnMoreZE() {
               </li>
             </ul>
             <div className="mt-5 flex gap-3">
-              <a
+              <Button
                 href={CTA_REGISTER}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800"
+                variant="primary"
+                size="md"
+                icon={<ArrowRight className="h-4 w-4" />}
+                iconPosition="right"
               >
-                Ambil Promo <ArrowRight className="h-4 w-4" />
-              </a>
-              <a
-                href={CTA_WHATSAPP}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50"
-              >
+                Ambil Promo
+              </Button>
+              <Button href={CTA_WHATSAPP} variant="outline-primary" size="md">
                 Tanya Admin
-              </a>
+              </Button>
             </div>
           </div>
         </div>
@@ -264,12 +275,14 @@ export default function LearnMoreZE() {
       <section id="jadwal" className="mx-auto max-w-6xl px-4 py-12">
         <div className="mb-6 flex items-center justify-between">
           <h2 className="text-2xl font-bold">Program & Segmentasi Usia</h2>
-          <a
+          <Button
             href={CTA_SCHEDULE}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-blue-700 hover:underline"
+            variant="link"
+            icon={<ArrowRight className="h-4 w-4" />}
+            iconPosition="right"
           >
-            Lihat Jadwal <ArrowRight className="h-4 w-4" />
-          </a>
+            Lihat Jadwal
+          </Button>
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <ProgramCard
@@ -378,18 +391,24 @@ export default function LearnMoreZE() {
           </div>
         </div>
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-          <a
+          <Button
             href={CTA_REGISTER}
-            className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800"
+            variant="primary"
+            size="lg"
+            icon={<ArrowRight className="h-4 w-4" />}
+            iconPosition="right"
           >
-            Daftar Sekarang <ArrowRight className="h-4 w-4" />
-          </a>
-          <a
+            Daftar Sekarang
+          </Button>
+          <Button
             href={CTA_WHATSAPP}
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-300 bg-white px-5 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-50"
+            variant="outline-primary"
+            size="lg"
+            icon={<Phone className="h-4 w-4" />}
+            iconPosition="right"
           >
-            Chat Admin <Phone className="h-4 w-4" />
-          </a>
+            Chat Admin
+          </Button>
         </div>
       </section>
 
@@ -458,12 +477,13 @@ export default function LearnMoreZE() {
       </footer>
 
       {/* FLOATING WA BUTTON */}
-      <a
+      <FloatingButton
         href={CTA_WHATSAPP}
-        className="fixed bottom-5 left-5 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-3 text-white shadow-lg hover:bg-emerald-600 transition-colors z-30"
+        icon={<MessageCircle className="h-5 w-5" />}
+        iconPosition="left"
       >
-        <MessageCircle className="h-5 w-5" /> Tanya Admin
-      </a>
+        Tanya Admin
+      </FloatingButton>
     </main>
   );
 }

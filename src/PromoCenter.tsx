@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -8,42 +8,12 @@ import {
   Clock,
 } from "lucide-react";
 
-// CTA Links
-const CTA_WHATSAPP =
-  "https://wa.me/6282188080688?text=Halo%20Zona%20English%2C%20saya%20ingin%20tanya%20Promo%20Center";
-const CTA_REGISTER = "#daftar";
+// Import komponen universal dan konstanta
+import { Badge, Button, FloatingButton, BADGE_VARIANTS } from "./components";
+import { WHATSAPP_LINKS, CTA_REGISTER } from "./constants/cta";
 
-// Badge Component
-const Badge = ({
-  children,
-  variant = "default",
-}: {
-  children: React.ReactNode;
-  variant?: string;
-}) => {
-  const variants = {
-    default: "border-slate-200 bg-white text-slate-700",
-    free: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    location: "border-blue-200 bg-blue-50 text-blue-700",
-    intensive: "border-purple-200 bg-purple-50 text-purple-700",
-    kids: "border-blue-200 bg-blue-50 text-blue-700",
-    teens: "border-violet-200 bg-violet-50 text-violet-700",
-    sprint: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    experiential: "border-amber-200 bg-amber-50 text-amber-700",
-    online: "border-teal-200 bg-teal-50 text-teal-700",
-    academic: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
-  };
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
-        variants[variant as keyof typeof variants] || variants.default
-      }`}
-    >
-      {children}
-    </span>
-  );
-};
+// Konstanta CTA untuk backward compatibility
+const CTA_WHATSAPP = WHATSAPP_LINKS.PROMO_CENTER;
 
 // Countdown Component
 const Countdown = ({ targetDate }: { targetDate: string }) => {
@@ -112,7 +82,7 @@ const ProgramCard = ({
   adminText = "Tanya Admin",
 }: {
   title: string;
-  badges: Array<{ text: string; variant: string }>;
+  badges: Array<{ text: string; variant: keyof typeof BADGE_VARIANTS }>;
   batches: Array<{ name: string; date: string; quota: number }>;
   focus: string;
   ctaText?: string;
@@ -147,18 +117,22 @@ const ProgramCard = ({
       </ul>
     </div>
     <div className="mt-4 flex items-center justify-between gap-3">
-      <a
+      <Button
         href={CTA_REGISTER}
-        className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 transition-colors"
+        variant="primary"
+        size="sm"
+        className="flex-1"
       >
         {ctaText}
-      </a>
-      <a
-        className="text-sm font-semibold text-blue-700 hover:underline whitespace-nowrap"
+      </Button>
+      <Button
         href={CTA_WHATSAPP}
+        variant="ghost"
+        size="sm"
+        className="whitespace-nowrap"
       >
         {adminText}
-      </a>
+      </Button>
     </div>
   </div>
 );
@@ -194,17 +168,17 @@ const MapSection = () => {
         <h2 className="text-2xl font-bold">Lokasi Cabang</h2>
         <div className="flex gap-2 overflow-x-auto">
           {mapData.map((map) => (
-            <button
+            <Button
               key={map.key}
               onClick={() => setActiveMap(map.key)}
-              className={`px-3 py-2 rounded-xl text-sm font-semibold border transition-colors whitespace-nowrap ${
-                activeMap === map.key
-                  ? "border-blue-200 bg-blue-50 text-blue-700"
-                  : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-              }`}
+              variant={
+                activeMap === map.key ? "secondary" : "outline-secondary"
+              }
+              size="sm"
+              className="whitespace-nowrap"
             >
               {map.label}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
@@ -229,7 +203,15 @@ const MapSection = () => {
 
 // Gallery Section
 const GallerySection = () => {
-  const galleryData = [
+  const galleryData: Array<{
+    title: string;
+    badge: { text: string; variant: keyof typeof BADGE_VARIANTS };
+    media: Array<
+      | { type: "image"; src: string; alt: string }
+      | { type: "video"; src: string }
+      | { type: "youtube"; src: string; title?: string }
+    >;
+  }> = [
     {
       title: "Kids (4–12 th)",
       badge: { text: "Fun Phonics • Vocabulary", variant: "kids" },
@@ -374,18 +356,12 @@ export default function PromoCenter() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <a
-                  href={CTA_REGISTER}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800 transition-colors"
-                >
+                <Button href={CTA_REGISTER} variant="primary" size="md">
                   Daftar Sekarang <ArrowRight className="h-4 w-4" />
-                </a>
-                <a
-                  href={CTA_WHATSAPP}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
-                >
+                </Button>
+                <Button href={CTA_WHATSAPP} variant="whatsapp" size="md">
                   <MessageCircle className="h-4 w-4" /> Chat Admin
-                </a>
+                </Button>
               </div>
             </div>
 
@@ -478,18 +454,12 @@ export default function PromoCenter() {
             ))}
           </div>
           <div className="mt-4 flex flex-wrap gap-3">
-            <a
-              href={CTA_REGISTER}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-5 py-3 text-sm font-semibold text-white hover:bg-blue-800 transition-colors"
-            >
+            <Button href={CTA_REGISTER} variant="primary" size="md">
               Ambil Slot Premium <ArrowRight className="h-4 w-4" />
-            </a>
-            <a
-              href={CTA_WHATSAPP}
-              className="inline-flex items-center justify-center gap-2 rounded-xl border border-blue-300 bg-white px-5 py-3 text-sm font-semibold text-blue-700 hover:bg-blue-50 transition-colors"
-            >
+            </Button>
+            <Button href={CTA_WHATSAPP} variant="outline-primary" size="md">
               Tanya Admin
-            </a>
+            </Button>
           </div>
         </div>
       </section>
@@ -655,12 +625,9 @@ export default function PromoCenter() {
       </footer>
 
       {/* FLOATING WA BUTTON */}
-      <a
-        href={CTA_WHATSAPP}
-        className="fixed bottom-5 left-5 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-3 text-white shadow-lg hover:bg-emerald-600 transition-colors z-30"
-      >
+      <FloatingButton href={CTA_WHATSAPP}>
         <MessageCircle className="h-5 w-5" /> Tanya Admin
-      </a>
+      </FloatingButton>
     </main>
   );
 }

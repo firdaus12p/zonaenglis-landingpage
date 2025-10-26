@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -15,45 +15,13 @@ import {
   Target,
 } from "lucide-react";
 
-// CTA Links
-const CTA_WHATSAPP =
-  "https://wa.me/6282188080688?text=Halo%20Zona%20English%2C%20saya%20ingin%20bergabung%20sebagai%20Ambassador";
-const CTA_REGISTER = "#daftar-ambassador";
+// Import komponen universal dan konstanta
+import { Badge, Button, FloatingButton, BADGE_VARIANTS } from "./components";
+import { WHATSAPP_LINKS, CTA_REGISTER } from "./constants/cta";
+
+// Konstanta CTA untuk backward compatibility
+const CTA_WHATSAPP = WHATSAPP_LINKS.PROMO_HUB;
 const CTA_AFFILIATE = "#daftar-affiliate";
-
-// Badge Component
-const Badge = ({
-  children,
-  variant = "default",
-  className = "",
-}: {
-  children: React.ReactNode;
-  variant?: string;
-  className?: string;
-}) => {
-  const variants = {
-    default: "border-slate-200 bg-white text-slate-700",
-    premium: "border-amber-300 bg-amber-50 text-amber-700",
-    ambassador: "border-purple-300 bg-purple-50 text-purple-700",
-    affiliate: "border-emerald-300 bg-emerald-50 text-emerald-700",
-    referral: "border-blue-300 bg-blue-50 text-blue-700",
-    commission: "border-green-300 bg-green-50 text-green-700",
-    active: "border-blue-200 bg-blue-50 text-blue-700",
-    coming: "border-slate-300 bg-slate-100 text-slate-600",
-    online: "border-teal-200 bg-teal-50 text-teal-700",
-    offline: "border-indigo-200 bg-indigo-50 text-indigo-700",
-  };
-
-  return (
-    <span
-      className={`inline-flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold ${
-        variants[variant as keyof typeof variants] || variants.default
-      } ${className}`}
-    >
-      {children}
-    </span>
-  );
-};
 
 // Program Filter Component
 const FilterTabs = ({
@@ -67,18 +35,18 @@ const FilterTabs = ({
 }) => (
   <div className="flex flex-wrap gap-2">
     {filters.map((filter) => (
-      <button
+      <Button
         key={filter.key}
         onClick={() => onFilterChange(filter.key)}
-        className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold border transition-colors ${
-          activeFilter === filter.key
-            ? "border-blue-200 bg-blue-50 text-blue-700"
-            : "border-slate-200 bg-white text-slate-700 hover:bg-slate-50"
-        }`}
+        variant={
+          activeFilter === filter.key ? "secondary" : "outline-secondary"
+        }
+        size="sm"
+        icon={filter.icon}
+        iconPosition="left"
       >
-        {filter.icon}
         {filter.label}
-      </button>
+      </Button>
     ))}
   </div>
 );
@@ -100,7 +68,7 @@ const AmbassadorCard = ({
   achievement: string;
   commission: string;
   referrals: number;
-  badge: { text: string; variant: string };
+  badge: { text: string; variant: keyof typeof BADGE_VARIANTS };
   image: string;
 }) => (
   <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm hover:shadow-md transition-shadow">
@@ -152,7 +120,7 @@ const OpportunityCard = ({
   ctaLink = CTA_REGISTER,
 }: {
   title: string;
-  badges: Array<{ text: string; variant: string }>;
+  badges: Array<{ text: string; variant: keyof typeof BADGE_VARIANTS }>;
   description: string;
   benefits: string[];
   requirements: string[];
@@ -212,18 +180,17 @@ const OpportunityCard = ({
     </div>
 
     <div className="mt-6 flex items-center justify-between gap-3">
-      <a
-        href={ctaLink}
-        className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 transition-colors"
-      >
+      <Button href={ctaLink} variant="primary" className="flex-1">
         {ctaText} <ArrowRight className="h-4 w-4" />
-      </a>
-      <a
+      </Button>
+      <Button
         href={CTA_WHATSAPP}
-        className="text-sm font-semibold text-blue-700 hover:underline whitespace-nowrap"
+        variant="link"
+        size="sm"
+        className="whitespace-nowrap"
       >
         Tanya Admin
-      </a>
+      </Button>
     </div>
   </div>
 );
@@ -300,7 +267,10 @@ export default function PromoHub() {
       achievement: "Top Recruiter",
       commission: "8.5jt",
       referrals: 47,
-      badge: { text: "Ambassador Elite", variant: "premium" },
+      badge: {
+        text: "Ambassador Elite",
+        variant: "premium" as keyof typeof BADGE_VARIANTS,
+      },
       image:
         "https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=150&auto=format&fit=crop",
     },
@@ -311,7 +281,10 @@ export default function PromoHub() {
       achievement: "Rising Star",
       commission: "4.2jt",
       referrals: 23,
-      badge: { text: "Campus Leader", variant: "ambassador" },
+      badge: {
+        text: "Campus Leader",
+        variant: "ambassador" as keyof typeof BADGE_VARIANTS,
+      },
       image:
         "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=150&auto=format&fit=crop",
     },
@@ -322,7 +295,10 @@ export default function PromoHub() {
       achievement: "Konsisten",
       commission: "2.8jt",
       referrals: 15,
-      badge: { text: "Community Star", variant: "ambassador" },
+      badge: {
+        text: "Community Star",
+        variant: "ambassador" as keyof typeof BADGE_VARIANTS,
+      },
       image:
         "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=150&auto=format&fit=crop",
     },
@@ -332,8 +308,11 @@ export default function PromoHub() {
     {
       title: "Campus Ambassador",
       badges: [
-        { text: "Target Mahasiswa", variant: "ambassador" },
-        { text: "Part-time", variant: "active" },
+        {
+          text: "Target Mahasiswa",
+          variant: "ambassador" as keyof typeof BADGE_VARIANTS,
+        },
+        { text: "Part-time", variant: "active" as keyof typeof BADGE_VARIANTS },
       ],
       description:
         "Promosikan Zona English di kampus & komunitas mahasiswa. Cocok untuk mahasiswa aktif yang ingin income tambahan.",
@@ -356,8 +335,11 @@ export default function PromoHub() {
     {
       title: "Affiliate Partner",
       badges: [
-        { text: "General Market", variant: "affiliate" },
-        { text: "Flexible", variant: "active" },
+        {
+          text: "General Market",
+          variant: "affiliate" as keyof typeof BADGE_VARIANTS,
+        },
+        { text: "Flexible", variant: "active" as keyof typeof BADGE_VARIANTS },
       ],
       description:
         "Program afiliasi terbuka untuk siapa saja. Share link unik, dapatkan komisi otomatis setiap ada yang daftar.",
@@ -380,8 +362,11 @@ export default function PromoHub() {
     {
       title: "Referral Reward",
       badges: [
-        { text: "Siswa & Orang Tua", variant: "referral" },
-        { text: "One-time", variant: "active" },
+        {
+          text: "Siswa & Orang Tua",
+          variant: "referral" as keyof typeof BADGE_VARIANTS,
+        },
+        { text: "One-time", variant: "active" as keyof typeof BADGE_VARIANTS },
       ],
       description:
         "Program rujukan untuk siswa aktif & orang tua. Ajak teman/keluarga, dapatkan reward langsung.",
@@ -458,18 +443,17 @@ export default function PromoHub() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">
-                <a
+                <Button
                   href={CTA_REGISTER}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-700 px-5 py-3 text-sm font-semibold text-white hover:bg-purple-800 transition-colors"
+                  variant="primary"
+                  size="md"
+                  className="bg-purple-700 hover:bg-purple-800"
                 >
                   Daftar Partner <ArrowRight className="h-4 w-4" />
-                </a>
-                <a
-                  href={CTA_WHATSAPP}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-300 bg-white px-5 py-3 text-sm font-semibold text-emerald-700 hover:bg-emerald-50 transition-colors"
-                >
+                </Button>
+                <Button href={CTA_WHATSAPP} variant="whatsapp" size="md">
                   <MessageCircle className="h-4 w-4" /> Chat Admin
-                </a>
+                </Button>
               </div>
             </div>
           </div>
@@ -687,18 +671,16 @@ export default function PromoHub() {
               kamu bersama Zona English.
             </p>
             <div className="flex flex-wrap gap-3">
-              <a
+              <Button
                 href={CTA_REGISTER}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-700 px-4 py-2 text-sm font-semibold text-white hover:bg-purple-800 transition-colors"
+                variant="primary"
+                className="bg-purple-700 hover:bg-purple-800"
               >
                 Apply Now <ArrowRight className="h-4 w-4" />
-              </a>
-              <a
-                href={CTA_WHATSAPP}
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
-              >
+              </Button>
+              <Button href={CTA_WHATSAPP} variant="outline-primary">
                 <MessageCircle className="h-4 w-4" /> Chat Admin
-              </a>
+              </Button>
             </div>
           </div>
 
@@ -740,12 +722,9 @@ export default function PromoHub() {
       </footer>
 
       {/* FLOATING WA BUTTON */}
-      <a
-        href={CTA_WHATSAPP}
-        className="fixed bottom-5 left-5 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-3 text-white shadow-lg hover:bg-emerald-600 transition-colors z-30"
-      >
+      <FloatingButton href={CTA_WHATSAPP}>
         <MessageCircle className="h-5 w-5" /> Partnership
-      </a>
+      </FloatingButton>
     </main>
   );
 }

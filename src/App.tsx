@@ -4,6 +4,7 @@ import PromoCenter from "./PromoCenter";
 import PromoHub from "./PromoHub";
 import Navbar from "./Navbar";
 import { Gift, Users } from "lucide-react";
+import { Button } from "./components";
 
 function App() {
   const [currentPage, setCurrentPage] = useState("home");
@@ -30,21 +31,25 @@ function App() {
       {/* Quick Access Floating Buttons (only on home page for large screens) */}
       {currentPage === "home" && (
         <div className="fixed bottom-5 right-5 flex flex-col gap-3 z-30 hidden lg:flex">
-          <button
+          <Button
             onClick={() => setCurrentPage("promo-new-center")}
-            className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-4 py-3 text-white shadow-lg hover:bg-blue-700 transition-all duration-200 text-sm font-semibold hover:scale-105"
+            variant="primary"
+            size="md"
+            className="rounded-full shadow-lg hover:scale-105 transition-all duration-200"
           >
             <Gift className="h-4 w-4" />
             Promo Center
-          </button>
+          </Button>
 
-          <button
+          <Button
             onClick={() => setCurrentPage("promo-hub")}
-            className="inline-flex items-center gap-2 rounded-full bg-purple-600 px-4 py-3 text-white shadow-lg hover:bg-purple-700 transition-all duration-200 text-sm font-semibold hover:scale-105"
+            variant="purple"
+            size="md"
+            className="rounded-full shadow-lg hover:scale-105 transition-all duration-200"
           >
             <Users className="h-4 w-4" />
             Promo Hub
-          </button>
+          </Button>
         </div>
       )}
     </div>

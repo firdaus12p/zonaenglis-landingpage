@@ -1,5 +1,7 @@
 import { useState, useEffect } from "react";
 import { Menu, X, Home, Gift, Users, MessageCircle } from "lucide-react";
+import { Button } from "./components";
+import { WHATSAPP_LINKS } from "./constants/cta";
 
 interface NavbarProps {
   currentPage: string;
@@ -129,13 +131,15 @@ export default function Navbar({ currentPage, setCurrentPage }: NavbarProps) {
 
             {/* CTA Button & Mobile Menu Toggle */}
             <div className="flex items-center gap-3">
-              <a
-                href="https://wa.me/6282188080688"
-                className="hidden sm:inline-flex items-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+              <Button
+                href={WHATSAPP_LINKS.MAIN}
+                variant="whatsapp"
+                size="sm"
+                className="hidden sm:inline-flex"
               >
                 <MessageCircle className="h-4 w-4" />
                 Chat Admin
-              </a>
+              </Button>
 
               {/* Mobile Menu Button */}
               <button
@@ -215,13 +219,15 @@ export default function Navbar({ currentPage, setCurrentPage }: NavbarProps) {
 
           {/* Mobile Menu Footer */}
           <div className="p-4 border-t border-slate-200 space-y-3">
-            <a
-              href="https://wa.me/6282188080688"
-              className="w-full inline-flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-3 rounded-xl font-semibold transition-colors"
+            <Button
+              href={WHATSAPP_LINKS.MAIN}
+              variant="whatsapp"
+              size="md"
+              className="w-full"
             >
               <MessageCircle className="h-5 w-5" />
               Chat Admin WhatsApp
-            </a>
+            </Button>
 
             <div className="text-center">
               <div className="text-xs text-slate-500">Follow us:</div>
