@@ -45,7 +45,15 @@ export const BADGE_VARIANTS = {
   sprint: "border-emerald-200 bg-emerald-50 text-emerald-700",
   experiential: "border-amber-200 bg-amber-50 text-amber-700",
   academic: "border-fuchsia-200 bg-fuchsia-50 text-fuchsia-700",
-} as const;
+
+  // Admin Dashboard specific variants
+  primary: "border-blue-300 bg-blue-50 text-blue-700",
+  secondary: "border-slate-300 bg-slate-50 text-slate-700",
+  success: "border-emerald-300 bg-emerald-50 text-emerald-700",
+  warning: "border-amber-300 bg-amber-50 text-amber-700",
+  danger: "border-red-300 bg-red-50 text-red-700",
+  info: "border-cyan-300 bg-cyan-50 text-cyan-700",
+} as const;;
 
 // Size variants untuk badge
 const SIZE_VARIANTS = {

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -259,7 +259,8 @@ export default function PromoHub() {
     { key: "referral", label: "Referral", icon: <Gift className="h-4 w-4" /> },
   ];
 
-  const ambassadors = [
+  // Ambassador state - will load from localStorage
+  const [ambassadors, setAmbassadors] = useState([
     {
       name: "Sarah Pratiwi",
       role: "Senior Ambassador",
@@ -302,7 +303,65 @@ export default function PromoHub() {
       image:
         "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=150&auto=format&fit=crop",
     },
-  ];
+  ]);
+
+  // Load ambassadors from localStorage
+  useEffect(() => {
+    const loadAmbassadors = () => {
+      const stored = localStorage.getItem("ambassadors");
+      if (stored) {
+        const parsedAmbassadors = JSON.parse(stored);
+        // Transform admin ambassador data to PromoHub format
+        const transformedAmbassadors = parsedAmbassadors
+          .filter((amb: any) => amb.status === "Active") // Only show active ambassadors
+          .slice(0, 6) // Limit to 6 ambassadors for display
+          .map((amb: any) => ({
+            name: amb.name,
+            role: amb.type,
+            location: amb.location,
+            achievement:
+              amb.totalReferred > 30
+                ? "Top Recruiter"
+                : amb.totalReferred > 15
+                ? "Rising Star"
+                : "Konsisten",
+            commission: `${(amb.totalEarnings / 1000000).toFixed(1)}jt`,
+            referrals: amb.totalReferred,
+            badge: {
+              text:
+                amb.type === "Senior Ambassador"
+                  ? "Ambassador Elite"
+                  : amb.type === "Campus Ambassador"
+                  ? "Campus Leader"
+                  : "Community Star",
+              variant:
+                amb.type === "Senior Ambassador"
+                  ? "premium"
+                  : ("ambassador" as keyof typeof BADGE_VARIANTS),
+            },
+            image:
+              amb.photo ||
+              `https://images.unsplash.com/photo-${
+                amb.id % 2 === 0
+                  ? "1494790108755-2616b612b786"
+                  : "1507003211169-0a1dd7228f2d"
+              }?q=80&w=150&auto=format&fit=crop`,
+          }));
+
+        setAmbassadors(transformedAmbassadors);
+      }
+    };
+
+    loadAmbassadors();
+
+    // Listen for localStorage changes (when ambassadors are added/updated from admin)
+    const handleStorageChange = () => {
+      loadAmbassadors();
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    return () => window.removeEventListener("storage", handleStorageChange);
+  }, []);
 
   const opportunities = [
     {
