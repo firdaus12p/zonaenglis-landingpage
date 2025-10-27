@@ -145,44 +145,54 @@ const OpportunityCard = ({
 
   const AMBASSADOR_DISCOUNT = 50000; // Potongan Rp 50.000
 
-  const validateCode = (code: string) => {
+  const validateCode = async (code: string) => {
     if (!code.trim()) {
       setCodeStatus("idle");
       setAppliedCode(null);
       return;
     }
 
-    // Get ambassadors from localStorage
-    const storedAmbassadors = localStorage.getItem("ambassadors");
-    if (!storedAmbassadors) {
-      setCodeStatus("invalid");
-      setAppliedCode(null);
-      return;
-    }
+    try {
+      // Call API to validate affiliate code
+      const response = await fetch(
+        "http://localhost:3001/api/validate/affiliate-code",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ code: code.trim() }),
+        }
+      );
 
-    const ambassadors = JSON.parse(storedAmbassadors);
-    const foundAmbassador = ambassadors.find(
-      (amb: any) =>
-        amb.affiliateCode &&
-        amb.affiliateCode.toUpperCase() === code.trim().toUpperCase() &&
-        amb.status === "Active"
-    );
+      const data = await response.json();
 
-    if (foundAmbassador) {
-      setCodeStatus("valid");
-      setAppliedCode({
-        code: code.trim().toUpperCase(),
-        ambassador: foundAmbassador,
-        discount: AMBASSADOR_DISCOUNT,
-      });
-    } else {
+      if (data.valid && data.ambassador) {
+        setCodeStatus("valid");
+        setAppliedCode({
+          code: data.ambassador.code,
+          ambassador: {
+            name: data.ambassador.name,
+            type: data.ambassador.role,
+            location: data.ambassador.location,
+            affiliateCode: data.ambassador.code,
+            status: "Active",
+          },
+          discount: data.discount,
+        });
+      } else {
+        setCodeStatus("invalid");
+        setAppliedCode(null);
+      }
+    } catch (error) {
+      console.error("Error validating code:", error);
       setCodeStatus("invalid");
       setAppliedCode(null);
     }
   };
 
-  const handleApplyCode = () => {
-    validateCode(codeInput);
+  const handleApplyCode = async () => {
+    await validateCode(codeInput);
   };
 
   const handleCopyCode = () => {
@@ -546,42 +556,45 @@ export default function PromoHub() {
     },
   ]);
 
-  // Load ambassadors from localStorage
+  // Load ambassadors from API
   useEffect(() => {
-    const loadAmbassadors = () => {
-      const stored = localStorage.getItem("ambassadors");
-      if (stored) {
-        const parsedAmbassadors = JSON.parse(stored);
-        // Transform admin ambassador data to PromoHub format
-        const transformedAmbassadors = parsedAmbassadors
-          .filter((amb: any) => amb.status === "Active") // Only show active ambassadors
+    const loadAmbassadors = async () => {
+      try {
+        const response = await fetch("http://localhost:3001/api/ambassadors");
+        const ambassadorsData = await response.json();
+
+        // Transform API data to PromoHub format
+        const transformedAmbassadors = ambassadorsData
+          .filter((amb: any) => amb.is_active === 1) // Only show active ambassadors
           .slice(0, 6) // Limit to 6 ambassadors for display
           .map((amb: any) => ({
             name: amb.name,
-            role: amb.type,
+            role: amb.role,
             location: amb.location,
             achievement:
-              amb.totalReferred > 30
+              amb.achievement ||
+              (amb.referrals > 30
                 ? "Top Recruiter"
-                : amb.totalReferred > 15
+                : amb.referrals > 15
                 ? "Rising Star"
-                : "Konsisten",
-            commission: `${(amb.totalEarnings / 1000000).toFixed(1)}jt`,
-            referrals: amb.totalReferred,
+                : "Konsisten"),
+            commission: `${(amb.total_earnings / 1000000).toFixed(1)}jt`,
+            referrals: amb.referrals,
             badge: {
               text:
-                amb.type === "Senior Ambassador"
+                amb.badge_text ||
+                (amb.role === "Senior Ambassador"
                   ? "Ambassador Elite"
-                  : amb.type === "Campus Ambassador"
+                  : amb.role === "Campus Ambassador"
                   ? "Campus Leader"
-                  : "Community Star",
-              variant:
-                amb.type === "Senior Ambassador"
+                  : "Community Star"),
+              variant: (amb.badge_variant ||
+                (amb.role === "Senior Ambassador"
                   ? "premium"
-                  : ("ambassador" as keyof typeof BADGE_VARIANTS),
+                  : "ambassador")) as keyof typeof BADGE_VARIANTS,
             },
             image:
-              amb.photo ||
+              amb.image_url ||
               `https://images.unsplash.com/photo-${
                 amb.id % 2 === 0
                   ? "1494790108755-2616b612b786"
@@ -590,18 +603,13 @@ export default function PromoHub() {
           }));
 
         setAmbassadors(transformedAmbassadors);
+      } catch (error) {
+        console.error("Error loading ambassadors:", error);
+        // Keep default ambassadors on error
       }
     };
 
     loadAmbassadors();
-
-    // Listen for localStorage changes (when ambassadors are added/updated from admin)
-    const handleStorageChange = () => {
-      loadAmbassadors();
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
   }, []);
 
   const opportunities = [
