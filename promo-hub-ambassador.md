@@ -141,13 +141,14 @@
 
     <div id="ambassador-list" class="grid md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
     <div id="amb-empty" class="hidden rounded-2xl border border-slate-200 bg-white p-6 text-center text-slate-600">Data ambassador belum tersedia.</div>
+
   </section>
 
   <footer class="mx-auto max-w-7xl px-4 pb-24 text-sm text-slate-500">
     © Zona English. All rights reserved. • IG: @zonaenglish.id • WA: +62 821-8808-0688
   </footer>
 
-  <a href="https://wa.me/6282188080688?text=Halo%20Zona%20English%2C%20saya%20ingin%20tanya%20Promo%20Hub" class="fixed bottom-5 right-5 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-3 text-white shadow-lg hover:bg-emerald-600">💬 Tanya Admin</a>
+<a href="https://wa.me/6282188080688?text=Halo%20Zona%20English%2C%20saya%20ingin%20tanya%20Promo%20Hub" class="fixed bottom-5 right-5 inline-flex items-center gap-2 rounded-full bg-emerald-500 px-4 py-3 text-white shadow-lg hover:bg-emerald-600">💬 Tanya Admin</a>
 
   <script>
     const PROMOS = [
