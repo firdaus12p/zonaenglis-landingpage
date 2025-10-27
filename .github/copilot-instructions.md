@@ -6,10 +6,44 @@ Ini adalah proyek landing page **React + TypeScript + Tailwind CSS** untuk Zona 
 
 ## Arsitektur & Struktur
 
-- **Komponen React single-page**: `LearnMoreZE.tsx` berisi seluruh landing page
-- **Pengembangan berbasis dokumentasi**: Kode didokumentasikan di `code.md`, instruksi setup di `prompt.md`
-- **Desain berbasis komponen**: Menggunakan komponen kecil yang dapat digunakan ulang (`Stat`, `Pill`, `Feature`, `ProgramCard`, `Testimonial`)
-- **Styling Tailwind-first**: Semua styling menggunakan utility classes Tailwind dengan palet warna khusus
+### Backend (Express.js API)
+
+- **Lokasi**: `/backend` folder
+- **Entry Point**: `server.js` (ES Modules)
+- **Database**: MySQL via connection pool (`backend/db/connection.js`)
+- **Routes**:
+  - `routes/ambassadors.js` - Ambassador CRUD
+  - `routes/promos.js` - Promo code management
+  - `routes/validate.js` - Validation endpoints
+- **Port**: 3001 (http://localhost:3001/api)
+- **Environment**: `.env` file (use `.env.example` as template)
+
+### Frontend (React)
+
+- **Lokasi**: `/src` folder
+- **Entry Point**: `main.tsx`
+- **Main Components**:
+  - `LearnMoreZE.tsx` - Main landing page
+  - `PromoHub.tsx` - Ambassador promo hub (API integrated)
+  - `PromoCenter.tsx` - Promo center page
+- **Styling**: Tailwind utility classes
+- **Icons**: Lucide React
+- **Port**: 5173 (http://localhost:5173)
+
+### Documentation
+
+- **Lokasi**: `/docs` folder (ALL documentation files)
+- **Key Files**:
+  - `PROJECT-STRUCTURE.md` - Complete project organization
+  - `API-INTEGRATION-GUIDE.md` - API endpoints guide
+  - `code.md` - React component code reference
+  - `prompt.md` - Setup instructions
+
+### Serena MCP
+
+- **Lokasi**: `/.serena/memories`
+- **Purpose**: AI-readable project context
+- **Files**: project_overview.md, project_structure.md, tech_stack.md, etc.
 
 ## Pola dan Konvensi Utama
 
@@ -52,22 +86,38 @@ const CTA_TRYFREE = "#trial";
 
 ### Perintah Setup
 
+**Frontend**:
+
 ```bash
-npm create vite@latest zonaenglish-landing -- --template react-ts
-cd zonaenglish-landing
+# From root directory
 npm install
-npm install -D tailwindcss postcss autoprefixer
-npx tailwindcss init -p
-npm install lucide-react
-npm run dev
+npm run dev       # Start Vite dev server
+```
+
+**Backend**:
+
+```bash
+cd backend
+npm install
+cp .env.example .env    # Configure database
+npm run dev            # Start Express with --watch
 ```
 
 ### Dependensi yang Dibutuhkan
 
-- **React + TypeScript** (via template Vite)
-- **Tailwind CSS** untuk styling
-- **Lucide React** untuk ikon (library ikon yang konsisten)
-- **PostCSS + Autoprefixer** untuk pemrosesan CSS
+**Frontend**:
+
+- React 18 + TypeScript (via Vite template)
+- Tailwind CSS 4.x untuk styling
+- Lucide React untuk ikon
+- Vite 7.x sebagai build tool
+
+**Backend**:
+
+- Express.js 5.x (with ES Modules)
+- mysql2 untuk MySQL database
+- cors untuk CORS middleware
+- dotenv untuk environment variables
 
 ## Panduan Konten
 
@@ -111,8 +161,13 @@ Setiap bagian utama mengikuti pola ini:
 4. **Pertahankan aksesibilitas**: Pertahankan hierarki heading dan alt text yang tepat
 5. **Update testimonial**: Ganti dengan feedback pelanggan asli jika tersedia
 
-## Prioritas File
+## Prioritas File untuk AI
 
-1. `code.md` - Berisi kode komponen React utama
-2. `prompt.md` - Berisi instruksi setup dan pengembangan proyek
-3. Fokus pada pendekatan komponen single-file untuk kesederhanaan
+1. **docs/PROJECT-STRUCTURE.md** - Organisasi folder dan navigasi
+2. **docs/API-INTEGRATION-GUIDE.md** - API endpoints dan integrasi
+3. **docs/code.md** - Kode komponen React utama
+4. **docs/prompt.md** - Instruksi setup dan pengembangan proyek
+5. **.serena/memories/project_structure.md** - Serena AI context
+6. **README.md** - Dokumentasi utama proyek
+
+**Catatan**: Fokus pada pendekatan fullstack dengan backend API terpisah untuk data persistence.

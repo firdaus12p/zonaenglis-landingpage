@@ -1,109 +1,172 @@
 # Zona English Landing Page
 
-Selamat datang di repositori landing page **Zona English** - institusi pembelajaran bahasa Inggris modern untuk usia 3-25+ tahun.
+**Modern, responsive landing page** untuk Zona English - institusi pembelajaran bahasa Inggris di Indonesia.
 
 ## 🚀 Quick Start
 
+### Prerequisites
+
+- Node.js 18+ installed
+- MySQL database (XAMPP recommended)
+- Git
+
+### Installation
+
+1. **Clone repository**:
+
 ```bash
-# Clone repository (jika dari git)
 git clone <repository-url>
 cd zonaenglis-landingpage
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-# Buka http://localhost:5173
-
-# Build untuk production
-npm run build
-
-# Preview production build
-npm run preview
 ```
 
-## 📱 Fitur Utama
-
-- **Responsive Design**: 100% responsif di semua device
-- **Modern Stack**: React 19 + TypeScript + Tailwind CSS v4
-- **Fast Performance**: Vite build tool untuk development dan build yang cepat
-- **Clean Code**: ESLint untuk kualitas kode, Tailwind untuk styling konsisten
-- **Single Page**: Semua konten dalam satu halaman untuk optimal loading
-
-## 🎨 Design System
-
-### Warna Utama
-
-- **Primary**: Blue variants (`blue-700`, `blue-600`, `blue-50`)
-- **Accent**: Emerald untuk WhatsApp CTAs (`emerald-500`, `emerald-600`)
-- **Text**: Slate variants (`slate-900`, `slate-600`, `slate-500`)
-
-### Breakpoints
-
-- Mobile: Default (< 768px)
-- Tablet: `md:` (768px+)
-- Desktop: `lg:` (1024px+)
-
-## 📄 Struktur Konten
-
-1. **Hero Section** - Value proposition utama + CTA
-2. **About Section** - Kenapa Zona English + fitur + promo
-3. **Programs Section** - Program berdasarkan usia
-4. **Testimonials** - Review pelanggan
-5. **How to Join** - Langkah pendaftaran
-6. **Partners** - Ekosistem integration
-7. **Footer** - Kontak dan sosial media
-
-## 🔧 Teknologi
-
-- **React 19.1.1** - UI framework
-- **TypeScript 5.9.3** - Type safety
-- **Vite 7.1.7** - Build tool
-- **Tailwind CSS 4.1.16** - Styling
-- **Lucide React** - Icons
-- **ESLint** - Code quality
-
-## 📝 Development
-
-### Commands
+2. **Install frontend dependencies**:
 
 ```bash
-npm run dev     # Development server
-npm run build   # Production build
-npm run preview # Preview build
-npm run lint    # Code linting
+npm install
 ```
 
-### File Structure
+3. **Setup backend**:
+
+```bash
+cd backend
+npm install
+cp .env.example .env
+# Edit .env dengan konfigurasi database Anda
+```
+
+4. **Import database**:
+
+   - Buka XAMPP, start MySQL (port 3307)
+   - Import file SQL ke database `zona_english_admin`
+   - Lihat `/docs/API-INTEGRATION-GUIDE.md` untuk detail
+
+5. **Run development servers**:
+
+**Terminal 1 - Backend API**:
+
+```bash
+cd backend
+npm run dev
+```
+
+**Terminal 2 - Frontend**:
+
+```bash
+npm run dev
+```
+
+**Access**:
+
+- Frontend: `http://localhost:5173`
+- Backend API: `http://localhost:3001/api`
+
+## � Project Structure
 
 ```
-src/
-├── LearnMoreZE.tsx    # Main landing page component
-├── App.tsx            # App wrapper
-├── main.tsx           # Entry point
-└── index.css          # Tailwind directives
+zonaenglis-landingpage/
+├── backend/          # Express.js REST API
+├── src/              # React frontend
+├── docs/             # All documentation
+├── public/           # Static assets
+└── .serena/          # AI context files
 ```
 
-## 🚀 Deployment
+Lihat [docs/PROJECT-STRUCTURE.md](docs/PROJECT-STRUCTURE.md) untuk detail lengkap.
 
-1. Build production:
+## 🛠️ Tech Stack
 
-   ```bash
-   npm run build
-   ```
+**Frontend**:
 
-2. File hasil build ada di folder `dist/`
+- React 18 + TypeScript
+- Vite 7.x
+- Tailwind CSS 4.x
+- Lucide React (icons)
 
-3. Upload `dist/` ke hosting provider atau:
-   - Netlify: Drag & drop folder `dist`
-   - Vercel: Connect repository
-   - GitHub Pages: Upload ke branch `gh-pages`
+**Backend**:
 
-## 📞 Support
+- Express.js 5.x
+- MySQL2
+- CORS + dotenv
 
-Untuk pertanyaan teknis atau update konten, silakan hubungi tim development atau buat issue di repository ini.
+**Development Tools**:
+
+- ESLint + TypeScript ESLint
+- Serena MCP (AI code assistant)
+- Hot Module Replacement
+
+## 📚 Documentation
+
+All documentation is in the `/docs` folder:
+
+- [Project Structure](docs/PROJECT-STRUCTURE.md) - Folder organization
+- [API Integration Guide](docs/API-INTEGRATION-GUIDE.md) - API endpoints
+- [Setup Instructions](docs/prompt.md) - Detailed setup guide
+- [Code Reference](docs/code.md) - Component code examples
+
+## 🎯 Key Features
+
+- **Landing Page**: Modern single-page design with multiple sections
+- **Promo Hub**: Ambassador promo code validation system
+- **Promo Center**: Promo code management
+- **Admin Dashboard**: Admin interface for content management
+- **API Integration**: Full REST API for data persistence
+
+## 🔧 Available Scripts
+
+**Frontend** (from root):
+
+```bash
+npm run dev       # Start dev server
+npm run build     # Build for production
+npm run preview   # Preview production build
+npm run lint      # Run ESLint
+```
+
+**Backend** (from `/backend`):
+
+```bash
+npm start         # Start server (production)
+npm run dev       # Start server with --watch
+```
+
+## 🌐 Environment Variables
+
+**Backend** (`backend/.env`):
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3307
+DB_USER=root
+DB_PASS=
+DB_NAME=zona_english_admin
+PORT=3001
+CORS_ORIGIN=http://localhost:5173
+```
+
+Copy `backend/.env.example` to `backend/.env` and configure.
+
+## 🤝 Contributing
+
+1. Read project conventions in `docs/aturan.md`
+2. Follow code style in `docs/code.md`
+3. Test both frontend and backend before committing
+4. Update documentation if needed
+
+## � License
+
+MIT
+
+## 👨‍💻 Author
+
+**Zona English Team**
+
+## 🔗 Related Projects
+
+- ZonaEnglish App
+- Hira Space
+- Docterbee
+- Freshskill.my.id
 
 ---
 
-**Zona English** - Belajar Inggris yang Seru & Efektif 🎯
+**For AI Agents**: This project uses Serena MCP for AI-assisted development. Context files are in `/.serena/memories/`. Read `project_structure.md` first for navigation guidance.
