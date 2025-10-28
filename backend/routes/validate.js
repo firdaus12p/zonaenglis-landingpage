@@ -17,7 +17,7 @@ router.post("/affiliate-code", async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      `SELECT id, name, role, location, affiliate_code, commission_rate 
+      `SELECT id, name, role, location, institution, affiliate_code, testimonial, phone, commission_rate 
        FROM ambassadors 
        WHERE affiliate_code = ? 
        AND is_active = 1`,
@@ -41,7 +41,10 @@ router.post("/affiliate-code", async (req, res) => {
         name: ambassador.name,
         role: ambassador.role,
         location: ambassador.location,
+        institution: ambassador.institution,
         code: ambassador.affiliate_code,
+        testimonial: ambassador.testimonial,
+        phone: ambassador.phone,
         commission_rate: ambassador.commission_rate,
       },
       discount: 50000,

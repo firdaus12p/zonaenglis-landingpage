@@ -8,7 +8,7 @@ const router = express.Router();
 router.get("/", async (req, res) => {
   try {
     const [rows] = await db.query(
-      "SELECT id, name, role, location, achievement, commission, referrals, badge_text, badge_variant, image_url, affiliate_code, is_active, phone, email, total_earnings FROM ambassadors WHERE is_active = 1 ORDER BY id DESC"
+      "SELECT id, name, role, location, institution, achievement, commission, referrals, badge_text, badge_variant, image_url, affiliate_code, testimonial, is_active, phone, email, total_earnings FROM ambassadors WHERE is_active = 1 ORDER BY institution ASC, id DESC"
     );
     res.json(rows);
   } catch (error) {
@@ -41,6 +41,7 @@ router.post("/", async (req, res) => {
     name,
     role,
     location,
+    institution,
     achievement,
     commission,
     referrals,
@@ -48,6 +49,7 @@ router.post("/", async (req, res) => {
     badge_variant,
     image_url,
     affiliate_code,
+    testimonial,
     phone,
     email,
     bank_account,
@@ -65,12 +67,13 @@ router.post("/", async (req, res) => {
   try {
     const [result] = await db.query(
       `INSERT INTO ambassadors 
-      (name, role, location, achievement, commission, referrals, badge_text, badge_variant, image_url, affiliate_code, phone, email, bank_account, bank_name, commission_rate, is_active) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
+      (name, role, location, institution, achievement, commission, referrals, badge_text, badge_variant, image_url, affiliate_code, testimonial, phone, email, bank_account, bank_name, commission_rate, is_active) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       [
         name,
         role,
         location,
+        institution || null,
         achievement || null,
         commission || 0,
         referrals || 0,
@@ -78,6 +81,7 @@ router.post("/", async (req, res) => {
         badge_variant || "ambassador",
         image_url || null,
         affiliate_code,
+        testimonial || null,
         phone || null,
         email || null,
         bank_account || null,
@@ -108,6 +112,7 @@ router.put("/:id", async (req, res) => {
     name,
     role,
     location,
+    institution,
     achievement,
     commission,
     referrals,
@@ -115,6 +120,7 @@ router.put("/:id", async (req, res) => {
     badge_variant,
     image_url,
     affiliate_code,
+    testimonial,
     phone,
     email,
     bank_account,
@@ -126,14 +132,15 @@ router.put("/:id", async (req, res) => {
   try {
     const [result] = await db.query(
       `UPDATE ambassadors 
-       SET name = ?, role = ?, location = ?, achievement = ?, commission = ?, referrals = ?, 
-           badge_text = ?, badge_variant = ?, image_url = ?, affiliate_code = ?, phone = ?, 
+       SET name = ?, role = ?, location = ?, institution = ?, achievement = ?, commission = ?, referrals = ?, 
+           badge_text = ?, badge_variant = ?, image_url = ?, affiliate_code = ?, testimonial = ?, phone = ?, 
            email = ?, bank_account = ?, bank_name = ?, commission_rate = ?, is_active = ?
        WHERE id = ?`,
       [
         name,
         role,
         location,
+        institution,
         achievement,
         commission,
         referrals,
@@ -141,6 +148,7 @@ router.put("/:id", async (req, res) => {
         badge_variant,
         image_url,
         affiliate_code,
+        testimonial,
         phone,
         email,
         bank_account,
