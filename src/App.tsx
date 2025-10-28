@@ -2,6 +2,7 @@ import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import LearnMoreZE from "./LearnMoreZE";
 import PromoCenter from "./PromoCenter";
 import PromoHub from "./PromoHub";
+import AffiliateAdmin from "./AffiliateAdmin";
 import Navbar from "./Navbar";
 import { Gift, Users } from "lucide-react";
 import { Button } from "./components";
@@ -41,6 +42,7 @@ function App() {
           <Route path="/" element={<LearnMoreZE />} />
           <Route path="/promo-center" element={<PromoCenter />} />
           <Route path="/promo-hub" element={<PromoHub />} />
+          <Route path="/affiliate-admin" element={<AffiliateAdmin />} />
 
           {/* Admin Routes */}
           <Route

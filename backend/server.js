@@ -14,6 +14,7 @@ import promosRoutes from "./routes/promos.js";
 import programsRoutes from "./routes/programs.js";
 import validateRoutes from "./routes/validate.js";
 import uploadRoutes from "./routes/upload.js";
+import affiliateRoutes from "./routes/affiliate.js";
 
 // Load environment variables
 dotenv.config();
@@ -56,6 +57,7 @@ app.get("/", (req, res) => {
       programs: "/api/programs",
       promos: "/api/promos",
       validate: "/api/validate",
+      affiliate: "/api/affiliate",
     },
   });
 });
@@ -75,6 +77,7 @@ app.use("/api/programs", programsRoutes);
 app.use("/api/promos", promosRoutes);
 app.use("/api/validate", validateRoutes);
 app.use("/api/upload", uploadRoutes);
+app.use("/api/affiliate", affiliateRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -124,6 +127,10 @@ app.listen(PORT, () => {
   console.log("   POST   /api/promos/use");
   console.log("   POST   /api/validate/code");
   console.log("   POST   /api/validate/affiliate-code");
+  console.log("   POST   /api/affiliate/track");
+  console.log("   GET    /api/affiliate/stats/:ambassador_id");
+  console.log("   GET    /api/affiliate/leads/:ambassador_id");
+  console.log("   PATCH  /api/affiliate/update-status/:usage_id");
   console.log("   POST   /api/upload");
   console.log("   POST   /api/upload/multiple");
   console.log("   ========================================");

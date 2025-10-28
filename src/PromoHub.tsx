@@ -148,6 +148,153 @@ const AmbassadorPersonCard = ({
   );
 };
 
+// User Info Modal Component
+const UserInfoFormModal = ({
+  isOpen,
+  onClose,
+  onSubmit,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSubmit: (data: { name: string; phone: string; email?: string }) => void;
+}) => {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [errors, setErrors] = useState<{ name?: string; phone?: string }>({});
+
+  // Phone validation
+  const validatePhone = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, "");
+    // Check Indonesian phone format: 08xxx (10-13 digits) or 62xxx
+    if (cleaned.startsWith("62")) {
+      return cleaned.length >= 11 && cleaned.length <= 15;
+    }
+    return (
+      cleaned.startsWith("08") && cleaned.length >= 10 && cleaned.length <= 13
+    );
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: { name?: string; phone?: string } = {};
+
+    if (!name.trim()) {
+      newErrors.name = "Nama wajib diisi";
+    }
+    if (!phone.trim()) {
+      newErrors.phone = "Nomor WhatsApp wajib diisi";
+    } else if (!validatePhone(phone)) {
+      newErrors.phone = "Format nomor tidak valid (contoh: 081234567890)";
+    }
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+
+    onSubmit({ name: name.trim(), phone: phone.trim(), email: email.trim() });
+    onClose();
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+        <h3 className="mb-4 text-xl font-bold text-slate-900">
+          Data Kontak Anda
+        </h3>
+        <p className="mb-4 text-sm text-slate-600">
+          Untuk melanjutkan, mohon isi data kontak Anda. Data ini akan
+          dikirimkan ke ambassador untuk follow-up.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Name Field */}
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-slate-700">
+              Nama Lengkap <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => {
+                setName(e.target.value);
+                setErrors((prev) => ({ ...prev, name: undefined }));
+              }}
+              placeholder="Masukkan nama lengkap"
+              className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                errors.name
+                  ? "border-red-300 focus:border-red-300 focus:ring-red-100"
+                  : "border-slate-200 focus:border-blue-300 focus:ring-blue-100"
+              }`}
+            />
+            {errors.name && (
+              <p className="mt-1 text-xs text-red-600">{errors.name}</p>
+            )}
+          </div>
+
+          {/* Phone Field */}
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-slate-700">
+              Nomor WhatsApp <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => {
+                setPhone(e.target.value);
+                setErrors((prev) => ({ ...prev, phone: undefined }));
+              }}
+              placeholder="081234567890"
+              className={`w-full rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 ${
+                errors.phone
+                  ? "border-red-300 focus:border-red-300 focus:ring-red-100"
+                  : "border-slate-200 focus:border-blue-300 focus:ring-blue-100"
+              }`}
+            />
+            {errors.phone && (
+              <p className="mt-1 text-xs text-red-600">{errors.phone}</p>
+            )}
+          </div>
+
+          {/* Email Field (Optional) */}
+          <div>
+            <label className="mb-1 block text-sm font-semibold text-slate-700">
+              Email <span className="text-slate-400">(opsional)</span>
+            </label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="contoh@email.com"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
+            />
+          </div>
+
+          {/* Buttons */}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              type="submit"
+              className="flex-1 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+            >
+              Lanjutkan
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 const PromoCard = ({
   promo,
   appliedCode,
@@ -161,6 +308,16 @@ const PromoCard = ({
 }) => {
   const [codeInput, setCodeInput] = useState("");
   const [isValidating, setIsValidating] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [userData, setUserData] = useState<{
+    name: string;
+    phone: string;
+    email?: string;
+  } | null>(() => {
+    // Load from sessionStorage on mount
+    const saved = sessionStorage.getItem("zonaenglis_user_data");
+    return saved ? JSON.parse(saved) : null;
+  });
   const tl = timeLeftISO(promo.end);
   const media = promo.media?.[0] || null;
   const discount = appliedCode?.discount || 0;
@@ -169,6 +326,12 @@ const PromoCard = ({
   const handleApply = async () => {
     if (!codeInput.trim()) {
       onValidationError("Masukkan kode terlebih dahulu");
+      return;
+    }
+
+    // Check if user data exists, if not show modal
+    if (!userData) {
+      setIsModalOpen(true);
       return;
     }
 
@@ -230,6 +393,48 @@ const PromoCard = ({
 
       console.log("🎉 Calling onApplyCode with validation:", validation);
       onApplyCode(codeInput.trim(), validation);
+
+      // Track affiliate usage if ambassador code
+      if (data.type === "ambassador" && data.ambassador) {
+        console.log("📊 Tracking affiliate usage...");
+        try {
+          const trackPayload = {
+            user_name: userData.name,
+            user_phone: userData.phone,
+            user_email: userData.email || "",
+            affiliate_code: codeInput.trim(),
+            program_id: promo.id,
+            program_name: promo.title,
+            discount_applied: data.discount,
+          };
+          console.log("📊 Sending track payload:", trackPayload);
+
+          const trackResponse = await fetch(
+            "http://localhost:3001/api/affiliate/track",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(trackPayload),
+            }
+          );
+
+          const trackData = await trackResponse.json();
+          console.log("📊 Track response:", trackData);
+
+          if (trackData.success) {
+            console.log("✅ Data berhasil dikirim ke admin dashboard!");
+          } else {
+            console.error(
+              "❌ Tracking failed:",
+              trackData.error || trackData.message
+            );
+          }
+        } catch (trackError) {
+          console.error("❌ Error tracking affiliate:", trackError);
+          // Don't fail the whole process if tracking fails
+        }
+      }
+
       setCodeInput("");
       console.log("✅ Code applied successfully!");
     } catch (error) {
@@ -239,6 +444,20 @@ const PromoCard = ({
       setIsValidating(false);
       console.log("🔄 Validation complete");
     }
+  };
+
+  const handleUserDataSubmit = (data: {
+    name: string;
+    phone: string;
+    email?: string;
+  }) => {
+    // Save to state and sessionStorage
+    setUserData(data);
+    sessionStorage.setItem("zonaenglis_user_data", JSON.stringify(data));
+    console.log("✅ User data saved:", data);
+
+    // After saving data, trigger validation
+    handleApply();
   };
 
   return (
@@ -417,6 +636,13 @@ const PromoCard = ({
           Tanya Admin
         </a>
       </div>
+
+      {/* User Info Modal */}
+      <UserInfoFormModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleUserDataSubmit}
+      />
     </div>
   );
 };
