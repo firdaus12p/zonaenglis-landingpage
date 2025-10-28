@@ -16,11 +16,17 @@ import {
 
 interface AmbassadorFormData {
   name: string;
-  type: "Senior Ambassador" | "Campus Ambassador" | "Community Ambassador";
+  type:
+    | "Senior Ambassador"
+    | "Campus Ambassador"
+    | "Community Ambassador"
+    | "Junior Ambassador";
   location: string;
+  institution: string;
   address: string;
   email: string;
   phone: string;
+  testimonial: string;
   photo: string;
 }
 
@@ -39,9 +45,11 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
     name: existingAmbassadorData?.name || "",
     type: existingAmbassadorData?.type || "Senior Ambassador",
     location: existingAmbassadorData?.location || "",
+    institution: existingAmbassadorData?.institution || "",
     address: existingAmbassadorData?.address || "",
     email: existingAmbassadorData?.email || "",
     phone: existingAmbassadorData?.phone || "",
+    testimonial: existingAmbassadorData?.testimonial || "",
     photo: existingAmbassadorData?.photo || "",
   });
 
@@ -71,6 +79,10 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
       newErrors.location = "Lokasi wajib diisi";
     }
 
+    if (!formData.institution.trim()) {
+      newErrors.institution = "Sekolah/Kampus/Institusi wajib diisi";
+    }
+
     if (!formData.address.trim()) {
       newErrors.address = "Alamat wajib diisi";
     }
@@ -82,29 +94,23 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    console.log("Form submitted with data:", formData);
-    console.log("Mode:", mode);
-    console.log("Existing ambassador data:", existingAmbassadorData);
-
     if (!validateForm()) {
-      console.log("Form validation failed");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      console.log("Starting ambassador save process...");
-
       // Generate affiliate code based on type and name
       const typePrefix =
         formData.type === "Senior Ambassador"
           ? "SNR"
           : formData.type === "Campus Ambassador"
           ? "CAM"
+          : formData.type === "Junior Ambassador"
+          ? "JNR"
           : "COM";
 
-      // Handle edge case where name is less than 3 characters
       const nameCode =
         formData.name.length >= 3
           ? formData.name.substring(0, 3).toUpperCase()
@@ -113,123 +119,65 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
       const randomId = Math.floor(Math.random() * 900) + 100;
       const affiliateCode = `ZE-${typePrefix}-${nameCode}${randomId}`;
 
-      console.log("Generated affiliate code:", affiliateCode);
-
-      // Generate unique ID for new ambassadors
-      const ambassadorId =
-        mode === "create"
-          ? Date.now() + Math.floor(Math.random() * 1000)
-          : existingAmbassadorData?.id;
-
-      const newAmbassadorData = {
-        id: ambassadorId,
-        ...formData,
-        affiliateCode,
-        totalReferred: existingAmbassadorData?.totalReferred || 0,
-        totalEarnings: existingAmbassadorData?.totalEarnings || 0,
-        status: existingAmbassadorData?.status || "Active",
-        joinDate:
-          existingAmbassadorData?.joinDate ||
-          new Date().toISOString().split("T")[0],
+      // Prepare data for API
+      const apiData = {
+        name: formData.name,
+        role: formData.type,
+        location: formData.location,
+        institution: formData.institution,
+        achievement: null,
+        commission: 0,
+        referrals: 0,
+        badge_text: null,
+        badge_variant: "ambassador",
+        image_url: formData.photo || null,
+        affiliate_code: affiliateCode,
+        testimonial: formData.testimonial,
+        phone: formData.phone,
+        email: formData.email,
+        bank_account: null,
+        bank_name: null,
+        commission_rate: 15.0,
       };
 
-      console.log("Ambassador data to save:", newAmbassadorData);
+      // Call API
+      const url =
+        mode === "create"
+          ? "http://localhost:3001/api/ambassadors"
+          : `http://localhost:3001/api/ambassadors/${existingAmbassadorData?.id}`;
 
-      // Save to localStorage (temporary storage)
-      console.log("Reading existing ambassadors from localStorage...");
-      let existingAmbassadors = [];
+      const response = await fetch(url, {
+        method: mode === "create" ? "POST" : "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(apiData),
+      });
 
-      try {
-        // Check if localStorage is available
-        if (typeof Storage === "undefined") {
-          throw new Error("localStorage is not supported in this browser");
-        }
-
-        const storedData = localStorage.getItem("ambassadors");
-        console.log("Raw localStorage data:", storedData);
-
-        if (storedData) {
-          existingAmbassadors = JSON.parse(storedData);
-        }
-
-        // Ensure existingAmbassadors is an array
-        if (!Array.isArray(existingAmbassadors)) {
-          console.warn(
-            "localStorage data is not an array, resetting to empty array"
-          );
-          existingAmbassadors = [];
-        }
-
-        console.log("Parsed existing ambassadors:", existingAmbassadors);
-      } catch (parseError) {
-        console.error("Error parsing localStorage data:", parseError);
-        existingAmbassadors = [];
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to save ambassador");
       }
 
-      try {
-        if (mode === "create") {
-          console.log("Adding new ambassador...");
-          existingAmbassadors.push(newAmbassadorData);
-        } else {
-          console.log("Updating existing ambassador...");
-          const index = existingAmbassadors.findIndex(
-            (a: any) => a && a.id === newAmbassadorData.id
-          );
-          console.log("Found ambassador at index:", index);
-          if (index !== -1) {
-            existingAmbassadors[index] = newAmbassadorData;
-          } else {
-            throw new Error(
-              `Ambassador with ID ${newAmbassadorData.id} not found for editing`
-            );
-          }
-        }
+      const result = await response.json();
+      console.log("Ambassador saved:", result);
 
-        console.log(
-          "Saving updated ambassadors to localStorage:",
-          existingAmbassadors
-        );
-        localStorage.setItem(
-          "ambassadors",
-          JSON.stringify(existingAmbassadors)
-        );
-        console.log("Successfully saved to localStorage!");
-
-        // Verify the save was successful
-        const verifyData = localStorage.getItem("ambassadors");
-        console.log("Verification - data after save:", verifyData);
-
-        // Trigger custom event to notify other components
-        window.dispatchEvent(new CustomEvent("ambassadorDataUpdated"));
-      } catch (saveError) {
-        console.error("Error during save operation:", saveError);
-        throw saveError;
-      }
-
-      // Show success message (you can implement toast notification here)
+      // Show success message
       alert(
         `Ambassador ${
           mode === "create" ? "ditambahkan" : "diperbarui"
-        } successfully!`
+        } successfully! Affiliate Code: ${affiliateCode}`
       );
 
       // Navigate back to ambassadors list
       setCurrentPage("admin-ambassadors");
     } catch (error) {
       console.error("Error saving ambassador:", error);
-
-      // More specific error message
-      let errorMessage = "Terjadi kesalahan saat menyimpan data ambassador";
-
-      if (error instanceof Error) {
-        errorMessage += `: ${error.message}`;
-      }
-
-      if (typeof error === "string") {
-        errorMessage += `: ${error}`;
-      }
-
-      alert(errorMessage);
+      alert(
+        `Terjadi kesalahan saat menyimpan data ambassador: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -419,8 +367,7 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
                   <MapPin className="inline h-4 w-4 mr-1" />
                   Lokasi/Kota *
                 </label>
-                <input
-                  type="text"
+                <select
                   value={formData.location}
                   onChange={(e) =>
                     setFormData((prev) => ({
@@ -431,11 +378,45 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
                   className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
                     errors.location ? "border-red-300" : "border-slate-300"
                   }`}
-                  placeholder="Makassar, Universitas Hasanuddin, Jakarta, dll"
-                />
+                >
+                  <option value="">Pilih Cabang</option>
+                  <option value="Pettarani">Pettarani (Makassar)</option>
+                  <option value="Kolaka">Kolaka</option>
+                  <option value="Kendari">Kendari</option>
+                </select>
                 {errors.location && (
                   <p className="text-red-500 text-sm mt-1">{errors.location}</p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  <Home className="inline h-4 w-4 mr-1" />
+                  Sekolah/Kampus/Institusi *
+                </label>
+                <input
+                  type="text"
+                  value={formData.institution}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      institution: e.target.value,
+                    }))
+                  }
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    errors.institution ? "border-red-300" : "border-slate-300"
+                  }`}
+                  placeholder="Contoh: SMAN 1 Makassar, Universitas Hasanuddin, PT Maju Jaya"
+                />
+                {errors.institution && (
+                  <p className="text-red-500 text-sm mt-1">
+                    {errors.institution}
+                  </p>
+                )}
+                <p className="text-xs text-slate-500 mt-1">
+                  Institusi tempat ambassador berasal (akan ditampilkan di
+                  PromoHub)
+                </p>
               </div>
 
               <div>
@@ -460,6 +441,28 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
                 {errors.address && (
                   <p className="text-red-500 text-sm mt-1">{errors.address}</p>
                 )}
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  💬 Testimonial / Komentar
+                </label>
+                <textarea
+                  value={formData.testimonial}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      testimonial: e.target.value,
+                    }))
+                  }
+                  rows={3}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Contoh: Kelas premium-nya seru & fokus speaking!"
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  Komentar tentang pengalaman di Zona English (akan ditampilkan
+                  di PromoHub)
+                </p>
               </div>
             </div>
 

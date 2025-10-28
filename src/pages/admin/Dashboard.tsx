@@ -91,6 +91,13 @@ const Dashboard: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       color: "blue",
     },
     {
+      name: "Add Program",
+      description: "Create new program/promo for PromoHub",
+      href: "/admin/programs/new",
+      icon: Calendar,
+      color: "indigo",
+    },
+    {
       name: "Create Promo",
       description: "Generate new discount promo code",
       href: "/admin/promos/new",

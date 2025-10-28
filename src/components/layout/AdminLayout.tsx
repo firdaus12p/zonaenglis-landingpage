@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Menu,
   X,
@@ -10,12 +11,13 @@ import {
   Settings,
   LogOut,
   ChevronDown,
+  Gift,
 } from "lucide-react";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
   currentPage?: string;
-  setCurrentPage: (page: string) => void;
+  setCurrentPage?: (page: string) => void; // Optional for backward compatibility
 }
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({
@@ -23,45 +25,74 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
   currentPage = "dashboard",
   setCurrentPage,
 }) => {
+  const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+
+  // Use navigate if setCurrentPage is not provided
+  const handleNavigation = (page: string) => {
+    if (setCurrentPage) {
+      setCurrentPage(page);
+    } else {
+      navigate(page);
+    }
+  };
 
   const navigation = [
     {
       name: "Dashboard",
-      page: "admin",
+      page: "/admin",
       icon: Home,
-      current: currentPage === "admin" || currentPage === "admin-dashboard",
+      current:
+        currentPage === "admin" ||
+        currentPage === "/admin" ||
+        currentPage === "/admin/dashboard",
     },
     {
       name: "Ambassadors",
-      page: "admin-ambassadors",
+      page: "/admin/ambassadors",
       icon: Users,
-      current: currentPage === "admin-ambassadors",
+      current:
+        currentPage === "admin-ambassadors" ||
+        currentPage.startsWith("/admin/ambassadors"),
+    },
+    {
+      name: "Programs",
+      page: "/admin/programs",
+      icon: Gift,
+      current: currentPage.startsWith("/admin/programs"),
     },
     {
       name: "Promo Codes",
-      page: "admin-promos",
+      page: "/admin/promos",
       icon: Tag,
-      current: currentPage === "admin-promos",
+      current:
+        currentPage === "admin-promos" ||
+        currentPage.startsWith("/admin/promos"),
     },
     {
       name: "Countdown Batch",
-      page: "admin-countdown",
+      page: "/admin/countdown",
       icon: Clock,
-      current: currentPage === "admin-countdown",
+      current:
+        currentPage === "admin-countdown" ||
+        currentPage.startsWith("/admin/countdown"),
     },
     {
       name: "Articles",
-      page: "admin-articles",
+      page: "/admin/articles",
       icon: FileText,
-      current: currentPage === "admin-articles",
+      current:
+        currentPage === "admin-articles" ||
+        currentPage.startsWith("/admin/articles"),
     },
     {
       name: "Settings",
-      page: "admin-settings",
+      page: "/admin/settings",
       icon: Settings,
-      current: currentPage === "admin-settings",
+      current:
+        currentPage === "admin-settings" ||
+        currentPage.startsWith("/admin/settings"),
     },
   ];
 
@@ -106,7 +137,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
           {navigation.map((item) => (
             <button
               key={item.name}
-              onClick={() => setCurrentPage(item.page)}
+              onClick={() => handleNavigation(item.page)}
               className={`
                 flex items-center w-full px-3 py-2 rounded-lg text-sm font-medium transition-colors text-left
                 ${

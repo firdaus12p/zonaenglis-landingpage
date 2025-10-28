@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import LearnMoreZE from "./LearnMoreZE";
 import PromoCenter from "./PromoCenter";
 import PromoHub from "./PromoHub";
@@ -13,66 +13,102 @@ import {
   PromoCodes,
   CountdownBatch,
   Articles,
+  Programs,
+  AmbassadorForm,
+  PromoForm,
 } from "./components/admin";
-import AmbassadorForm from "./pages/admin/AmbassadorForm";
 
 function App() {
-  const [currentPage, setCurrentPage] = useState("home");
+  const navigate = useNavigate();
+  const location = useLocation();
+  const currentPath = location.pathname;
 
-  const renderCurrentPage = () => {
-    switch (currentPage) {
-      case "promo-new-center":
-        return <PromoCenter />;
-      case "promo-hub":
-        return <PromoHub />;
-
-      // Admin Dashboard Routes
-      case "admin":
-      case "admin-dashboard":
-        return <Dashboard setCurrentPage={setCurrentPage} />;
-      case "admin-ambassadors":
-        return <Ambassadors setCurrentPage={setCurrentPage} />;
-      case "admin-ambassador-form-create":
-        return <AmbassadorForm setCurrentPage={setCurrentPage} mode="create" />;
-      case "admin-ambassador-form-edit":
-        const editingAmbassador = localStorage.getItem("editingAmbassador");
-        console.log("Edit mode - stored ambassador data:", editingAmbassador);
-        return (
-          <AmbassadorForm
-            setCurrentPage={setCurrentPage}
-            mode="edit"
-            ambassadorData={
-              editingAmbassador ? JSON.parse(editingAmbassador) : null
-            }
-          />
-        );
-      case "admin-promos":
-        return <PromoCodes setCurrentPage={setCurrentPage} />;
-      case "admin-countdown":
-        return <CountdownBatch setCurrentPage={setCurrentPage} />;
-      case "admin-articles":
-        return <Articles setCurrentPage={setCurrentPage} />;
-      case "admin-settings":
-        return <Dashboard setCurrentPage={setCurrentPage} />; // Temporary, use Dashboard for settings
-
-      default:
-        return <LearnMoreZE />;
-    }
-  };
+  // Determine if we're on home page for floating buttons
+  const isHomePage = currentPath === "/";
 
   return (
     <div className="relative">
       {/* Global Navbar */}
-      <Navbar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      <Navbar
+        currentPage={currentPath}
+        setCurrentPage={(page) => navigate(page)}
+      />
 
-      {/* Page Content */}
-      <div>{renderCurrentPage()}</div>
+      {/* Page Content with Routes */}
+      <div>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/" element={<LearnMoreZE />} />
+          <Route path="/promo-center" element={<PromoCenter />} />
+          <Route path="/promo-hub" element={<PromoHub />} />
+
+          {/* Admin Routes */}
+          <Route
+            path="/admin"
+            element={<Dashboard setCurrentPage={(page) => navigate(page)} />}
+          />
+          <Route
+            path="/admin/dashboard"
+            element={<Dashboard setCurrentPage={(page) => navigate(page)} />}
+          />
+
+          {/* Ambassadors */}
+          <Route
+            path="/admin/ambassadors"
+            element={<Ambassadors setCurrentPage={(page) => navigate(page)} />}
+          />
+          <Route
+            path="/admin/ambassadors/new"
+            element={
+              <AmbassadorForm
+                setCurrentPage={(page) => navigate(page)}
+                mode="create"
+              />
+            }
+          />
+          <Route
+            path="/admin/ambassadors/edit/:id"
+            element={
+              <AmbassadorForm
+                setCurrentPage={(page) => navigate(page)}
+                mode="edit"
+                ambassadorData={
+                  localStorage.getItem("editingAmbassador")
+                    ? JSON.parse(localStorage.getItem("editingAmbassador")!)
+                    : null
+                }
+              />
+            }
+          />
+
+          {/* Programs */}
+          <Route path="/admin/programs" element={<Programs />} />
+          <Route path="/admin/programs/new" element={<PromoForm />} />
+          <Route path="/admin/programs/edit/:id" element={<PromoForm />} />
+
+          {/* Other Admin Routes */}
+          <Route
+            path="/admin/promos"
+            element={<PromoCodes setCurrentPage={(page) => navigate(page)} />}
+          />
+          <Route
+            path="/admin/countdown"
+            element={
+              <CountdownBatch setCurrentPage={(page) => navigate(page)} />
+            }
+          />
+          <Route
+            path="/admin/articles"
+            element={<Articles setCurrentPage={(page) => navigate(page)} />}
+          />
+        </Routes>
+      </div>
 
       {/* Quick Access Floating Buttons (only on home page for large screens) */}
-      {currentPage === "home" && (
+      {isHomePage && (
         <div className="fixed bottom-5 right-5 flex flex-col gap-3 z-30 hidden lg:flex">
           <Button
-            onClick={() => setCurrentPage("promo-new-center")}
+            onClick={() => navigate("/promo-center")}
             variant="primary"
             size="md"
             className="rounded-full shadow-lg hover:scale-105 transition-all duration-200"
@@ -82,7 +118,7 @@ function App() {
           </Button>
 
           <Button
-            onClick={() => setCurrentPage("promo-hub")}
+            onClick={() => navigate("/promo-hub")}
             variant="purple"
             size="md"
             className="rounded-full shadow-lg hover:scale-105 transition-all duration-200"
@@ -93,7 +129,7 @@ function App() {
 
           {/* Admin Access Button (for development/testing) */}
           <Button
-            onClick={() => setCurrentPage("admin")}
+            onClick={() => navigate("/admin")}
             variant="secondary"
             size="sm"
             className="rounded-full shadow-lg hover:scale-105 transition-all duration-200 text-xs"
