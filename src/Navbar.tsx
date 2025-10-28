@@ -52,19 +52,19 @@ export default function Navbar({ currentPage, setCurrentPage }: NavbarProps) {
 
   const menuItems = [
     {
-      key: "home",
+      key: "/",
       label: "Home",
       icon: Home,
       description: "Halaman utama Zona English",
     },
     {
-      key: "promo-new-center",
+      key: "/promo-center",
       label: "Promo New Center",
       icon: Gift,
       description: "Undangan belajar gratis & promo",
     },
     {
-      key: "promo-hub",
+      key: "/promo-hub",
       label: "Promo Hub",
       icon: Users,
       description: "Partnership & Ambassador",

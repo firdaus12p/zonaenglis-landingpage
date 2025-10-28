@@ -170,7 +170,7 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
       );
 
       // Navigate back to ambassadors list
-      setCurrentPage("admin-ambassadors");
+      setCurrentPage("/admin/ambassadors");
     } catch (error) {
       console.error("Error saving ambassador:", error);
       alert(
@@ -201,7 +201,7 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
 
   return (
     <AdminLayout
-      currentPage="admin-ambassadors"
+      currentPage="/admin/ambassadors"
       setCurrentPage={setCurrentPage}
     >
       <div className="space-y-6">
@@ -212,7 +212,7 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
-              onClick={() => setCurrentPage("admin-ambassadors")}
+              onClick={() => setCurrentPage("/admin/ambassadors")}
               className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50"
             >
               <ArrowLeft className="h-5 w-5" />
@@ -471,7 +471,7 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
               <Button
                 type="button"
                 variant="secondary"
-                onClick={() => setCurrentPage("admin-ambassadors")}
+                onClick={() => setCurrentPage("/admin/ambassadors")}
                 className="px-6"
               >
                 <X className="h-4 w-4 mr-2" />

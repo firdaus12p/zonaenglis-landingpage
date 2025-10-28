@@ -122,6 +122,7 @@ app.listen(PORT, () => {
   console.log("   GET    /api/promos/:code");
   console.log("   POST   /api/promos/validate");
   console.log("   POST   /api/promos/use");
+  console.log("   POST   /api/validate/code");
   console.log("   POST   /api/validate/affiliate-code");
   console.log("   POST   /api/upload");
   console.log("   POST   /api/upload/multiple");

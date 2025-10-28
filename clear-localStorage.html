@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clear Ambassador localStorage</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, sans-serif;
+        max-width: 600px;
+        margin: 50px auto;
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .card {
+        background: white;
+        border-radius: 12px;
+        padding: 30px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      }
+      h1 {
+        color: #1e293b;
+        margin-bottom: 20px;
+      }
+      button {
+        background: #dc2626;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        font-size: 16px;
+        margin-top: 20px;
+      }
+      button:hover {
+        background: #b91c1c;
+      }
+      .info {
+        background: #fef3c7;
+        border-left: 4px solid #f59e0b;
+        padding: 15px;
+        margin-top: 20px;
+        border-radius: 4px;
+      }
+      .success {
+        background: #d1fae5;
+        border-left: 4px solid #10b981;
+        padding: 15px;
+        margin-top: 20px;
+        border-radius: 4px;
+        display: none;
+      }
+      .code {
+        background: #f1f5f9;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: "Courier New", monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>🧹 Clear Ambassador localStorage</h1>
+      <p>
+        Halaman ini akan menghapus data ambassador lama dari localStorage
+        browser Anda.
+      </p>
+
+      <div class="info">
+        <strong>⚠️ Penting:</strong>
+        <ul>
+          <li>
+            Ini akan menghapus data ambassador yang tersimpan secara lokal
+          </li>
+          <li>
+            Setelah dihapus, admin page akan mengambil data dari API database
+          </li>
+          <li>
+            Ini akan memperbaiki masalah data yang tidak konsisten antara Admin
+            dan PromoHub
+          </li>
+        </ul>
+      </div>
+
+      <button onclick="clearAmbassadorData()">Hapus Data localStorage</button>
+
+      <div id="successMessage" class="success">
+        ✅ localStorage berhasil dibersihkan! Silakan refresh halaman Admin.
+      </div>
+    </div>
+
+    <script>
+      function clearAmbassadorData() {
+        try {
+          // Clear ambassador data from localStorage
+          localStorage.removeItem("ambassadors");
+          localStorage.removeItem("editingAmbassador");
+
+          // Show success message
+          document.getElementById("successMessage").style.display = "block";
+
+          console.log("✅ Ambassador localStorage cleared successfully");
+          console.log("Current localStorage keys:", Object.keys(localStorage));
+
+          // Optional: redirect to admin page after 2 seconds
+          setTimeout(() => {
+            if (
+              confirm("Data berhasil dihapus! Buka halaman Admin sekarang?")
+            ) {
+              window.location.href = "http://localhost:5173/admin/ambassadors";
+            }
+          }, 1000);
+        } catch (error) {
+          console.error("Error clearing localStorage:", error);
+          alert("Terjadi kesalahan: " + error.message);
+        }
+      }
+
+      // Log current state on page load
+      window.addEventListener("load", () => {
+        console.log(
+          "📊 Current localStorage ambassadors:",
+          localStorage.getItem("ambassadors")
+        );
+      });
+    </script>
+  </body>
+</html>

@@ -7,7 +7,6 @@ import { WHATSAPP_LINKS } from "./constants/cta";
 
 // Konstanta CTA
 const CTA_WHATSAPP = WHATSAPP_LINKS.PROMO_HUB;
-const AMBASSADOR_BONUS = 50000; // Potongan Rp 50.000 per kode
 
 // Types
 interface PromoMedia {
@@ -45,14 +44,20 @@ interface AmbassadorInstitution {
 }
 
 interface CodeValidation {
-  person: AmbassadorPerson;
-  institution: string;
-  branch: string;
+  person?: AmbassadorPerson;
+  institution?: string;
+  branch?: string;
+  promoName?: string;
+  promoDescription?: string;
 }
 
 interface AppliedCode {
   code: string;
-  by: CodeValidation;
+  type: "ambassador" | "promo";
+  discount: number;
+  discountType?: string;
+  by?: CodeValidation;
+  message: string;
 }
 
 // Helper Functions
@@ -147,19 +152,93 @@ const PromoCard = ({
   promo,
   appliedCode,
   onApplyCode,
+  onValidationError,
 }: {
   promo: PromoData;
   appliedCode: AppliedCode | null;
-  onApplyCode: (code: string) => void;
+  onApplyCode: (code: string, validation: AppliedCode) => void;
+  onValidationError: (error: string) => void;
 }) => {
   const [codeInput, setCodeInput] = useState("");
+  const [isValidating, setIsValidating] = useState(false);
   const tl = timeLeftISO(promo.end);
   const media = promo.media?.[0] || null;
-  const extra = appliedCode ? AMBASSADOR_BONUS : 0;
-  const finalPrice = promo.price ? Math.max(0, promo.price - extra) : null;
+  const discount = appliedCode?.discount || 0;
+  const finalPrice = promo.price ? Math.max(0, promo.price - discount) : null;
 
-  const handleApply = () => {
-    onApplyCode(codeInput);
+  const handleApply = async () => {
+    if (!codeInput.trim()) {
+      onValidationError("Masukkan kode terlebih dahulu");
+      return;
+    }
+
+    console.log("🔄 Starting validation for code:", codeInput.trim());
+    setIsValidating(true);
+    try {
+      console.log("📡 Sending request to API...");
+      const response = await fetch("http://localhost:3001/api/validate/code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: codeInput.trim(),
+          purchaseAmount: promo.price,
+        }),
+      });
+
+      console.log(
+        "✅ Response received:",
+        response.status,
+        response.statusText
+      );
+      const data = await response.json();
+      console.log("📦 Response data:", data);
+
+      if (!data.valid) {
+        console.log("❌ Code invalid:", data.message);
+        onValidationError(data.message || "Kode tidak valid");
+        return;
+      }
+
+      console.log("✅ Code valid! Building validation object...");
+      // Build validation object based on type
+      const validation: AppliedCode = {
+        code: codeInput.trim(),
+        type: data.type,
+        discount: data.discount,
+        discountType: data.discountType,
+        message: data.message,
+        by:
+          data.type === "ambassador" && data.ambassador
+            ? {
+                person: {
+                  name: data.ambassador.name,
+                  role: data.ambassador.role,
+                  code: data.ambassador.code,
+                  contact: `https://wa.me/${data.ambassador.phone}?text=Halo, saya tertarik dengan Zona English`,
+                  testimonial: data.ambassador.testimonial || "",
+                },
+                institution: data.ambassador.institution || "",
+                branch: data.ambassador.location || "",
+              }
+            : data.type === "promo" && data.promo
+            ? {
+                promoName: data.promo.name,
+                promoDescription: data.promo.description,
+              }
+            : undefined,
+      };
+
+      console.log("🎉 Calling onApplyCode with validation:", validation);
+      onApplyCode(codeInput.trim(), validation);
+      setCodeInput("");
+      console.log("✅ Code applied successfully!");
+    } catch (error) {
+      console.error("❌ Error validating code:", error);
+      onValidationError("Gagal memvalidasi kode. Coba lagi.");
+    } finally {
+      setIsValidating(false);
+      console.log("🔄 Validation complete");
+    }
   };
 
   return (
@@ -230,19 +309,21 @@ const PromoCard = ({
         {promo.price && (
           <div className="mt-2 text-sm">
             <span className="font-semibold">Biaya Program:</span>{" "}
-            <span className="text-slate-400 line-through">
-              {rupiah(promo.price)}
-            </span>
-            {extra > 0 && (
+            {discount > 0 ? (
               <>
+                <span className="text-slate-400 line-through">
+                  {rupiah(promo.price)}
+                </span>
                 <span className="mx-2">→</span>
                 <span className="font-bold text-emerald-700">
                   {rupiah(finalPrice!)}
                 </span>
                 <span className="ml-2 text-xs text-emerald-600">
-                  (kode {appliedCode?.code} -{rupiah(extra)})
+                  (kode {appliedCode?.code} -{rupiah(discount)})
                 </span>
               </>
+            ) : (
+              <span className="font-bold">{rupiah(promo.price)}</span>
             )}
           </div>
         )}
@@ -268,9 +349,10 @@ const PromoCard = ({
           />
           <button
             onClick={handleApply}
-            className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors"
+            disabled={isValidating || !codeInput.trim()}
+            className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Apply
+            {isValidating ? "Validasi..." : "Apply"}
           </button>
         </div>
 
@@ -279,21 +361,32 @@ const PromoCard = ({
           {appliedCode ? (
             <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-2">
               <div className="font-semibold text-emerald-700">
-                ✅ Kode <b>{appliedCode.code}</b> valid — potongan tambahan{" "}
-                {rupiah(AMBASSADOR_BONUS)}.
+                {appliedCode.message}
               </div>
-              <div className="mt-1 text-emerald-600">
-                Kontak:{" "}
-                <a
-                  className="font-semibold text-blue-700 hover:underline"
-                  href={appliedCode.by.person.contact}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  {appliedCode.by.person.name}
-                </a>{" "}
-                • {appliedCode.by.person.role} — {appliedCode.by.institution}
-              </div>
+              {appliedCode.type === "ambassador" && appliedCode.by?.person && (
+                <div className="mt-1 text-emerald-600">
+                  Kontak:{" "}
+                  <a
+                    className="font-semibold text-blue-700 hover:underline"
+                    href={appliedCode.by.person.contact}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {appliedCode.by.person.name}
+                  </a>{" "}
+                  • {appliedCode.by.person.role}
+                  {appliedCode.by.institution &&
+                    ` — ${appliedCode.by.institution}`}
+                </div>
+              )}
+              {appliedCode.type === "promo" && appliedCode.by?.promoName && (
+                <div className="mt-1 text-emerald-600">
+                  Promo: <b>{appliedCode.by.promoName}</b>
+                  {appliedCode.by.promoDescription && (
+                    <> — {appliedCode.by.promoDescription}</>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <span className="text-slate-500">
@@ -384,11 +477,9 @@ export default function PromoHub() {
           }
 
           // Determine role from database role
+          // Senior Ambassador = Ambassador, Others (Campus/Community/Junior) = Affiliate
           let role: "Ambassador" | "Affiliate" = "Ambassador";
-          if (
-            amb.role === "Junior Ambassador" ||
-            amb.role === "Community Ambassador"
-          ) {
+          if (amb.role !== "Senior Ambassador") {
             role = "Affiliate";
           }
 
@@ -455,86 +546,127 @@ export default function PromoHub() {
     fetchData();
   }, []);
 
-  const validateCode = async (code: string): Promise<CodeValidation | null> => {
-    if (!code) return null;
+  // Refresh data when returning to page or when ambassador data is updated
+  useEffect(() => {
+    const handleDataUpdate = () => {
+      console.log("🔄 Ambassador data updated, refreshing PromoHub...");
+      const fetchData = async () => {
+        try {
+          const ambassadorsResponse = await fetch(
+            "http://localhost:3001/api/ambassadors"
+          );
+          const ambassadorsData = await ambassadorsResponse.json();
+
+          const grouped: Record<string, AmbassadorInstitution> = {};
+
+          ambassadorsData.forEach((amb: any) => {
+            const institution = amb.institution || "Lainnya";
+            const branch = amb.location as "Pettarani" | "Kolaka" | "Kendari";
+
+            if (!grouped[institution]) {
+              grouped[institution] = {
+                institution,
+                branch,
+                people: [],
+              };
+            }
+
+            let role: "Ambassador" | "Affiliate" = "Ambassador";
+            if (amb.role !== "Senior Ambassador") {
+              role = "Affiliate";
+            }
+
+            grouped[institution].people.push({
+              name: amb.name,
+              role,
+              code: amb.affiliate_code,
+              contact: amb.phone
+                ? `https://wa.me/${amb.phone.replace(
+                    /\D/g,
+                    ""
+                  )}?text=Halo%2C%20saya%20tertarik%20dengan%20Zona%20English`
+                : "https://wa.me/6282188080688?text=Halo%2C%20saya%20tertarik%20dengan%20Zona%20English",
+              testimonial:
+                amb.testimonial || "Bergabunglah dengan Zona English!",
+            });
+          });
+
+          setAmbassadorInstitutions(Object.values(grouped));
+          console.log("✅ Ambassador data refreshed in PromoHub");
+        } catch (error) {
+          console.error("❌ Error refreshing ambassador data:", error);
+        }
+      };
+
+      fetchData();
+    };
+
+    window.addEventListener("ambassadorDataUpdated", handleDataUpdate);
+    window.addEventListener("focus", handleDataUpdate);
+
+    return () => {
+      window.removeEventListener("ambassadorDataUpdated", handleDataUpdate);
+      window.removeEventListener("focus", handleDataUpdate);
+    };
+  }, []);
+
+  const handleApplyGlobal = async () => {
+    if (!globalCode.trim()) {
+      setGlobalStatus("⚠️ Masukkan kode terlebih dahulu");
+      return;
+    }
 
     try {
-      const response = await fetch(
-        "http://localhost:3001/api/validate/affiliate-code",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ code: code.trim() }),
-        }
-      );
+      const response = await fetch("http://localhost:3001/api/validate/code", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code: globalCode.trim(),
+        }),
+      });
 
       const data = await response.json();
 
-      if (data.valid && data.ambassador) {
-        // Determine role
-        let role: "Ambassador" | "Affiliate" = "Ambassador";
-        if (
-          data.ambassador.role === "Junior Ambassador" ||
-          data.ambassador.role === "Community Ambassador"
-        ) {
-          role = "Affiliate";
+      if (data.valid) {
+        if (data.type === "ambassador" && data.ambassador) {
+          setGlobalStatus(
+            `✅ Kode ${globalCode.toUpperCase()} valid — ${
+              data.ambassador.name
+            } (${data.ambassador.location}). Gunakan pada kartu promo di bawah.`
+          );
+        } else if (data.type === "promo" && data.promo) {
+          setGlobalStatus(
+            `✅ Kode Promo ${globalCode.toUpperCase()} valid — ${
+              data.promo.name
+            }. Gunakan pada kartu promo di bawah.`
+          );
         }
-
-        return {
-          person: {
-            name: data.ambassador.name,
-            role,
-            code: data.ambassador.code,
-            contact: data.ambassador.phone
-              ? `https://wa.me/${data.ambassador.phone.replace(
-                  /\D/g,
-                  ""
-                )}?text=Halo%2C%20saya%20tertarik%20dengan%20Zona%20English`
-              : "https://wa.me/6282188080688?text=Halo%2C%20saya%20tertarik%20dengan%20Zona%20English",
-            testimonial:
-              data.ambassador.testimonial ||
-              "Bergabunglah dengan Zona English!",
-          },
-          institution: data.ambassador.institution || "Lainnya",
-          branch: data.ambassador.location,
-        };
+      } else {
+        setGlobalStatus(
+          data.message ||
+            "⚠️ Kode tidak ditemukan. Hubungi Ambassador/Affiliate pada direktori di bawah."
+        );
       }
-
-      return null;
     } catch (error) {
-      console.error("Error validating code:", error);
-      return null;
+      console.error("Error validating global code:", error);
+      setGlobalStatus("⚠️ Gagal memvalidasi kode. Coba lagi.");
     }
   };
 
-  const handleApplyGlobal = async () => {
-    const found = await validateCode(globalCode);
-    if (found) {
-      setGlobalStatus(
-        `✅ Kode ${globalCode.toUpperCase()} valid untuk cabang ${
-          found.branch
-        } — ${found.institution}. Gunakan pada kartu promomu.`
-      );
-    } else {
-      setGlobalStatus(
-        "⚠️ Kode tidak ditemukan. Hubungi Ambassador/Affiliate pada direktori di bawah."
-      );
-    }
-  };
-
-  const handleApplyPromoCode = async (promoId: string, code: string) => {
-    const found = await validateCode(code);
+  const handleApplyPromoCode = async (
+    promoId: string,
+    _code: string,
+    validation: AppliedCode
+  ) => {
     const newCodes = new Map(appliedCodes);
-
-    if (found) {
-      newCodes.set(promoId, { code: code.toUpperCase(), by: found });
-    } else {
-      newCodes.delete(promoId);
-    }
-
+    newCodes.set(promoId, validation);
     setAppliedCodes(newCodes);
+  };
+
+  const handleValidationError = (error: string) => {
+    setGlobalStatus(`⚠️ ${error}`);
+    // Auto clear after 5 seconds
+    setTimeout(() => setGlobalStatus(""), 5000);
   };
 
   const filteredPromos = promos.filter(
@@ -692,7 +824,10 @@ export default function PromoHub() {
                 key={promo.id}
                 promo={promo}
                 appliedCode={appliedCodes.get(promo.id) || null}
-                onApplyCode={(code) => handleApplyPromoCode(promo.id, code)}
+                onApplyCode={(code, validation) =>
+                  handleApplyPromoCode(promo.id, code, validation)
+                }
+                onValidationError={handleValidationError}
               />
             ))}
           </div>

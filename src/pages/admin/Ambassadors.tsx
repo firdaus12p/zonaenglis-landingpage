@@ -18,16 +18,15 @@ interface Ambassador {
   id: number;
   name: string;
   type: "Senior Ambassador" | "Campus Ambassador" | "Community Ambassador";
+  role: "Ambassador" | "Affiliate";
   location: string;
   address: string;
   photo: string; // URL or base64 string
   affiliateCode: string;
-  totalReferred: number;
-  totalEarnings: number;
-  status: "Active" | "Inactive" | "Pending";
   joinDate: string;
   email: string;
   phone: string;
+  testimonial: string;
 }
 
 const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
@@ -38,109 +37,64 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const [filterType, setFilterType] = useState<
     "All" | "Senior Ambassador" | "Campus Ambassador" | "Community Ambassador"
   >("All");
-  const [filterStatus, setFilterStatus] = useState<
-    "All" | "Active" | "Inactive" | "Pending"
+  const [filterRole, setFilterRole] = useState<
+    "All" | "Ambassador" | "Affiliate"
   >("All");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(
     null
   );
 
-  // Function to load ambassadors from localStorage
-  const loadAmbassadors = () => {
-    console.log("Loading ambassadors from localStorage...");
-    const stored = localStorage.getItem("ambassadors");
-    if (stored) {
-      const parsedAmbassadors = JSON.parse(stored);
-      console.log("Loaded ambassadors:", parsedAmbassadors);
-      setAmbassadors(parsedAmbassadors);
-    } else {
-      // Initialize with mock data if no data exists
-      console.log("No stored data found, initializing with mock data");
-      setAmbassadors(mockAmbassadors);
-      localStorage.setItem("ambassadors", JSON.stringify(mockAmbassadors));
+  // Function to load ambassadors from API
+  const loadAmbassadors = async () => {
+    try {
+      console.log("🔄 Fetching ambassadors from API...");
+      const response = await fetch("http://localhost:3001/api/ambassadors");
+
+      if (!response.ok) {
+        throw new Error(`API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("✅ Loaded ambassadors from API:", data);
+
+      // Transform API data to match Admin interface
+      const transformedData = data.map((ambassador: any) => ({
+        id: ambassador.id,
+        name: ambassador.name,
+        type:
+          ambassador.role === "Senior Ambassador"
+            ? "Senior Ambassador"
+            : ambassador.role === "Campus Ambassador"
+            ? "Campus Ambassador"
+            : ambassador.role === "Community Ambassador"
+            ? "Community Ambassador"
+            : "Junior Ambassador",
+        // Determine Ambassador vs Affiliate based on type
+        // Senior Ambassador = Ambassador, Others = Affiliate
+        role:
+          ambassador.role === "Senior Ambassador" ? "Ambassador" : "Affiliate",
+        location: ambassador.location || "N/A",
+        address: ambassador.institution || "N/A",
+        photo: ambassador.photo_url || "/images/ambassadors/default.jpg",
+        affiliateCode: ambassador.affiliate_code,
+        joinDate:
+          ambassador.join_date || new Date().toISOString().split("T")[0],
+        email: ambassador.email || "N/A",
+        phone: ambassador.phone || "N/A",
+        testimonial: ambassador.testimonial || "",
+      }));
+
+      setAmbassadors(transformedData);
+      console.log("✅ Ambassadors data transformed and loaded");
+    } catch (error) {
+      console.error("❌ Error loading ambassadors from API:", error);
+      alert(
+        "Failed to load ambassadors. Please check if the backend is running."
+      );
     }
   };
 
-  // Mock data - will be replaced with real API data
-  const mockAmbassadors: Ambassador[] = [
-    {
-      id: 1,
-      name: "Sari Dewi",
-      type: "Senior Ambassador",
-      location: "Makassar",
-      address: "Jl. Sultan Alauddin No. 123, Makassar, Sulawesi Selatan",
-      photo: "/images/ambassadors/sari-dewi.jpg",
-      affiliateCode: "ZE-SNR-SAR001",
-      totalReferred: 45,
-      totalEarnings: 2250000,
-      status: "Active",
-      joinDate: "2024-01-15",
-      email: "sari.dewi@email.com",
-      phone: "+62812-3456-7890",
-    },
-    {
-      id: 2,
-      name: "Ahmad Rahman",
-      type: "Campus Ambassador",
-      location: "Universitas Hasanuddin",
-      address: "Kampus UNHAS, Jl. Perintis Kemerdekaan, Makassar",
-      photo: "/images/ambassadors/ahmad-rahman.jpg",
-      affiliateCode: "ZE-CAM-AHM002",
-      totalReferred: 32,
-      totalEarnings: 1600000,
-      status: "Active",
-      joinDate: "2024-02-10",
-      email: "ahmad.rahman@email.com",
-      phone: "+62813-9876-5432",
-    },
-    {
-      id: 3,
-      name: "Maya Putri",
-      type: "Community Ambassador",
-      location: "Jakarta",
-      address: "Jl. Sudirman No. 456, Jakarta Pusat, DKI Jakarta",
-      photo: "/images/ambassadors/maya-putri.jpg",
-      affiliateCode: "ZE-COM-MAY003",
-      totalReferred: 78,
-      totalEarnings: 3900000,
-      status: "Active",
-      joinDate: "2023-11-20",
-      email: "maya.putri@email.com",
-      phone: "+62814-1111-2222",
-    },
-    {
-      id: 4,
-      name: "Rizki Pratama",
-      type: "Senior Ambassador",
-      location: "Kendari",
-      address: "Jl. Ahmad Yani No. 789, Kendari, Sulawesi Tenggara",
-      photo: "/images/ambassadors/rizki-pratama.jpg",
-      affiliateCode: "ZE-SNR-RIZ004",
-      totalReferred: 23,
-      totalEarnings: 1150000,
-      status: "Pending",
-      joinDate: "2024-03-05",
-      email: "rizki.pratama@email.com",
-      phone: "+62815-3333-4444",
-    },
-    {
-      id: 5,
-      name: "Indira Sari",
-      type: "Campus Ambassador",
-      location: "Institut Teknologi Bandung",
-      address: "Kampus ITB, Jl. Ganesha No. 10, Bandung, Jawa Barat",
-      photo: "/images/ambassadors/indira-sari.jpg",
-      affiliateCode: "ZE-CAM-IND005",
-      totalReferred: 12,
-      totalEarnings: 600000,
-      status: "Inactive",
-      joinDate: "2024-01-28",
-      email: "indira.sari@email.com",
-      phone: "+62816-5555-6666",
-    },
-  ];
-
-  // Load ambassadors from localStorage on component mount
+  // Load ambassadors from API on component mount
   useEffect(() => {
     loadAmbassadors();
   }, []);
@@ -158,63 +112,49 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     };
   }, []);
 
-  // Listen for window focus to refresh data when user returns to tab
-  useEffect(() => {
-    const handleFocus = () => {
-      loadAmbassadors();
-    };
-
-    window.addEventListener("focus", handleFocus);
-
-    return () => {
-      window.removeEventListener("focus", handleFocus);
-    };
-  }, []);
-
-  // Add effect to listen for localStorage changes (when returning from form)
-  useEffect(() => {
-    const handleStorageChange = () => {
-      loadAmbassadors();
-    };
-
-    // Listen for custom event when data is updated
-    const handleDataUpdate = () => {
-      console.log("Ambassador data updated event received");
-      loadAmbassadors();
-    };
-
-    window.addEventListener("ambassadorDataUpdated", handleDataUpdate);
-
-    // Also listen for focus event to refresh when coming back to this page
-    window.addEventListener("focus", handleStorageChange);
-
-    return () => {
-      window.removeEventListener("ambassadorDataUpdated", handleDataUpdate);
-      window.removeEventListener("focus", handleStorageChange);
-    };
-  }, []);
-
   // CRUD Functions
-  const handleDeleteAmbassador = (id: number) => {
-    const updatedAmbassadors = ambassadors.filter(
-      (ambassador) => ambassador.id !== id
-    );
-    setAmbassadors(updatedAmbassadors);
-    localStorage.setItem("ambassadors", JSON.stringify(updatedAmbassadors));
-    setShowDeleteConfirm(null);
+  const handleDeleteAmbassador = async (id: number) => {
+    try {
+      // Call API to delete from database
+      const response = await fetch(
+        `http://localhost:3001/api/ambassadors/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+        }
+      );
 
-    // Trigger event to notify other components
-    window.dispatchEvent(new CustomEvent("ambassadorDataUpdated"));
+      if (!response.ok) {
+        throw new Error("Failed to delete ambassador");
+      }
+
+      // Update local state after successful API call
+      const updatedAmbassadors = ambassadors.filter(
+        (ambassador) => ambassador.id !== id
+      );
+      setAmbassadors(updatedAmbassadors);
+      setShowDeleteConfirm(null);
+
+      // Trigger event to notify other components
+      window.dispatchEvent(new CustomEvent("ambassadorDataUpdated"));
+
+      console.log("✅ Ambassador deleted successfully from database");
+    } catch (error) {
+      console.error("❌ Error deleting ambassador:", error);
+      alert("Failed to delete ambassador. Please try again.");
+    }
   };
 
   const handleEditAmbassador = (ambassador: Ambassador) => {
     // Store selected ambassador for editing
     localStorage.setItem("editingAmbassador", JSON.stringify(ambassador));
-    setCurrentPage("admin-ambassador-form-edit");
+    setCurrentPage(`/admin/ambassadors/edit/${ambassador.id}`);
   };
 
   const handleAddAmbassador = () => {
-    setCurrentPage("admin-ambassador-form-create");
+    setCurrentPage("/admin/ambassadors/new");
   };
 
   const filteredAmbassadors = ambassadors.filter((ambassador) => {
@@ -223,24 +163,10 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       ambassador.location.toLowerCase().includes(searchTerm.toLowerCase()) ||
       ambassador.affiliateCode.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = filterType === "All" || ambassador.type === filterType;
-    const matchesStatus =
-      filterStatus === "All" || ambassador.status === filterStatus;
+    const matchesRole = filterRole === "All" || ambassador.role === filterRole;
 
-    return matchesSearch && matchesType && matchesStatus;
+    return matchesSearch && matchesType && matchesRole;
   });
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "Active":
-        return "success";
-      case "Inactive":
-        return "danger";
-      case "Pending":
-        return "warning";
-      default:
-        return "default";
-    }
-  };
 
   const getTypeColor = (type: string) => {
     switch (type) {
@@ -255,17 +181,9 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     }
   };
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(amount);
-  };
-
   return (
     <AdminLayout
-      currentPage="admin-ambassadors"
+      currentPage="/admin/ambassadors"
       setCurrentPage={setCurrentPage}
     >
       <div className="space-y-6">
@@ -288,7 +206,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-6 md:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-3">
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -308,9 +226,11 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Active</p>
+                <p className="text-sm font-medium text-slate-600">
+                  Ambassadors
+                </p>
                 <p className="text-2xl font-bold text-emerald-600 mt-1">
-                  {ambassadors.filter((a) => a.status === "Active").length}
+                  {ambassadors.filter((a) => a.role === "Ambassador").length}
                 </p>
               </div>
               <div className="p-3 bg-emerald-100 rounded-xl">
@@ -322,33 +242,13 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">
-                  Total Referrals
-                </p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">
-                  {ambassadors.reduce((sum, a) => sum + a.totalReferred, 0)}
+                <p className="text-sm font-medium text-slate-600">Affiliates</p>
+                <p className="text-2xl font-bold text-purple-600 mt-1">
+                  {ambassadors.filter((a) => a.role === "Affiliate").length}
                 </p>
               </div>
               <div className="p-3 bg-purple-100 rounded-xl">
                 <Link2 className="h-6 w-6 text-purple-600" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600">
-                  Total Earnings
-                </p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">
-                  {formatCurrency(
-                    ambassadors.reduce((sum, a) => sum + a.totalEarnings, 0)
-                  )}
-                </p>
-              </div>
-              <div className="p-3 bg-amber-100 rounded-xl">
-                <Users className="h-6 w-6 text-amber-600" />
               </div>
             </div>
           </Card>
@@ -388,19 +288,18 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
               </select>
             </div>
 
-            {/* Status Filter */}
+            {/* Role Filter */}
             <div>
               <select
-                value={filterStatus}
+                value={filterRole}
                 onChange={(e) =>
-                  setFilterStatus(e.target.value as typeof filterStatus)
+                  setFilterRole(e.target.value as typeof filterRole)
                 }
                 className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="All">All Status</option>
-                <option value="Active">Active</option>
-                <option value="Inactive">Inactive</option>
-                <option value="Pending">Pending</option>
+                <option value="All">All Roles</option>
+                <option value="Ambassador">Ambassador</option>
+                <option value="Affiliate">Affiliate</option>
               </select>
             </div>
           </div>
@@ -419,19 +318,13 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                     Type
                   </th>
                   <th className="text-left py-3 px-6 font-medium text-slate-600">
+                    Role
+                  </th>
+                  <th className="text-left py-3 px-6 font-medium text-slate-600">
                     Location
                   </th>
                   <th className="text-left py-3 px-6 font-medium text-slate-600">
                     Affiliate Code
-                  </th>
-                  <th className="text-left py-3 px-6 font-medium text-slate-600">
-                    Referrals
-                  </th>
-                  <th className="text-left py-3 px-6 font-medium text-slate-600">
-                    Earnings
-                  </th>
-                  <th className="text-left py-3 px-6 font-medium text-slate-600">
-                    Status
                   </th>
                   <th className="text-center py-3 px-6 font-medium text-slate-600">
                     Actions
@@ -466,6 +359,15 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                       </Badge>
                     </td>
                     <td className="py-4 px-6">
+                      <Badge
+                        variant={
+                          ambassador.role === "Ambassador" ? "success" : "info"
+                        }
+                      >
+                        {ambassador.role}
+                      </Badge>
+                    </td>
+                    <td className="py-4 px-6">
                       <div className="flex items-center">
                         <MapPin className="h-4 w-4 text-slate-400 mr-2" />
                         <span className="text-sm text-slate-900">
@@ -482,21 +384,6 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                           <Link2 className="h-4 w-4" />
                         </button>
                       </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm font-medium text-slate-900">
-                        {ambassador.totalReferred}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <span className="text-sm font-medium text-slate-900">
-                        {formatCurrency(ambassador.totalEarnings)}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6">
-                      <Badge variant={getStatusColor(ambassador.status)}>
-                        {ambassador.status}
-                      </Badge>
                     </td>
                     <td className="py-4 px-6">
                       <div className="flex items-center justify-center space-x-2">
@@ -535,18 +422,16 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                 No ambassadors found
               </h3>
               <p className="text-slate-500 mb-6">
-                {searchTerm || filterType !== "All" || filterStatus !== "All"
+                {searchTerm || filterType !== "All" || filterRole !== "All"
                   ? "Try adjusting your search or filters."
                   : "Get started by adding your first ambassador."}
               </p>
-              {!searchTerm &&
-                filterType === "All" &&
-                filterStatus === "All" && (
-                  <Button variant="primary">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Ambassador
-                  </Button>
-                )}
+              {!searchTerm && filterType === "All" && filterRole === "All" && (
+                <Button variant="primary">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Ambassador
+                </Button>
+              )}
             </div>
           )}
         </Card>

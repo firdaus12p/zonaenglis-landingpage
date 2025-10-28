@@ -187,7 +187,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   };
 
   return (
-    <AdminLayout currentPage="admin-promos" setCurrentPage={setCurrentPage}>
+    <AdminLayout currentPage="/admin/promos" setCurrentPage={setCurrentPage}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
