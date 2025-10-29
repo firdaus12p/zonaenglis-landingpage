@@ -351,9 +351,12 @@ router.get("/leads/:ambassador_id", async (req, res) => {
         au.first_used_at, au.follow_up_status, au.follow_up_notes,
         au.registered,
         DATEDIFF(NOW(), au.first_used_at) as days_ago,
-        amb.name as ambassador_name, amb.phone as ambassador_phone
+        amb.name as ambassador_name, amb.phone as ambassador_phone,
+        p.branch, p.type as promo_category, p.program as program_package,
+        p.start_date, p.end_date
        FROM affiliate_usage au
        LEFT JOIN ambassadors amb ON au.ambassador_id = amb.id
+       LEFT JOIN promos p ON au.program_id = p.id
        WHERE au.ambassador_id = ? 
          AND au.deleted_at IS NULL
          AND au.follow_up_status IN ('pending', 'contacted', 'converted')
@@ -398,9 +401,12 @@ router.get("/lost-leads/:ambassador_id", async (req, res) => {
         au.first_used_at, au.follow_up_status, au.follow_up_notes,
         au.registered,
         DATEDIFF(NOW(), au.first_used_at) as days_ago,
-        amb.name as ambassador_name, amb.phone as ambassador_phone
+        amb.name as ambassador_name, amb.phone as ambassador_phone,
+        p.branch, p.type as promo_category, p.program as program_package,
+        p.start_date, p.end_date
       FROM affiliate_usage au
       LEFT JOIN ambassadors amb ON au.ambassador_id = amb.id
+      LEFT JOIN promos p ON au.program_id = p.id
       WHERE au.ambassador_id = ? 
         AND au.deleted_at IS NULL 
         AND au.follow_up_status = 'lost'

@@ -12,6 +12,8 @@ import {
   Home,
   Save,
   X,
+  AlertCircle,
+  CheckCircle,
 } from "lucide-react";
 
 interface AmbassadorFormData {
@@ -55,6 +57,42 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
 
   const [errors, setErrors] = useState<Partial<AmbassadorFormData>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Modal State
+  const [modal, setModal] = useState<{
+    show: boolean;
+    type: "alert" | "error" | "success";
+    title: string;
+    message: string;
+  }>({
+    show: false,
+    type: "alert",
+    title: "",
+    message: "",
+  });
+
+  // Modal Helper Functions
+  const showAlert = (
+    title: string,
+    message: string,
+    type: "alert" | "error" | "success" = "alert"
+  ) => {
+    setModal({
+      show: true,
+      type,
+      title,
+      message,
+    });
+  };
+
+  const closeModal = () => {
+    setModal({
+      show: false,
+      type: "alert",
+      title: "",
+      message: "",
+    });
+  };
 
   const validateForm = (): boolean => {
     const newErrors: Partial<AmbassadorFormData> = {};
@@ -163,20 +201,26 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
       console.log("Ambassador saved:", result);
 
       // Show success message
-      alert(
+      showAlert(
+        "Berhasil!",
         `Ambassador ${
           mode === "create" ? "ditambahkan" : "diperbarui"
-        } successfully! Affiliate Code: ${affiliateCode}`
+        } successfully! Affiliate Code: ${affiliateCode}`,
+        "success"
       );
 
-      // Navigate back to ambassadors list
-      setCurrentPage("/admin/ambassadors");
+      // Navigate back after a brief delay
+      setTimeout(() => {
+        setCurrentPage("/admin/ambassadors");
+      }, 2000);
     } catch (error) {
       console.error("Error saving ambassador:", error);
-      alert(
+      showAlert(
+        "Gagal Menyimpan",
         `Terjadi kesalahan saat menyimpan data ambassador: ${
           error instanceof Error ? error.message : "Unknown error"
-        }`
+        }`,
+        "error"
       );
     } finally {
       setIsSubmitting(false);
@@ -494,6 +538,76 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
           </form>
         </Card>
       </div>
+
+      {/* Modal Component */}
+      {modal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 sm:mx-0 animate-fadeIn">
+            {/* Modal Header */}
+            <div
+              className={`px-6 py-4 border-b ${
+                modal.type === "error"
+                  ? "bg-red-50 border-red-200"
+                  : modal.type === "success"
+                  ? "bg-green-50 border-green-200"
+                  : "bg-slate-50 border-slate-200"
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                {modal.type === "error" && (
+                  <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                    <AlertCircle className="h-5 w-5 text-red-600" />
+                  </div>
+                )}
+                {modal.type === "success" && (
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  </div>
+                )}
+                {modal.type === "alert" && (
+                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                    <AlertCircle className="h-5 w-5 text-slate-600" />
+                  </div>
+                )}
+                <h3
+                  className={`text-lg font-semibold ${
+                    modal.type === "error"
+                      ? "text-red-900"
+                      : modal.type === "success"
+                      ? "text-green-900"
+                      : "text-slate-900"
+                  }`}
+                >
+                  {modal.title}
+                </h3>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-5">
+              <p className="text-slate-700 leading-relaxed whitespace-pre-line">
+                {modal.message}
+              </p>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 rounded-b-xl flex justify-end">
+              <button
+                onClick={closeModal}
+                className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                  modal.type === "error"
+                    ? "bg-red-600 hover:bg-red-700"
+                    : modal.type === "success"
+                    ? "bg-green-600 hover:bg-green-700"
+                    : "bg-blue-600 hover:bg-blue-700"
+                }`}
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };

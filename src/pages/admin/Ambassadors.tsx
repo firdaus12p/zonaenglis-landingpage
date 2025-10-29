@@ -52,6 +52,12 @@ interface AffiliateLead {
   follow_up_notes?: string;
   registered: boolean;
   days_ago: number;
+  // New fields from promos table
+  branch?: string;
+  promo_category?: string;
+  program_package?: string;
+  start_date?: string;
+  end_date?: string;
 }
 
 interface DeletedLead extends AffiliateLead {
@@ -83,6 +89,20 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(
     null
   );
+
+  // Modal States
+  const [modal, setModal] = useState<{
+    show: boolean;
+    type: "confirm" | "alert" | "error" | "success";
+    title: string;
+    message: string;
+    onConfirm?: () => void;
+  }>({
+    show: false,
+    type: "alert",
+    title: "",
+    message: "",
+  });
 
   // Affiliate Tracking States
   const [selectedAmbassador, setSelectedAmbassador] = useState<number | null>(
@@ -146,8 +166,10 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       console.log("✅ Ambassadors data transformed and loaded");
     } catch (error) {
       console.error("❌ Error loading ambassadors from API:", error);
-      alert(
-        "Failed to load ambassadors. Please check if the backend is running."
+      showAlert(
+        "Gagal Memuat Data",
+        "Tidak dapat memuat data ambassador. Pastikan backend server sudah berjalan.",
+        "error"
       );
     }
   };
@@ -192,6 +214,43 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     };
   }, []);
 
+  // Modal Helper Functions
+  const showAlert = (
+    title: string,
+    message: string,
+    type: "alert" | "error" | "success" = "alert"
+  ) => {
+    setModal({
+      show: true,
+      type,
+      title,
+      message,
+    });
+  };
+
+  const showConfirm = (
+    title: string,
+    message: string,
+    onConfirm: () => void
+  ) => {
+    setModal({
+      show: true,
+      type: "confirm",
+      title,
+      message,
+      onConfirm,
+    });
+  };
+
+  const closeModal = () => {
+    setModal({
+      show: false,
+      type: "alert",
+      title: "",
+      message: "",
+    });
+  };
+
   // CRUD Functions
   const handleDeleteAmbassador = async (id: number) => {
     try {
@@ -223,7 +282,11 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       console.log("✅ Ambassador deleted successfully from database");
     } catch (error) {
       console.error("❌ Error deleting ambassador:", error);
-      alert("Failed to delete ambassador. Please try again.");
+      showAlert(
+        "Gagal Menghapus",
+        "Tidak dapat menghapus ambassador. Silakan coba lagi.",
+        "error"
+      );
     }
   };
 
@@ -361,18 +424,38 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       }
     } catch (error) {
       console.error("Error updating lead status:", error);
-      alert("Failed to update lead status. Please try again.");
+      showAlert(
+        "Gagal Update Status",
+        "Tidak dapat mengubah status lead. Silakan coba lagi.",
+        "error"
+      );
     }
   };
 
   const handleNotifyAmbassador = (lead: AffiliateLead) => {
+    // Format dates if available
+    const formatDate = (dateStr?: string) => {
+      if (!dateStr) return "-";
+      const date = new Date(dateStr);
+      return date.toLocaleDateString("id-ID", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    };
+
     const message = `🎉 ADA YANG PAKAI KODE ANDA!
 
 📝 Kode: ${lead.affiliate_code}
 👤 Nama: ${lead.user_name}
 📞 WhatsApp: ${lead.user_phone}
 📧 Email: ${lead.user_email || "Tidak ada"}
-📚 Program: ${lead.program_name}
+${lead.branch ? `🏢 Cabang: ${lead.branch}` : ""}
+${lead.promo_category ? `🏷️ Kategori Promo: ${lead.promo_category}` : ""}
+📚 Program: ${lead.program_name || "-"}
+${lead.program_package ? `📦 Paket: ${lead.program_package}` : ""}
+${lead.start_date ? `📅 Mulai: ${formatDate(lead.start_date)}` : ""}
+${lead.end_date ? `📅 Berakhir: ${formatDate(lead.end_date)}` : ""}
 💰 Diskon: Rp ${lead.discount_applied.toLocaleString("id-ID")}
 🕒 ${lead.days_ago} hari yang lalu
 
@@ -385,85 +468,104 @@ Segera follow-up user ini! 🚀`;
   };
 
   const handleDeleteLead = async (leadId: number) => {
-    if (
-      !confirm(
-        "Apakah Anda yakin ingin menghapus lead ini?\n\n" +
-          "⚠️ SOFT DELETE: Data akan disimpan selama 3 hari sebelum dihapus permanen.\n" +
-          "Lead ini akan masuk ke 'Deleted History' dan nomor user bisa digunakan lagi."
-      )
-    ) {
-      return;
-    }
+    showConfirm(
+      "Hapus Lead?",
+      "Data akan disimpan selama 3 hari sebelum dihapus permanen. Lead ini akan masuk ke 'Deleted History' dan nomor user bisa digunakan lagi.",
+      async () => {
+        try {
+          const response = await fetch(
+            `http://localhost:3001/api/affiliate/lead/${leadId}`,
+            {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ deleted_by: "admin" }),
+            }
+          );
 
-    try {
-      const response = await fetch(
-        `http://localhost:3001/api/affiliate/lead/${leadId}`,
-        {
-          method: "DELETE",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ deleted_by: "admin" }),
+          const data = await response.json();
+
+          if (data.success && selectedAmbassador) {
+            // Refresh all lead lists and stats
+            fetchAffiliateLeads(selectedAmbassador);
+            fetchLostLeads(selectedAmbassador);
+            fetchDeletedLeads(selectedAmbassador);
+            fetchAffiliateStats(selectedAmbassador);
+            console.log("✅ Lead soft deleted successfully");
+
+            // Switch to deleted tab to show the deleted record
+            setActiveTab("deleted");
+            showAlert(
+              "Berhasil",
+              "Lead berhasil dihapus (soft delete).",
+              "success"
+            );
+          } else {
+            showAlert(
+              "Gagal Menghapus",
+              data.error || "Terjadi kesalahan saat menghapus lead.",
+              "error"
+            );
+          }
+        } catch (error) {
+          console.error("Error deleting lead:", error);
+          showAlert(
+            "Gagal Menghapus",
+            "Tidak dapat menghapus lead. Silakan coba lagi.",
+            "error"
+          );
         }
-      );
-
-      const data = await response.json();
-
-      if (data.success && selectedAmbassador) {
-        // Refresh all lead lists and stats
-        fetchAffiliateLeads(selectedAmbassador);
-        fetchLostLeads(selectedAmbassador);
-        fetchDeletedLeads(selectedAmbassador);
-        fetchAffiliateStats(selectedAmbassador);
-        console.log("✅ Lead soft deleted successfully");
-
-        // Switch to deleted tab to show the deleted record
-        setActiveTab("deleted");
-      } else {
-        alert("Gagal menghapus lead: " + (data.error || "Unknown error"));
       }
-    } catch (error) {
-      console.error("Error deleting lead:", error);
-      alert("Gagal menghapus lead. Coba lagi.");
-    }
+    );
   };
 
   const handleRestoreLead = async (leadId: number) => {
-    if (
-      !confirm(
-        "Restore lead ini?\n\n" +
-          "✅ Lead akan dikembalikan ke status Active dan bisa dikelola kembali."
-      )
-    ) {
-      return;
-    }
+    showConfirm(
+      "Restore Lead?",
+      "Lead akan dikembalikan ke status Active dan bisa dikelola kembali.",
+      async () => {
+        try {
+          const response = await fetch(
+            `http://localhost:3001/api/affiliate/restore/${leadId}`,
+            {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+            }
+          );
 
-    try {
-      const response = await fetch(
-        `http://localhost:3001/api/affiliate/restore/${leadId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
+          const data = await response.json();
+
+          if (data.success && selectedAmbassador) {
+            // Refresh all lead lists and stats
+            fetchAffiliateLeads(selectedAmbassador);
+            fetchLostLeads(selectedAmbassador);
+            fetchDeletedLeads(selectedAmbassador);
+            fetchAffiliateStats(selectedAmbassador);
+            console.log("✅ Lead restored successfully");
+
+            // Switch to active tab to show the restored lead
+            setActiveTab("active");
+            showAlert(
+              "Berhasil",
+              "Lead berhasil dikembalikan ke Active.",
+              "success"
+            );
+          } else {
+            showAlert(
+              "Gagal Restore",
+              data.error || "Terjadi kesalahan saat restore lead.",
+              "error"
+            );
+          }
+        } catch (error) {
+          console.error("Error restoring lead:", error);
+          showAlert(
+            "Gagal Restore",
+            "Tidak dapat restore lead. Silakan coba lagi.",
+            "error"
+          );
         }
-      );
-
-      const data = await response.json();
-
-      if (data.success && selectedAmbassador) {
-        // Refresh all lead lists and stats
-        fetchAffiliateLeads(selectedAmbassador);
-        fetchLostLeads(selectedAmbassador);
-        fetchDeletedLeads(selectedAmbassador);
-        fetchAffiliateStats(selectedAmbassador);
-        console.log("✅ Lead restored successfully");
-
-        // Switch to active tab to show the restored lead
-        setActiveTab("active");
-      } else {
-        alert("Gagal restore lead: " + (data.error || "Unknown error"));
       }
-    } catch (error) {
-      console.error("Error restoring lead:", error);
-      alert("Gagal restore lead. Coba lagi.");
-    }
+    );
   };
 
   const filteredAmbassadors = ambassadors.filter((ambassador) => {
@@ -1290,6 +1392,105 @@ Segera follow-up user ini! 🚀`;
           </div>
         </Card>
       </div>
+
+      {/* Modal Component */}
+      {modal.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black bg-opacity-50">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full mx-4 sm:mx-0 animate-fadeIn">
+            {/* Modal Header */}
+            <div
+              className={`px-6 py-4 border-b ${
+                modal.type === "error"
+                  ? "bg-red-50 border-red-200"
+                  : modal.type === "success"
+                  ? "bg-green-50 border-green-200"
+                  : modal.type === "confirm"
+                  ? "bg-blue-50 border-blue-200"
+                  : "bg-slate-50 border-slate-200"
+              }`}
+            >
+              <div className="flex items-center space-x-3">
+                {modal.type === "error" && (
+                  <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                    <AlertCircle className="h-5 w-5 text-red-600" />
+                  </div>
+                )}
+                {modal.type === "success" && (
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <CheckCircle className="h-5 w-5 text-green-600" />
+                  </div>
+                )}
+                {modal.type === "confirm" && (
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <AlertCircle className="h-5 w-5 text-blue-600" />
+                  </div>
+                )}
+                {modal.type === "alert" && (
+                  <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                    <AlertCircle className="h-5 w-5 text-slate-600" />
+                  </div>
+                )}
+                <h3
+                  className={`text-lg font-semibold ${
+                    modal.type === "error"
+                      ? "text-red-900"
+                      : modal.type === "success"
+                      ? "text-green-900"
+                      : modal.type === "confirm"
+                      ? "text-blue-900"
+                      : "text-slate-900"
+                  }`}
+                >
+                  {modal.title}
+                </h3>
+              </div>
+            </div>
+
+            {/* Modal Body */}
+            <div className="px-6 py-5">
+              <p className="text-slate-700 leading-relaxed whitespace-pre-line">
+                {modal.message}
+              </p>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-slate-50 rounded-b-xl flex justify-end space-x-3">
+              {modal.type === "confirm" ? (
+                <>
+                  <button
+                    onClick={closeModal}
+                    className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    onClick={() => {
+                      closeModal();
+                      if (modal.onConfirm) modal.onConfirm();
+                    }}
+                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Ya, Lanjutkan
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={closeModal}
+                  className={`px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors ${
+                    modal.type === "error"
+                      ? "bg-red-600 hover:bg-red-700"
+                      : modal.type === "success"
+                      ? "bg-green-600 hover:bg-green-700"
+                      : "bg-blue-600 hover:bg-blue-700"
+                  }`}
+                >
+                  OK
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </AdminLayout>
   );
 };

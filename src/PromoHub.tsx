@@ -902,7 +902,9 @@ export default function PromoHub() {
               {
                 kind: "img" as const,
                 src:
-                  program.image_url ||
+                  (program.image_url?.startsWith("/uploads/")
+                    ? `http://localhost:3001${program.image_url}`
+                    : program.image_url) ||
                   "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1471",
               },
             ],

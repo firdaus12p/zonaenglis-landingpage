@@ -10,6 +10,7 @@ import {
   Upload,
   X,
   Image as ImageIcon,
+  Phone,
 } from "lucide-react";
 
 const API_BASE = "http://localhost:3001/api";
@@ -30,6 +31,7 @@ const PromoForm = () => {
     price: "",
     image_url: "",
     wa_link: "",
+    wa_phone: "", // Nomor HP untuk WhatsApp
     perks: [""],
   });
 
@@ -62,6 +64,13 @@ const PromoForm = () => {
           return date.toISOString().slice(0, 16);
         };
 
+        // Extract phone number from WhatsApp link
+        const extractPhoneFromWaLink = (link: string) => {
+          if (!link) return "";
+          const match = link.match(/wa\.me\/(\d+)/);
+          return match ? match[1] : "";
+        };
+
         setFormData({
           title: data.title,
           branch: data.branch,
@@ -73,6 +82,7 @@ const PromoForm = () => {
           price: data.price,
           image_url: data.image_url || "",
           wa_link: data.wa_link || "",
+          wa_phone: extractPhoneFromWaLink(data.wa_link || ""),
           perks: perks.length > 0 ? perks : [""],
         });
       } else {
@@ -180,6 +190,29 @@ const PromoForm = () => {
     // Filter empty perks
     const filteredPerks = formData.perks.filter((p) => p.trim() !== "");
 
+    // Convert phone number to WhatsApp link
+    let waLink = "";
+    if (formData.wa_phone) {
+      // Remove all non-digit characters
+      let cleanPhone = formData.wa_phone.replace(/\D/g, "");
+
+      // Add 62 prefix if starts with 0
+      if (cleanPhone.startsWith("0")) {
+        cleanPhone = "62" + cleanPhone.substring(1);
+      }
+
+      // Add 62 prefix if doesn't have country code
+      if (!cleanPhone.startsWith("62")) {
+        cleanPhone = "62" + cleanPhone;
+      }
+
+      // Create WhatsApp link with default message
+      const defaultMessage = encodeURIComponent(
+        `Halo, saya ingin mendaftar program ${formData.title}`
+      );
+      waLink = `https://wa.me/${cleanPhone}?text=${defaultMessage}`;
+    }
+
     try {
       const url = isEdit
         ? `${API_BASE}/programs/${id}`
@@ -191,6 +224,7 @@ const PromoForm = () => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           ...formData,
+          wa_link: waLink, // Use generated WhatsApp link
           perks: filteredPerks,
           is_active: 1,
         }),
@@ -459,7 +493,7 @@ const PromoForm = () => {
                   <img
                     src={imagePreview}
                     alt="Preview"
-                    className="h-48 w-full object-cover"
+                    className="w-full h-auto object-contain max-h-96"
                   />
                   <button
                     type="button"
@@ -472,7 +506,7 @@ const PromoForm = () => {
               )}
 
               {/* Upload Button */}
-              <div className="flex gap-3">
+              <div>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -490,41 +524,35 @@ const PromoForm = () => {
                   {uploading
                     ? "Uploading..."
                     : imagePreview
-                    ? "Change Image"
-                    : "Upload Image"}
+                    ? "Ganti Gambar"
+                    : "Upload Gambar"}
                 </button>
-
-                {/* URL Input (alternative) */}
-                <div className="flex-1">
-                  <input
-                    type="url"
-                    name="image_url"
-                    value={formData.image_url}
-                    onChange={handleChange}
-                    placeholder="Or paste image URL"
-                    className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                  />
-                </div>
               </div>
-              <p className="mt-1 text-xs text-slate-500">
-                Upload image (max 5MB) atau paste URL gambar. Rekomendasi:
-                1200x800px landscape
+              <p className="mt-2 text-xs text-slate-500">
+                Upload gambar program (max 5MB). Rekomendasi: 1200x800px
+                landscape. Ukuran gambar akan disesuaikan dengan file yang
+                diupload.
               </p>
             </div>
 
-            {/* WhatsApp Link */}
+            {/* WhatsApp Phone Number */}
             <div>
-              <label className="mb-2 text-sm font-medium text-slate-700">
-                Link WhatsApp Pendaftaran
+              <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700">
+                <Phone className="h-4 w-4" />
+                Nomor WhatsApp Pendaftaran
               </label>
               <input
-                type="url"
-                name="wa_link"
-                value={formData.wa_link}
+                type="tel"
+                name="wa_phone"
+                value={formData.wa_phone}
                 onChange={handleChange}
-                placeholder="https://wa.me/6281234567890?text=Daftar%20Program"
+                placeholder="081234567890 atau 6281234567890"
                 className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
+              <p className="mt-1 text-xs text-slate-500">
+                Masukkan nomor WhatsApp untuk pendaftaran. Format: 08xxx atau
+                628xxx
+              </p>
             </div>
           </div>
 
