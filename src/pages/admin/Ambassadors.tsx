@@ -16,6 +16,8 @@ import {
   Clock,
   CheckCircle,
   MessageCircle,
+  UserCheck,
+  AlertCircle,
 } from "lucide-react";
 
 interface Ambassador {
@@ -52,12 +54,19 @@ interface AffiliateLead {
   days_ago: number;
 }
 
+interface DeletedLead extends AffiliateLead {
+  deleted_at: string;
+  deleted_by?: string;
+  days_deleted: number;
+}
+
 interface AffiliateStats {
   total_uses: number;
   today_uses: number;
   pending_followups: number;
+  followups: number;
   conversions: number;
-  conversion_rate: number;
+  lost: number;
 }
 
 const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
@@ -83,6 +92,11 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     null
   );
   const [affiliateLeads, setAffiliateLeads] = useState<AffiliateLead[]>([]);
+  const [lostLeads, setLostLeads] = useState<AffiliateLead[]>([]);
+  const [deletedLeads, setDeletedLeads] = useState<DeletedLead[]>([]);
+  const [activeTab, setActiveTab] = useState<"active" | "lost" | "deleted">(
+    "active"
+  );
   const [loadingAffiliate, setLoadingAffiliate] = useState(false);
   const [ambassadorUsageCounts, setAmbassadorUsageCounts] = useState<
     Record<number, number>
@@ -228,6 +242,8 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     if (selectedAmbassador) {
       fetchAffiliateStats(selectedAmbassador);
       fetchAffiliateLeads(selectedAmbassador);
+      fetchLostLeads(selectedAmbassador);
+      fetchDeletedLeads(selectedAmbassador);
       // Mark ambassador as viewed when selected
       markAmbassadorAsViewed(selectedAmbassador);
     }
@@ -264,6 +280,34 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     }
   };
 
+  const fetchLostLeads = async (ambassadorId: number) => {
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/affiliate/lost-leads/${ambassadorId}`
+      );
+      const data = await response.json();
+      if (data.success && data.leads) {
+        setLostLeads(data.leads);
+      }
+    } catch (error) {
+      console.error("Error fetching lost leads:", error);
+    }
+  };
+
+  const fetchDeletedLeads = async (ambassadorId: number) => {
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/affiliate/deleted-leads/${ambassadorId}`
+      );
+      const data = await response.json();
+      if (data.success && data.leads) {
+        setDeletedLeads(data.leads);
+      }
+    } catch (error) {
+      console.error("Error fetching deleted leads:", error);
+    }
+  };
+
   const markAmbassadorAsViewed = async (ambassadorId: number) => {
     try {
       await fetch(
@@ -288,25 +332,36 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
   const updateLeadStatus = async (
     leadId: number,
-    status: "pending" | "contacted" | "converted" | "lost",
-    notes?: string
+    status: "pending" | "contacted" | "converted" | "lost"
   ) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/api/affiliate/update-status`,
+        `http://localhost:3001/api/affiliate/update-status/${leadId}`,
         {
-          method: "PUT",
+          method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ leadId, status, notes }),
+          body: JSON.stringify({
+            follow_up_status: status,
+            registered: status === "converted",
+          }),
         }
       );
       const data = await response.json();
       if (data.success && selectedAmbassador) {
+        // Refresh all data including lost leads
         fetchAffiliateLeads(selectedAmbassador);
+        fetchLostLeads(selectedAmbassador);
         fetchAffiliateStats(selectedAmbassador);
+        console.log(`✅ Lead ${leadId} status updated to: ${status}`);
+
+        // If restoring from lost to active status, switch to active tab
+        if (status !== "lost" && activeTab === "lost") {
+          setActiveTab("active");
+        }
       }
     } catch (error) {
       console.error("Error updating lead status:", error);
+      alert("Failed to update lead status. Please try again.");
     }
   };
 
@@ -332,7 +387,9 @@ Segera follow-up user ini! 🚀`;
   const handleDeleteLead = async (leadId: number) => {
     if (
       !confirm(
-        "Apakah Anda yakin ingin menghapus lead ini? User akan bisa menggunakan nomor ini lagi."
+        "Apakah Anda yakin ingin menghapus lead ini?\n\n" +
+          "⚠️ SOFT DELETE: Data akan disimpan selama 3 hari sebelum dihapus permanen.\n" +
+          "Lead ini akan masuk ke 'Deleted History' dan nomor user bisa digunakan lagi."
       )
     ) {
       return;
@@ -344,22 +401,68 @@ Segera follow-up user ini! 🚀`;
         {
           method: "DELETE",
           headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ deleted_by: "admin" }),
         }
       );
 
       const data = await response.json();
 
       if (data.success && selectedAmbassador) {
-        // Refresh leads and stats
+        // Refresh all lead lists and stats
         fetchAffiliateLeads(selectedAmbassador);
+        fetchLostLeads(selectedAmbassador);
+        fetchDeletedLeads(selectedAmbassador);
         fetchAffiliateStats(selectedAmbassador);
-        console.log("✅ Lead deleted successfully");
+        console.log("✅ Lead soft deleted successfully");
+
+        // Switch to deleted tab to show the deleted record
+        setActiveTab("deleted");
       } else {
         alert("Gagal menghapus lead: " + (data.error || "Unknown error"));
       }
     } catch (error) {
       console.error("Error deleting lead:", error);
       alert("Gagal menghapus lead. Coba lagi.");
+    }
+  };
+
+  const handleRestoreLead = async (leadId: number) => {
+    if (
+      !confirm(
+        "Restore lead ini?\n\n" +
+          "✅ Lead akan dikembalikan ke status Active dan bisa dikelola kembali."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/affiliate/restore/${leadId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success && selectedAmbassador) {
+        // Refresh all lead lists and stats
+        fetchAffiliateLeads(selectedAmbassador);
+        fetchLostLeads(selectedAmbassador);
+        fetchDeletedLeads(selectedAmbassador);
+        fetchAffiliateStats(selectedAmbassador);
+        console.log("✅ Lead restored successfully");
+
+        // Switch to active tab to show the restored lead
+        setActiveTab("active");
+      } else {
+        alert("Gagal restore lead: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Error restoring lead:", error);
+      alert("Gagal restore lead. Coba lagi.");
     }
   };
 
@@ -717,7 +820,7 @@ Segera follow-up user ini! 🚀`;
 
             {/* Stats Cards */}
             {selectedAmbassador && affiliateStats && (
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                 <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4 border border-blue-200">
                   <div className="flex items-center space-x-3">
                     <Users className="h-8 w-8 text-blue-600" />
@@ -746,11 +849,21 @@ Segera follow-up user ini! 🚀`;
                   <div className="flex items-center space-x-3">
                     <Clock className="h-8 w-8 text-amber-600" />
                     <div>
-                      <p className="text-sm text-slate-600">
-                        Pending Follow-up
-                      </p>
+                      <p className="text-sm text-slate-600">Pending</p>
                       <p className="text-2xl font-bold text-slate-900">
                         {affiliateStats.pending_followups}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+                  <div className="flex items-center space-x-3">
+                    <UserCheck className="h-8 w-8 text-purple-600" />
+                    <div>
+                      <p className="text-sm text-slate-600">Follow Up</p>
+                      <p className="text-2xl font-bold text-slate-900">
+                        {affiliateStats.followups}
                       </p>
                     </div>
                   </div>
@@ -768,16 +881,13 @@ Segera follow-up user ini! 🚀`;
                   </div>
                 </div>
 
-                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4 border border-purple-200">
+                <div className="bg-gradient-to-br from-red-50 to-red-100 rounded-xl p-4 border border-red-200">
                   <div className="flex items-center space-x-3">
-                    <TrendingUp className="h-8 w-8 text-purple-600" />
+                    <AlertCircle className="h-8 w-8 text-red-600" />
                     <div>
-                      <p className="text-sm text-slate-600">Conversion Rate</p>
+                      <p className="text-sm text-slate-600">Lost</p>
                       <p className="text-2xl font-bold text-slate-900">
-                        {affiliateStats.conversion_rate
-                          ? Number(affiliateStats.conversion_rate).toFixed(1)
-                          : "0.0"}
-                        %
+                        {affiliateStats.lost}
                       </p>
                     </div>
                   </div>
@@ -788,141 +898,392 @@ Segera follow-up user ini! 🚀`;
             {/* Leads Table */}
             {selectedAmbassador && (
               <div>
-                <h3 className="text-lg font-semibold text-slate-900 mb-4">
-                  Active Leads untuk{" "}
-                  {ambassadors.find((a) => a.id === selectedAmbassador)?.name}
-                </h3>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-slate-900">
+                    Leads untuk{" "}
+                    {ambassadors.find((a) => a.id === selectedAmbassador)?.name}
+                  </h3>
+
+                  {/* Tabs */}
+                  <div className="flex border-b border-slate-200">
+                    <button
+                      onClick={() => setActiveTab("active")}
+                      className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                        activeTab === "active"
+                          ? "border-blue-600 text-blue-600"
+                          : "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
+                      }`}
+                    >
+                      Active Leads ({affiliateLeads.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("lost")}
+                      className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                        activeTab === "lost"
+                          ? "border-red-600 text-red-600"
+                          : "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
+                      }`}
+                    >
+                      Lost ({lostLeads.length})
+                    </button>
+                    <button
+                      onClick={() => setActiveTab("deleted")}
+                      className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${
+                        activeTab === "deleted"
+                          ? "border-slate-600 text-slate-600"
+                          : "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
+                      }`}
+                    >
+                      Deleted History ({deletedLeads.length})
+                    </button>
+                  </div>
+                </div>
 
                 {loadingAffiliate ? (
                   <div className="text-center py-8">Loading...</div>
-                ) : affiliateLeads.length === 0 ? (
-                  <div className="text-center py-8 text-slate-500">
-                    Belum ada leads untuk ambassador ini.
-                  </div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-slate-50 border-y border-slate-200">
-                        <tr>
-                          <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                            Nama
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                            WhatsApp
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                            Email
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                            Program
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                            Discount
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                            Days Ago
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                            Status
-                          </th>
-                          <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {affiliateLeads.map((lead) => (
-                          <tr key={lead.id} className="hover:bg-slate-50">
-                            <td className="px-4 py-3 text-sm text-slate-900">
-                              {lead.user_name}
-                            </td>
-                            <td className="px-4 py-3 text-sm">
-                              <a
-                                href={`https://wa.me/${lead.user_phone}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="text-blue-600 hover:text-blue-700 flex items-center space-x-1"
-                              >
-                                <MessageCircle className="h-3 w-3" />
-                                <span>{lead.user_phone}</span>
-                              </a>
-                            </td>
-                            <td className="px-4 py-3 text-sm text-slate-600">
-                              {lead.user_email || "-"}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-slate-600">
-                              {lead.program_name}
-                            </td>
-                            <td className="px-4 py-3 text-sm font-medium text-slate-900">
-                              Rp {lead.discount_applied.toLocaleString("id-ID")}
-                            </td>
-                            <td className="px-4 py-3 text-sm text-slate-600">
-                              {lead.days_ago}d ago
-                            </td>
-                            <td className="px-4 py-3">
-                              <Badge
-                                variant={
-                                  lead.follow_up_status === "converted"
-                                    ? "success"
-                                    : lead.follow_up_status === "contacted"
-                                    ? "warning"
-                                    : lead.follow_up_status === "lost"
-                                    ? "danger"
-                                    : "secondary"
-                                }
-                              >
-                                {lead.follow_up_status}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center space-x-2">
-                                <button
-                                  onClick={() => handleNotifyAmbassador(lead)}
-                                  className="inline-flex items-center px-3 py-1.5 text-sm bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors"
+                  <>
+                    {/* Active Leads Tab */}
+                    {activeTab === "active" &&
+                      (affiliateLeads.length === 0 ? (
+                        <div className="text-center py-8 text-slate-500">
+                          Belum ada active leads untuk ambassador ini.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-slate-50 border-y border-slate-200">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Nama
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  WhatsApp
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Email
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Program
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Discount
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Days Ago
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Status
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Actions
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                              {affiliateLeads.map((lead) => (
+                                <tr key={lead.id} className="hover:bg-slate-50">
+                                  <td className="px-4 py-3 text-sm text-slate-900">
+                                    {lead.user_name}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm">
+                                    <a
+                                      href={`https://wa.me/${lead.user_phone}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 hover:text-blue-700 flex items-center space-x-1"
+                                    >
+                                      <MessageCircle className="h-3 w-3" />
+                                      <span>{lead.user_phone}</span>
+                                    </a>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {lead.user_email || "-"}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {lead.program_name}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                                    Rp{" "}
+                                    {lead.discount_applied.toLocaleString(
+                                      "id-ID"
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {lead.days_ago}d ago
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <Badge
+                                      variant={
+                                        lead.follow_up_status === "converted"
+                                          ? "success"
+                                          : lead.follow_up_status ===
+                                            "contacted"
+                                          ? "warning"
+                                          : lead.follow_up_status === "lost"
+                                          ? "danger"
+                                          : "secondary"
+                                      }
+                                    >
+                                      {lead.follow_up_status === "pending"
+                                        ? "Pending"
+                                        : lead.follow_up_status === "contacted"
+                                        ? "Follow Up"
+                                        : lead.follow_up_status === "converted"
+                                        ? "Conversion"
+                                        : "Lost"}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center space-x-2">
+                                      <select
+                                        value={lead.follow_up_status}
+                                        onChange={(e) =>
+                                          updateLeadStatus(
+                                            lead.id,
+                                            e.target.value as any
+                                          )
+                                        }
+                                        className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                      >
+                                        <option value="pending">Pending</option>
+                                        <option value="contacted">
+                                          Follow Up
+                                        </option>
+                                        <option value="converted">
+                                          Conversion
+                                        </option>
+                                        <option value="lost">Lost</option>
+                                      </select>
+                                      <button
+                                        onClick={() =>
+                                          handleNotifyAmbassador(lead)
+                                        }
+                                        className="inline-flex items-center px-3 py-1.5 text-sm bg-emerald-100 text-emerald-700 rounded-lg hover:bg-emerald-200 transition-colors"
+                                        title="Notify Ambassador"
+                                      >
+                                        <MessageCircle className="h-3 w-3 mr-1" />
+                                        Notify
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handleDeleteLead(lead.id)
+                                        }
+                                        className="text-red-600 hover:text-red-700"
+                                        title="Delete Lead"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))}
+
+                    {/* Lost Leads Tab */}
+                    {activeTab === "lost" &&
+                      (lostLeads.length === 0 ? (
+                        <div className="text-center py-8 text-slate-500">
+                          Belum ada lost leads untuk ambassador ini.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-red-50 border-y border-red-200">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Nama
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  WhatsApp
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Email
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Program
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Discount
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Days Ago
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Actions
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                              {lostLeads.map((lead) => (
+                                <tr key={lead.id} className="hover:bg-slate-50">
+                                  <td className="px-4 py-3 text-sm text-slate-900">
+                                    {lead.user_name}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm">
+                                    <a
+                                      href={`https://wa.me/${lead.user_phone}`}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-blue-600 hover:text-blue-700 flex items-center space-x-1"
+                                    >
+                                      <MessageCircle className="h-3 w-3" />
+                                      <span>{lead.user_phone}</span>
+                                    </a>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {lead.user_email || "-"}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {lead.program_name}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                                    Rp{" "}
+                                    {lead.discount_applied.toLocaleString(
+                                      "id-ID"
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {lead.days_ago}d ago
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <div className="flex items-center space-x-2">
+                                      {/* Status Dropdown to restore from Lost */}
+                                      <select
+                                        value={lead.follow_up_status}
+                                        onChange={(e) =>
+                                          updateLeadStatus(
+                                            lead.id,
+                                            e.target.value as any
+                                          )
+                                        }
+                                        className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                      >
+                                        <option value="lost">Lost</option>
+                                        <option value="pending">
+                                          Restore to Pending
+                                        </option>
+                                        <option value="contacted">
+                                          Restore to Follow Up
+                                        </option>
+                                        <option value="converted">
+                                          Restore to Conversion
+                                        </option>
+                                      </select>
+
+                                      {/* Delete Button */}
+                                      <button
+                                        onClick={() =>
+                                          handleDeleteLead(lead.id)
+                                        }
+                                        className="text-red-600 hover:text-red-700"
+                                        title="Delete Lead"
+                                      >
+                                        <Trash2 className="h-4 w-4" />
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))}
+
+                    {/* Deleted History Tab */}
+                    {activeTab === "deleted" &&
+                      (deletedLeads.length === 0 ? (
+                        <div className="text-center py-8 text-slate-500">
+                          Belum ada deleted leads untuk ambassador ini.
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full">
+                            <thead className="bg-slate-100 border-y border-slate-300">
+                              <tr>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Nama
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  WhatsApp
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Email
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Program
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Deleted At
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Days Until Purge
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Deleted By
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Actions
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-200">
+                              {deletedLeads.map((lead) => (
+                                <tr
+                                  key={lead.id}
+                                  className="hover:bg-slate-50 opacity-70"
                                 >
-                                  <MessageCircle className="h-3 w-3 mr-1" />
-                                  Notify
-                                </button>
-                                <button
-                                  onClick={() => {
-                                    const newStatus = prompt(
-                                      "Update status (pending/contacted/converted/lost):",
-                                      lead.follow_up_status
-                                    );
-                                    if (
-                                      newStatus &&
-                                      [
-                                        "pending",
-                                        "contacted",
-                                        "converted",
-                                        "lost",
-                                      ].includes(newStatus)
-                                    ) {
-                                      updateLeadStatus(
-                                        lead.id,
-                                        newStatus as any
-                                      );
-                                    }
-                                  }}
-                                  className="text-slate-600 hover:text-slate-900"
-                                  title="Edit Status"
-                                >
-                                  <Edit3 className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => handleDeleteLead(lead.id)}
-                                  className="text-red-600 hover:text-red-700"
-                                  title="Delete Lead"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                                  <td className="px-4 py-3 text-sm text-slate-900">
+                                    {lead.user_name}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {lead.user_phone}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {lead.user_email || "-"}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {lead.program_name}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {new Date(
+                                      lead.deleted_at
+                                    ).toLocaleDateString("id-ID")}
+                                  </td>
+                                  <td className="px-4 py-3 text-sm">
+                                    <Badge
+                                      variant={
+                                        3 - lead.days_deleted <= 1
+                                          ? "danger"
+                                          : "warning"
+                                      }
+                                    >
+                                      {3 - lead.days_deleted} day
+                                      {3 - lead.days_deleted !== 1 ? "s" : ""}
+                                    </Badge>
+                                  </td>
+                                  <td className="px-4 py-3 text-sm text-slate-600">
+                                    {lead.deleted_by || "admin"}
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    <button
+                                      onClick={() => handleRestoreLead(lead.id)}
+                                      className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1"
+                                      title="Restore this lead"
+                                    >
+                                      <span>Restore</span>
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))}
+                  </>
                 )}
               </div>
             )}

@@ -206,9 +206,21 @@ router.get("/stats/:ambassador_id", async (req, res) => {
       [ambassador_id]
     );
 
+    // Get follow ups (contacted status)
+    const [followUpCount] = await db.query(
+      "SELECT COUNT(*) as followup FROM affiliate_usage WHERE ambassador_id = ? AND follow_up_status = 'contacted'",
+      [ambassador_id]
+    );
+
     // Get conversions
     const [conversions] = await db.query(
-      "SELECT COUNT(*) as converted FROM affiliate_usage WHERE ambassador_id = ? AND registered = TRUE",
+      "SELECT COUNT(*) as converted FROM affiliate_usage WHERE ambassador_id = ? AND follow_up_status = 'converted' AND deleted_at IS NULL",
+      [ambassador_id]
+    );
+
+    // Get lost leads
+    const [lostCount] = await db.query(
+      "SELECT COUNT(*) as lost FROM affiliate_usage WHERE ambassador_id = ? AND follow_up_status = 'lost' AND deleted_at IS NULL",
       [ambassador_id]
     );
 
@@ -218,13 +230,9 @@ router.get("/stats/:ambassador_id", async (req, res) => {
         total_uses: totalCount[0].total,
         today_uses: todayCount[0].today,
         pending_followups: pendingCount[0].pending,
+        followups: followUpCount[0].followup,
         conversions: conversions[0].converted,
-        conversion_rate:
-          totalCount[0].total > 0
-            ? ((conversions[0].converted / totalCount[0].total) * 100).toFixed(
-                2
-              )
-            : 0,
+        lost: lostCount[0].lost,
       },
     });
   } catch (error) {
@@ -330,7 +338,7 @@ router.put("/mark-viewed/:ambassador_id", async (req, res) => {
 
 /**
  * GET /api/affiliate/leads/:ambassador_id
- * Get active leads for an ambassador
+ * Get active leads for an ambassador (excluding deleted and lost)
  */
 router.get("/leads/:ambassador_id", async (req, res) => {
   try {
@@ -341,13 +349,23 @@ router.get("/leads/:ambassador_id", async (req, res) => {
         au.id, au.user_name, au.user_phone, au.user_email, au.user_city,
         au.affiliate_code, au.program_name, au.discount_applied, au.urgency,
         au.first_used_at, au.follow_up_status, au.follow_up_notes,
+        au.registered,
         DATEDIFF(NOW(), au.first_used_at) as days_ago,
         amb.name as ambassador_name, amb.phone as ambassador_phone
        FROM affiliate_usage au
        LEFT JOIN ambassadors amb ON au.ambassador_id = amb.id
-       WHERE au.ambassador_id = ? AND au.follow_up_status IN ('pending', 'contacted')
-       ORDER BY au.first_used_at DESC
-       LIMIT 50`,
+       WHERE au.ambassador_id = ? 
+         AND au.deleted_at IS NULL
+         AND au.follow_up_status IN ('pending', 'contacted', 'converted')
+       ORDER BY 
+         CASE au.follow_up_status
+           WHEN 'pending' THEN 1
+           WHEN 'contacted' THEN 2
+           WHEN 'converted' THEN 3
+           ELSE 4
+         END,
+         au.first_used_at DESC
+       LIMIT 100`,
       [ambassador_id]
     );
 
@@ -358,9 +376,95 @@ router.get("/leads/:ambassador_id", async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error getting affiliate leads:", error);
-    res.status(500).json({
+    res.json({
       success: false,
       error: "Failed to get affiliate leads",
+    });
+  }
+});
+
+/**
+ * GET /api/affiliate/lost-leads/:ambassador_id
+ * Get all lost leads for an ambassador
+ */
+router.get("/lost-leads/:ambassador_id", async (req, res) => {
+  try {
+    const { ambassador_id } = req.params;
+
+    const [leads] = await db.query(
+      `SELECT 
+        au.id, au.user_name, au.user_phone, au.user_email, au.user_city,
+        au.affiliate_code, au.program_name, au.discount_applied, au.urgency,
+        au.first_used_at, au.follow_up_status, au.follow_up_notes,
+        au.registered,
+        DATEDIFF(NOW(), au.first_used_at) as days_ago,
+        amb.name as ambassador_name, amb.phone as ambassador_phone
+      FROM affiliate_usage au
+      LEFT JOIN ambassadors amb ON au.ambassador_id = amb.id
+      WHERE au.ambassador_id = ? 
+        AND au.deleted_at IS NULL 
+        AND au.follow_up_status = 'lost'
+      ORDER BY au.first_used_at DESC`,
+      [ambassador_id]
+    );
+
+    res.json({
+      success: true,
+      leads: leads,
+      count: leads.length,
+    });
+  } catch (error) {
+    console.error("Error getting lost leads:", error);
+    res.json({
+      success: false,
+      error: "Failed to get lost leads",
+    });
+  }
+});
+
+/**
+ * GET /api/affiliate/deleted-leads/:ambassador_id
+ * Get all deleted leads for an ambassador (soft deleted, showing history)
+ */
+router.get("/deleted-leads/:ambassador_id", async (req, res) => {
+  try {
+    const { ambassador_id } = req.params;
+
+    const [leads] = await db.query(
+      `SELECT 
+        au.id,
+        au.user_name,
+        au.user_phone,
+        au.user_email,
+        au.affiliate_code,
+        au.program_name,
+        au.discount_applied,
+        au.follow_up_status,
+        au.follow_up_notes,
+        au.registered,
+        au.deleted_at,
+        au.deleted_by,
+        DATEDIFF(NOW(), au.deleted_at) as days_deleted,
+        amb.name as ambassador_name,
+        amb.phone as ambassador_phone
+      FROM affiliate_usage au
+      LEFT JOIN ambassadors amb ON au.ambassador_id = amb.id
+      WHERE au.ambassador_id = ? 
+        AND au.deleted_at IS NOT NULL
+      ORDER BY au.deleted_at DESC`,
+      [ambassador_id]
+    );
+
+    res.json({
+      success: true,
+      leads: leads,
+      count: leads.length,
+    });
+  } catch (error) {
+    console.error("Error getting deleted leads:", error);
+    res.json({
+      success: false,
+      error: "Failed to get deleted leads",
     });
   }
 });
@@ -425,29 +529,31 @@ router.patch("/update-status/:usage_id", async (req, res) => {
 
 /**
  * DELETE /api/affiliate/lead/:usage_id
- * Delete a tracked affiliate usage (for admin to remove duplicate/spam entries)
- * This allows users to use their phone number again after admin removes their data
+ * Soft delete a tracked affiliate usage (marks as deleted instead of removing)
+ * This keeps a 3-day history of deleted records before they're purged permanently
  */
 router.delete("/lead/:usage_id", async (req, res) => {
   try {
     const { usage_id } = req.params;
+    const { deleted_by } = req.body; // Optional: track who deleted it
 
-    // Delete the affiliate usage record
+    // Soft delete by setting deleted_at timestamp
     const [result] = await db.query(
-      "DELETE FROM affiliate_usage WHERE id = ?",
-      [usage_id]
+      "UPDATE affiliate_usage SET deleted_at = NOW(), deleted_by = ? WHERE id = ? AND deleted_at IS NULL",
+      [deleted_by || "admin", usage_id]
     );
 
     if (result.affectedRows === 0) {
       return res.status(404).json({
         success: false,
-        error: "Affiliate usage record not found",
+        error: "Affiliate usage record not found or already deleted",
       });
     }
 
     res.json({
       success: true,
-      message: "Affiliate usage deleted successfully",
+      message:
+        "Affiliate usage deleted successfully (soft delete - will be purged after 3 days)",
       deleted_id: parseInt(usage_id),
     });
   } catch (error) {
@@ -455,6 +561,41 @@ router.delete("/lead/:usage_id", async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to delete affiliate usage",
+    });
+  }
+});
+
+/**
+ * PUT /api/affiliate/restore/:usage_id
+ * Restore a soft-deleted lead (undo soft delete)
+ */
+router.put("/restore/:usage_id", async (req, res) => {
+  try {
+    const { usage_id } = req.params;
+
+    // Restore by setting deleted_at and deleted_by to NULL
+    const [result] = await db.query(
+      "UPDATE affiliate_usage SET deleted_at = NULL, deleted_by = NULL WHERE id = ? AND deleted_at IS NOT NULL",
+      [usage_id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Record not found or not deleted",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Lead restored successfully",
+      restored_id: parseInt(usage_id),
+    });
+  } catch (error) {
+    console.error("❌ Error restoring lead:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to restore lead",
     });
   }
 });

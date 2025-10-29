@@ -16,6 +16,28 @@ import validateRoutes from "./routes/validate.js";
 import uploadRoutes from "./routes/upload.js";
 import affiliateRoutes from "./routes/affiliate.js";
 
+// Import database connection for cleanup tasks
+import db from "./db/connection.js";
+
+// Auto-purge function: Delete records that have been soft-deleted for 3+ days
+async function purgeOldDeletedRecords() {
+  try {
+    const [result] = await db.query(
+      `DELETE FROM affiliate_usage 
+       WHERE deleted_at IS NOT NULL 
+       AND DATEDIFF(NOW(), deleted_at) >= 3`
+    );
+
+    if (result.affectedRows > 0) {
+      console.log(
+        `🗑️  Auto-purge: Permanently deleted ${result.affectedRows} records (>3 days old)`
+      );
+    }
+  } catch (error) {
+    console.error("❌ Auto-purge error:", error.message);
+  }
+}
+
 // Load environment variables
 dotenv.config();
 
@@ -98,7 +120,7 @@ app.use((err, req, res, next) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log("");
   console.log("🚀 ========================================");
   console.log("   Zona English Backend API Server");
@@ -130,10 +152,24 @@ app.listen(PORT, () => {
   console.log("   POST   /api/affiliate/track");
   console.log("   GET    /api/affiliate/stats/:ambassador_id");
   console.log("   GET    /api/affiliate/leads/:ambassador_id");
+  console.log("   GET    /api/affiliate/lost-leads/:ambassador_id");
+  console.log("   GET    /api/affiliate/deleted-leads/:ambassador_id");
   console.log("   PATCH  /api/affiliate/update-status/:usage_id");
+  console.log("   DELETE /api/affiliate/lead/:usage_id (soft delete)");
+  console.log("   PUT    /api/affiliate/restore/:usage_id (restore deleted)");
   console.log("   POST   /api/upload");
   console.log("   POST   /api/upload/multiple");
   console.log("   ========================================");
+  console.log("");
+
+  // Run auto-purge on startup
+  console.log("🔄 Running initial auto-purge of old deleted records...");
+  await purgeOldDeletedRecords();
+
+  // Schedule daily auto-purge at midnight
+  const PURGE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+  setInterval(purgeOldDeletedRecords, PURGE_INTERVAL);
+  console.log("⏰ Auto-purge scheduled to run daily at midnight");
   console.log("");
 });
 
