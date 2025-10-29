@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { CheckCircle2, MessageCircle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { CheckCircle2, MessageCircle, XCircle } from "lucide-react";
 
 // Import komponen universal dan konstanta
 import { FloatingButton } from "./components";
@@ -193,8 +193,9 @@ const UserInfoFormModal = ({
       return;
     }
 
+    // Only call onSubmit, don't call onClose here
+    // Parent will handle closing the modal
     onSubmit({ name: name.trim(), phone: phone.trim(), email: email.trim() });
-    onClose();
   };
 
   if (!isOpen) return null;
@@ -295,6 +296,72 @@ const UserInfoFormModal = ({
   );
 };
 
+// Success Modal Component
+const SuccessModal = ({ isOpen }: { isOpen: boolean }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-xl animate-fade-in">
+        <div className="flex flex-col items-center text-center">
+          {/* Success Icon */}
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+            <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+          </div>
+
+          {/* Success Message */}
+          <h3 className="mb-2 text-xl font-bold text-slate-900">
+            Sukses Mengirim Data!
+          </h3>
+          <p className="text-sm text-slate-600">
+            Silakan apply code-nya sekarang
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Error Modal Component
+const ErrorModal = ({
+  isOpen,
+  message,
+  onClose,
+}: {
+  isOpen: boolean;
+  message: string;
+  onClose: () => void;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-xl animate-fade-in">
+        <div className="flex flex-col items-center text-center">
+          {/* Error Icon */}
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+            <XCircle className="h-10 w-10 text-red-600" />
+          </div>
+
+          {/* Error Message */}
+          <h3 className="mb-2 text-xl font-bold text-slate-900">
+            Nomor Sudah Digunakan
+          </h3>
+          <p className="text-sm text-slate-600 mb-4">{message}</p>
+
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="w-full rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white hover:bg-red-700 transition-colors"
+          >
+            Tutup
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PromoCard = ({
   promo,
   appliedCode,
@@ -309,6 +376,10 @@ const PromoCard = ({
   const [codeInput, setCodeInput] = useState("");
   const [isValidating, setIsValidating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const isProcessingRef = useRef(false); // Track if form is being processed
   const [userData, setUserData] = useState<{
     name: string;
     phone: string;
@@ -330,8 +401,11 @@ const PromoCard = ({
     }
 
     // Check if user data exists, if not show modal
+    // But don't show if we're in the middle of processing (prevents re-opening during re-renders)
     if (!userData) {
-      setIsModalOpen(true);
+      if (!isProcessingRef.current) {
+        setIsModalOpen(true);
+      }
       return;
     }
 
@@ -397,6 +471,9 @@ const PromoCard = ({
       // Track affiliate usage if ambassador code
       if (data.type === "ambassador" && data.ambassador) {
         console.log("📊 Tracking affiliate usage...");
+        console.log("📊 Ambassador data:", data.ambassador);
+        console.log("📊 User data:", userData);
+
         try {
           const trackPayload = {
             user_name: userData.name,
@@ -408,6 +485,9 @@ const PromoCard = ({
             discount_applied: data.discount,
           };
           console.log("📊 Sending track payload:", trackPayload);
+          console.log(
+            "📊 API endpoint: http://localhost:3001/api/affiliate/track"
+          );
 
           const trackResponse = await fetch(
             "http://localhost:3001/api/affiliate/track",
@@ -418,21 +498,58 @@ const PromoCard = ({
             }
           );
 
+          console.log("📊 Track response status:", trackResponse.status);
           const trackData = await trackResponse.json();
-          console.log("📊 Track response:", trackData);
+          console.log("📊 Track response data:", trackData);
 
           if (trackData.success) {
             console.log("✅ Data berhasil dikirim ke admin dashboard!");
+            console.log("✅ Usage ID:", trackData.usage_id);
+            console.log("✅ Ambassador will be notified via WhatsApp");
+          } else if (trackResponse.status === 429) {
+            // Phone number already used today
+            console.error("❌ Phone already used:", trackData.error);
+            console.error("❌ Existing code:", trackData.existing_code);
+
+            // Clear user data from state and sessionStorage
+            setUserData(null);
+            sessionStorage.removeItem("zonaenglis_user_data");
+
+            // Show error modal
+            setErrorMessage(
+              trackData.error ||
+                "Nomor ini sudah menggunakan kode affiliate hari ini. Gunakan nomor lain atau hubungi admin untuk menghapus data."
+            );
+            setShowErrorModal(true);
+
+            // Don't apply the code
+            return;
           } else {
             console.error(
-              "❌ Tracking failed:",
+              "❌ Tracking failed with status:",
+              trackResponse.status
+            );
+            console.error(
+              "❌ Error message:",
               trackData.error || trackData.message
             );
+            console.error("❌ Full response:", trackData);
+            // Continue anyway - don't block code application for tracking failures
           }
         } catch (trackError) {
           console.error("❌ Error tracking affiliate:", trackError);
+          console.error("❌ Error details:", {
+            message:
+              trackError instanceof Error
+                ? trackError.message
+                : String(trackError),
+            stack: trackError instanceof Error ? trackError.stack : undefined,
+          });
           // Don't fail the whole process if tracking fails
         }
+      } else {
+        console.log("ℹ️ Not an ambassador code, skipping tracking");
+        console.log("ℹ️ Code type:", data.type);
       }
 
       setCodeInput("");
@@ -451,13 +568,34 @@ const PromoCard = ({
     phone: string;
     email?: string;
   }) => {
+    // Mark as processing to prevent modal re-opening during re-renders
+    isProcessingRef.current = true;
+
     // Save to state and sessionStorage
     setUserData(data);
     sessionStorage.setItem("zonaenglis_user_data", JSON.stringify(data));
     console.log("✅ User data saved:", data);
 
-    // After saving data, trigger validation
-    handleApply();
+    // Close user data modal first
+    console.log("🔄 Closing form modal...");
+    setIsModalOpen(false);
+
+    // Wait for form modal to close, then show success modal
+    // Small delay ensures proper modal transition
+    setTimeout(() => {
+      console.log("✅ Showing success modal...");
+      setShowSuccessModal(true);
+
+      // Auto close success modal after 3 seconds and trigger validation
+      setTimeout(() => {
+        console.log("🔄 Closing success modal...");
+        setShowSuccessModal(false);
+        console.log("🔄 Starting validation...");
+        handleApply();
+        // Reset processing flag after validation
+        isProcessingRef.current = false;
+      }, 3000);
+    }, 100); // 100ms delay for smooth transition
   };
 
   return (
@@ -643,6 +781,19 @@ const PromoCard = ({
         onClose={() => setIsModalOpen(false)}
         onSubmit={handleUserDataSubmit}
       />
+
+      {/* Success Modal */}
+      <SuccessModal isOpen={showSuccessModal} />
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        message={errorMessage}
+        onClose={() => {
+          setShowErrorModal(false);
+          setErrorMessage("");
+        }}
+      />
     </div>
   );
 };
@@ -774,8 +925,18 @@ export default function PromoHub() {
 
   // Refresh data when returning to page or when ambassador data is updated
   useEffect(() => {
+    let isRefreshing = false; // Prevent multiple simultaneous refreshes
+
     const handleDataUpdate = () => {
+      // Skip if already refreshing
+      if (isRefreshing) {
+        console.log("⏭️ Skipping refresh - already in progress");
+        return;
+      }
+
+      isRefreshing = true;
       console.log("🔄 Ambassador data updated, refreshing PromoHub...");
+
       const fetchData = async () => {
         try {
           const ambassadorsResponse = await fetch(
@@ -821,18 +982,19 @@ export default function PromoHub() {
           console.log("✅ Ambassador data refreshed in PromoHub");
         } catch (error) {
           console.error("❌ Error refreshing ambassador data:", error);
+        } finally {
+          isRefreshing = false; // Reset flag when done
         }
       };
 
       fetchData();
     };
 
+    // Only listen to custom event, NOT focus event (causes infinite loop)
     window.addEventListener("ambassadorDataUpdated", handleDataUpdate);
-    window.addEventListener("focus", handleDataUpdate);
 
     return () => {
       window.removeEventListener("ambassadorDataUpdated", handleDataUpdate);
-      window.removeEventListener("focus", handleDataUpdate);
     };
   }, []);
 

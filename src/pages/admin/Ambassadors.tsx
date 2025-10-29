@@ -84,6 +84,9 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   );
   const [affiliateLeads, setAffiliateLeads] = useState<AffiliateLead[]>([]);
   const [loadingAffiliate, setLoadingAffiliate] = useState(false);
+  const [ambassadorUsageCounts, setAmbassadorUsageCounts] = useState<
+    Record<number, number>
+  >({});
 
   // Function to load ambassadors from API
   const loadAmbassadors = async () => {
@@ -139,6 +142,28 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   useEffect(() => {
     loadAmbassadors();
   }, []);
+
+  // Fetch UNREAD usage counts for all ambassadors (only new leads since last viewed)
+  useEffect(() => {
+    const fetchUnreadCounts = async () => {
+      if (ambassadors.length === 0) return;
+
+      try {
+        const response = await fetch(
+          "http://localhost:3001/api/affiliate/unread-counts"
+        );
+        const data = await response.json();
+
+        if (data.success && data.unread_counts) {
+          setAmbassadorUsageCounts(data.unread_counts);
+        }
+      } catch (error) {
+        console.error("Error fetching unread counts:", error);
+      }
+    };
+
+    fetchUnreadCounts();
+  }, [ambassadors]);
 
   // Listen for custom events to refresh data
   useEffect(() => {
@@ -203,6 +228,8 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     if (selectedAmbassador) {
       fetchAffiliateStats(selectedAmbassador);
       fetchAffiliateLeads(selectedAmbassador);
+      // Mark ambassador as viewed when selected
+      markAmbassadorAsViewed(selectedAmbassador);
     }
   }, [selectedAmbassador]);
 
@@ -234,6 +261,28 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       console.error("Error fetching affiliate leads:", error);
     } finally {
       setLoadingAffiliate(false);
+    }
+  };
+
+  const markAmbassadorAsViewed = async (ambassadorId: number) => {
+    try {
+      await fetch(
+        `http://localhost:3001/api/affiliate/mark-viewed/${ambassadorId}`,
+        {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      // Update local state - set this ambassador's unread count to 0
+      setAmbassadorUsageCounts((prev) => ({
+        ...prev,
+        [ambassadorId]: 0,
+      }));
+
+      console.log(`✅ Marked ambassador ${ambassadorId} as viewed`);
+    } catch (error) {
+      console.error("Error marking ambassador as viewed:", error);
     }
   };
 
@@ -278,6 +327,40 @@ Segera follow-up user ini! 🚀`;
       lead.ambassador_phone
     }?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, "_blank");
+  };
+
+  const handleDeleteLead = async (leadId: number) => {
+    if (
+      !confirm(
+        "Apakah Anda yakin ingin menghapus lead ini? User akan bisa menggunakan nomor ini lagi."
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/affiliate/lead/${leadId}`,
+        {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      const data = await response.json();
+
+      if (data.success && selectedAmbassador) {
+        // Refresh leads and stats
+        fetchAffiliateLeads(selectedAmbassador);
+        fetchAffiliateStats(selectedAmbassador);
+        console.log("✅ Lead deleted successfully");
+      } else {
+        alert("Gagal menghapus lead: " + (data.error || "Unknown error"));
+      }
+    } catch (error) {
+      console.error("Error deleting lead:", error);
+      alert("Gagal menghapus lead. Coba lagi.");
+    }
   };
 
   const filteredAmbassadors = ambassadors.filter((ambassador) => {
@@ -608,6 +691,9 @@ Segera follow-up user ini! 🚀`;
             <div className="mb-6">
               <label className="block text-sm font-medium text-slate-700 mb-2">
                 Pilih Ambassador
+                <span className="ml-2 text-xs text-slate-500">
+                  (🔴 = leads baru yang belum dilihat)
+                </span>
               </label>
               <select
                 value={selectedAmbassador || ""}
@@ -617,11 +703,15 @@ Segera follow-up user ini! 🚀`;
                 className="w-full md:w-64 px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Pilih Ambassador...</option>
-                {ambassadors.map((amb) => (
-                  <option key={amb.id} value={amb.id}>
-                    {amb.name} ({amb.affiliateCode})
-                  </option>
-                ))}
+                {ambassadors.map((amb) => {
+                  const usageCount = ambassadorUsageCounts[amb.id] || 0;
+                  return (
+                    <option key={amb.id} value={amb.id}>
+                      {amb.name} ({amb.affiliateCode})
+                      {usageCount > 0 ? ` 🔴 ${usageCount} baru` : ""}
+                    </option>
+                  );
+                })}
               </select>
             </div>
 
@@ -815,8 +905,16 @@ Segera follow-up user ini! 🚀`;
                                     }
                                   }}
                                   className="text-slate-600 hover:text-slate-900"
+                                  title="Edit Status"
                                 >
                                   <Edit3 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteLead(lead.id)}
+                                  className="text-red-600 hover:text-red-700"
+                                  title="Delete Lead"
+                                >
+                                  <Trash2 className="h-4 w-4" />
                                 </button>
                               </div>
                             </td>

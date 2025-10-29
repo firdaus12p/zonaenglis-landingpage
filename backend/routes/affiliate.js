@@ -107,6 +107,11 @@ router.post("/track", async (req, res) => {
     // Generate device fingerprint for additional spam prevention
     const deviceFingerprint = generateDeviceFingerprint(req);
 
+    console.log("📝 Inserting affiliate usage record...");
+    console.log("📝 Ambassador ID:", ambassador.id);
+    console.log("📝 Ambassador Name:", ambassador.name);
+    console.log("📝 Affiliate Code:", affiliate_code);
+
     // Insert affiliate usage record
     const [result] = await db.query(
       `INSERT INTO affiliate_usage 
@@ -131,7 +136,10 @@ router.post("/track", async (req, res) => {
     const usageId = result.insertId;
 
     console.log(
-      `✅ Affiliate usage tracked: ID ${usageId}, User: ${user_name}, Code: ${affiliate_code}`
+      `✅ Affiliate usage tracked: ID ${usageId}, User: ${user_name}, Code: ${affiliate_code}, Ambassador ID: ${ambassador.id}`
+    );
+    console.log(
+      `✅ This should now appear in admin dashboard for ambassador: ${ambassador.name}`
     );
 
     // Generate WhatsApp Click-to-Chat URL for ambassador notification
@@ -229,6 +237,98 @@ router.get("/stats/:ambassador_id", async (req, res) => {
 });
 
 /**
+ * GET /api/affiliate/unread-counts
+ * Get unread usage counts for all ambassadors (new leads since last viewed)
+ */
+router.get("/unread-counts", async (req, res) => {
+  try {
+    // Get all ambassadors with their last_viewed_at timestamp
+    const [ambassadors] = await db.query(
+      "SELECT id, last_viewed_at FROM ambassadors WHERE is_active = 1"
+    );
+
+    const unreadCounts = {};
+
+    // For each ambassador, count usages created after last_viewed_at
+    for (const ambassador of ambassadors) {
+      const { id, last_viewed_at } = ambassador;
+
+      let query;
+      let params;
+
+      if (last_viewed_at) {
+        // Count only leads created after last view
+        query = `
+          SELECT COUNT(*) as unread 
+          FROM affiliate_usage 
+          WHERE ambassador_id = ? 
+          AND first_used_at > ?
+        `;
+        params = [id, last_viewed_at];
+      } else {
+        // Never viewed before - count all leads
+        query = `
+          SELECT COUNT(*) as unread 
+          FROM affiliate_usage 
+          WHERE ambassador_id = ?
+        `;
+        params = [id];
+      }
+
+      const [result] = await db.query(query, params);
+      const unreadCount = result[0].unread;
+      unreadCounts[id] = unreadCount;
+
+      console.log(
+        `📊 Ambassador ID ${id}: ${unreadCount} unread leads (last_viewed: ${
+          last_viewed_at || "never"
+        })`
+      );
+    }
+
+    console.log("✅ Final unread counts:", unreadCounts);
+    res.json({
+      success: true,
+      unread_counts: unreadCounts,
+    });
+  } catch (error) {
+    console.error("❌ Error getting unread counts:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get unread counts",
+    });
+  }
+});
+
+/**
+ * PUT /api/affiliate/mark-viewed/:ambassador_id
+ * Mark ambassador as viewed (update last_viewed_at to current timestamp)
+ */
+router.put("/mark-viewed/:ambassador_id", async (req, res) => {
+  try {
+    const { ambassador_id } = req.params;
+
+    await db.query(
+      "UPDATE ambassadors SET last_viewed_at = NOW() WHERE id = ?",
+      [ambassador_id]
+    );
+
+    res.json({
+      success: true,
+      message: "Ambassador marked as viewed",
+      ambassador_id: parseInt(ambassador_id),
+      viewed_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    console.error("❌ Error marking ambassador as viewed:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to mark ambassador as viewed",
+    });
+  }
+});
+
+/**
  * GET /api/affiliate/leads/:ambassador_id
  * Get active leads for an ambassador
  */
@@ -319,6 +419,42 @@ router.patch("/update-status/:usage_id", async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to update status",
+    });
+  }
+});
+
+/**
+ * DELETE /api/affiliate/lead/:usage_id
+ * Delete a tracked affiliate usage (for admin to remove duplicate/spam entries)
+ * This allows users to use their phone number again after admin removes their data
+ */
+router.delete("/lead/:usage_id", async (req, res) => {
+  try {
+    const { usage_id } = req.params;
+
+    // Delete the affiliate usage record
+    const [result] = await db.query(
+      "DELETE FROM affiliate_usage WHERE id = ?",
+      [usage_id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Affiliate usage record not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      message: "Affiliate usage deleted successfully",
+      deleted_id: parseInt(usage_id),
+    });
+  } catch (error) {
+    console.error("❌ Error deleting affiliate usage:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete affiliate usage",
     });
   }
 });
