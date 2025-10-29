@@ -21,7 +21,6 @@ router.post("/code", async (req, res) => {
   try {
     // Check if it's an affiliate/ambassador code first
     console.log("🔎 Checking ambassadors table...");
-    console.log("🔎 Checking ambassadors table...");
     const [ambassadorRows] = await db.query(
       `SELECT id, name, role, location, institution, affiliate_code, testimonial, phone, commission_rate 
        FROM ambassadors 
@@ -64,8 +63,6 @@ router.post("/code", async (req, res) => {
        AND NOW() BETWEEN valid_from AND valid_until`,
       [code]
     );
-
-    console.log(`✅ Promo query result: ${promoRows.length} rows`);
 
     console.log(`✅ Promo query result: ${promoRows.length} rows`);
 

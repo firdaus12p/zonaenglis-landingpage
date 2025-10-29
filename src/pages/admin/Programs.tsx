@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
+import AdminLayout from "../../components/layout/AdminLayout";
 import {
   Plus,
   Edit,
@@ -32,6 +33,7 @@ interface Program {
 
 const Programs = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [programs, setPrograms] = useState<Program[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -172,14 +174,16 @@ const Programs = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-slate-50">
-        <div className="text-slate-500">Loading...</div>
-      </div>
+      <AdminLayout currentPage={location.pathname}>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-slate-500">Loading...</div>
+        </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <AdminLayout currentPage={location.pathname}>
       <div className="mx-auto max-w-7xl">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
@@ -421,7 +425,7 @@ const Programs = () => {
           </div>
         </div>
       )}
-    </div>
+    </AdminLayout>
   );
 };
 

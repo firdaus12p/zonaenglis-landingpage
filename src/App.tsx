@@ -16,6 +16,7 @@ import {
   Programs,
   AmbassadorForm,
   PromoForm,
+  PromoCodeForm,
 } from "./components/admin";
 
 function App() {
@@ -91,6 +92,9 @@ function App() {
             path="/admin/promos"
             element={<PromoCodes setCurrentPage={(page) => navigate(page)} />}
           />
+          <Route path="/admin/promos/new" element={<PromoCodeForm />} />
+          <Route path="/admin/promos/edit/:id" element={<PromoCodeForm />} />
+
           <Route
             path="/admin/countdown"
             element={

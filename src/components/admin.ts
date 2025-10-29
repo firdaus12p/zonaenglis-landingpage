@@ -12,6 +12,7 @@ export { default as Programs } from "../pages/admin/Programs";
 // Form Components
 export { default as AmbassadorForm } from "../pages/admin/AmbassadorForm";
 export { default as PromoForm } from "../pages/admin/PromoForm";
+export { default as PromoCodeForm } from "../pages/admin/PromoCodeForm";
 
 // Universal Components (existing)
 export { Badge, BADGE_VARIANTS } from "./Badge";

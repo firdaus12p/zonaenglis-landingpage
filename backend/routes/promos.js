@@ -4,6 +4,23 @@ import db from "../db/connection.js";
 
 const router = express.Router();
 
+// GET /api/promos/admin/all - Get ALL promo codes for admin (including inactive/expired)
+router.get("/admin/all", async (req, res) => {
+  try {
+    const [rows] = await db.query(
+      `SELECT id, code, name, description, discount_type, discount_value, 
+              min_purchase, max_discount, usage_limit, used_count, 
+              valid_from, valid_until, is_active, applicable_to, created_at, updated_at
+       FROM promo_codes 
+       ORDER BY created_at DESC`
+    );
+    res.json(rows);
+  } catch (error) {
+    console.error("Error fetching all promo codes:", error);
+    res.status(500).json({ error: "Failed to fetch promo codes" });
+  }
+});
+
 // GET /api/promos - Get all active promo codes
 router.get("/", async (req, res) => {
   try {
@@ -23,16 +40,27 @@ router.get("/", async (req, res) => {
   }
 });
 
-// GET /api/promos/:code - Get specific promo code
-router.get("/:code", async (req, res) => {
+// GET /api/promos/:id - Get specific promo code by ID (for admin edit)
+router.get("/:id", async (req, res) => {
   try {
-    const [rows] = await db.query(
-      `SELECT * FROM promo_codes 
-       WHERE code = ? 
-       AND is_active = 1
-       AND NOW() BETWEEN valid_from AND valid_until`,
-      [req.params.code]
-    );
+    // Check if it's a numeric ID (for admin) or code string (for validation)
+    const isNumericId = /^\d+$/.test(req.params.id);
+
+    let query, params;
+    if (isNumericId) {
+      // Admin fetching by ID
+      query = "SELECT * FROM promo_codes WHERE id = ?";
+      params = [req.params.id];
+    } else {
+      // Public fetching by code
+      query = `SELECT * FROM promo_codes 
+               WHERE code = ? 
+               AND is_active = 1
+               AND NOW() BETWEEN valid_from AND valid_until`;
+      params = [req.params.id];
+    }
+
+    const [rows] = await db.query(query, params);
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Promo code not found or expired" });
@@ -42,6 +70,206 @@ router.get("/:code", async (req, res) => {
   } catch (error) {
     console.error("Error fetching promo code:", error);
     res.status(500).json({ error: "Failed to fetch promo code" });
+  }
+});
+
+// POST /api/promos - Create new promo code (ADMIN)
+router.post("/", async (req, res) => {
+  const {
+    code,
+    name,
+    description,
+    discount_type,
+    discount_value,
+    min_purchase,
+    max_discount,
+    usage_limit,
+    valid_from,
+    valid_until,
+    applicable_to,
+    is_active,
+  } = req.body;
+
+  // Validation
+  if (!code || !name || !discount_type || !discount_value) {
+    return res.status(400).json({
+      error:
+        "Missing required fields: code, name, discount_type, discount_value",
+    });
+  }
+
+  // Check if code already exists
+  try {
+    const [existing] = await db.query(
+      "SELECT id FROM promo_codes WHERE code = ?",
+      [code]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({ error: "Promo code already exists" });
+    }
+
+    // Insert new promo code
+    const [result] = await db.query(
+      `INSERT INTO promo_codes 
+       (code, name, description, discount_type, discount_value, min_purchase, 
+        max_discount, usage_limit, valid_from, valid_until, applicable_to, is_active, used_count) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0)`,
+      [
+        code,
+        name,
+        description || null,
+        discount_type,
+        discount_value,
+        min_purchase || 0,
+        max_discount || null,
+        usage_limit || null,
+        valid_from || null,
+        valid_until || null,
+        applicable_to || "all",
+        is_active !== undefined ? is_active : 1,
+      ]
+    );
+
+    res.status(201).json({
+      message: "Promo code created successfully",
+      id: result.insertId,
+    });
+  } catch (error) {
+    console.error("Error creating promo code:", error);
+    res.status(500).json({ error: "Failed to create promo code" });
+  }
+});
+
+// PUT /api/promos/:id - Update promo code (ADMIN)
+router.put("/:id", async (req, res) => {
+  const { id } = req.params;
+  const {
+    code,
+    name,
+    description,
+    discount_type,
+    discount_value,
+    min_purchase,
+    max_discount,
+    usage_limit,
+    valid_from,
+    valid_until,
+    applicable_to,
+    is_active,
+  } = req.body;
+
+  try {
+    // Check if promo code exists
+    const [existing] = await db.query(
+      "SELECT id FROM promo_codes WHERE id = ?",
+      [id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({ error: "Promo code not found" });
+    }
+
+    // Check if new code conflicts with another promo
+    if (code) {
+      const [codeExists] = await db.query(
+        "SELECT id FROM promo_codes WHERE code = ? AND id != ?",
+        [code, id]
+      );
+
+      if (codeExists.length > 0) {
+        return res.status(400).json({ error: "Promo code already exists" });
+      }
+    }
+
+    // Update promo code
+    await db.query(
+      `UPDATE promo_codes SET 
+       code = ?, name = ?, description = ?, discount_type = ?, 
+       discount_value = ?, min_purchase = ?, max_discount = ?, 
+       usage_limit = ?, valid_from = ?, valid_until = ?, 
+       applicable_to = ?, is_active = ?
+       WHERE id = ?`,
+      [
+        code,
+        name,
+        description || null,
+        discount_type,
+        discount_value,
+        min_purchase || 0,
+        max_discount || null,
+        usage_limit || null,
+        valid_from || null,
+        valid_until || null,
+        applicable_to || "all",
+        is_active !== undefined ? is_active : 1,
+        id,
+      ]
+    );
+
+    res.json({ message: "Promo code updated successfully" });
+  } catch (error) {
+    console.error("Error updating promo code:", error);
+    res.status(500).json({ error: "Failed to update promo code" });
+  }
+});
+
+// PATCH /api/promos/:id/toggle - Toggle active status (ADMIN)
+router.patch("/:id/toggle", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Check if promo code exists
+    const [existing] = await db.query(
+      "SELECT is_active FROM promo_codes WHERE id = ?",
+      [id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({ error: "Promo code not found" });
+    }
+
+    // Toggle the is_active status
+    const newStatus = existing[0].is_active === 1 ? 0 : 1;
+    await db.query("UPDATE promo_codes SET is_active = ? WHERE id = ?", [
+      newStatus,
+      id,
+    ]);
+
+    res.json({
+      message: `Promo code ${
+        newStatus === 1 ? "activated" : "deactivated"
+      } successfully`,
+      is_active: newStatus,
+    });
+  } catch (error) {
+    console.error("Error toggling promo code status:", error);
+    res.status(500).json({ error: "Failed to toggle promo code status" });
+  }
+});
+
+// DELETE /api/promos/:id - Delete promo code (ADMIN)
+router.delete("/:id", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    // Check if promo code exists
+    const [existing] = await db.query(
+      "SELECT id FROM promo_codes WHERE id = ?",
+      [id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({ error: "Promo code not found" });
+    }
+
+    // Delete promo code
+    await db.query("DELETE FROM promo_codes WHERE id = ?", [id]);
+
+    res.json({ message: "Promo code deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting promo code:", error);
+    res.status(500).json({ error: "Failed to delete promo code" });
   }
 });
 

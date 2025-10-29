@@ -21,3 +21,4 @@ export {
   CARD_VARIANTS,
   PADDING_VARIANTS,
 } from "./Card";
+export { default as Toast } from "./ui/Toast";

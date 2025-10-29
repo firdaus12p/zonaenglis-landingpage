@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+import AdminLayout from "../../components/layout/AdminLayout";
 import {
   ArrowLeft,
   Calendar,
@@ -17,6 +18,7 @@ const API_BASE = "http://localhost:3001/api";
 
 const PromoForm = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { id } = useParams();
   const isEdit = Boolean(id);
 
@@ -277,7 +279,7 @@ const PromoForm = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6">
+    <AdminLayout currentPage={location.pathname}>
       <div className="mx-auto max-w-3xl">
         {/* Header */}
         <div className="mb-6 flex items-center gap-4">
@@ -579,7 +581,7 @@ const PromoForm = () => {
           </div>
         </form>
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 
