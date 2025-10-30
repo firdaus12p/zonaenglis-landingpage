@@ -56,33 +56,95 @@ router.post("/code", async (req, res) => {
 
     // Check if it's a promo code
     console.log("🔎 Checking promo_codes table...");
-    const [promoRows] = await db.query(
-      `SELECT * FROM promo_codes 
-       WHERE code = ? 
-       AND is_active = 1
-       AND NOW() BETWEEN valid_from AND valid_until`,
+
+    // First, check if code exists at all
+    const [allPromoRows] = await db.query(
+      `SELECT * FROM promo_codes WHERE code = ?`,
       [code]
     );
 
-    console.log(`✅ Promo query result: ${promoRows.length} rows`);
-
-    if (promoRows.length === 0) {
-      console.log("❌ No valid code found");
+    if (allPromoRows.length === 0) {
+      // Code doesn't exist
+      console.log("❌ Code not found in database");
       return res.json({
         valid: false,
         message: "Kode tidak valid. Periksa kembali kode yang Anda masukkan.",
+        reason: "not_found",
       });
     }
 
-    const promo = promoRows[0];
-    console.log("🎉 Promo code found:", promo.name);
+    const promo = allPromoRows[0];
 
-    // Check usage limit
+    // Check if inactive
+    if (promo.is_active === 0) {
+      console.log("❌ Promo code is inactive");
+      return res.json({
+        valid: false,
+        message: `Kode promo "${promo.code}" sudah tidak aktif.`,
+        reason: "inactive",
+        promo: {
+          code: promo.code,
+          name: promo.name,
+        },
+      });
+    }
+
+    // Check if expired or not yet valid
+    const now = new Date();
+    const validFrom = new Date(promo.valid_from);
+    const validUntil = new Date(promo.valid_until);
+
+    if (now < validFrom) {
+      console.log("❌ Promo code not yet valid");
+      return res.json({
+        valid: false,
+        message: `Kode promo "${
+          promo.code
+        }" belum dapat digunakan. Valid mulai ${validFrom.toLocaleDateString(
+          "id-ID"
+        )}.`,
+        reason: "not_yet_valid",
+        promo: {
+          code: promo.code,
+          name: promo.name,
+          valid_from: promo.valid_from,
+        },
+      });
+    }
+
+    if (now > validUntil) {
+      console.log("❌ Promo code expired");
+      return res.json({
+        valid: false,
+        message: `Kode promo "${
+          promo.code
+        }" sudah kadaluarsa. Periode berlaku sampai ${validUntil.toLocaleDateString(
+          "id-ID"
+        )}.`,
+        reason: "expired",
+        promo: {
+          code: promo.code,
+          name: promo.name,
+          valid_until: promo.valid_until,
+        },
+      });
+    }
+
+    console.log("🎉 Promo code found and valid:", promo.name);
+
+    // Check usage limit (quota)
     if (promo.usage_limit !== null && promo.used_count >= promo.usage_limit) {
       console.log("❌ Usage limit reached");
       return res.json({
         valid: false,
-        message: "Kode promo sudah mencapai batas penggunaan.",
+        message: `Kode promo "${promo.code}" sudah mencapai batas penggunaan (${promo.used_count}/${promo.usage_limit}).`,
+        reason: "quota_full",
+        promo: {
+          code: promo.code,
+          name: promo.name,
+          used_count: promo.used_count,
+          usage_limit: promo.usage_limit,
+        },
       });
     }
 

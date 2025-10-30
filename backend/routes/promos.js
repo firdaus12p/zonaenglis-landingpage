@@ -393,4 +393,496 @@ router.post("/use", async (req, res) => {
   }
 });
 
+/**
+ * POST /api/promos/track
+ * Track promo code usage with user details (similar to affiliate tracking)
+ *
+ * Request body:
+ * {
+ *   promo_code: string (required),
+ *   user_name: string (required),
+ *   user_phone: string (required),
+ *   user_email?: string,
+ *   program_name?: string,
+ *   original_amount?: number,
+ *   discount_amount?: number,
+ *   final_amount?: number
+ * }
+ */
+router.post("/track", async (req, res) => {
+  try {
+    const timestamp = new Date().toISOString();
+    console.log(`\n🔍 [${timestamp}] Promo tracking request received:`);
+    console.log("📦 Request body:", req.body);
+    console.log("🌐 Client IP:", req.ip || req.connection.remoteAddress);
+
+    const {
+      promo_code,
+      user_name,
+      user_phone,
+      user_email,
+      program_name,
+      original_amount,
+      discount_amount,
+      final_amount,
+    } = req.body;
+
+    // Validate required fields
+    if (!promo_code || !user_name || !user_phone) {
+      return res.status(400).json({
+        success: false,
+        error: "Missing required fields: promo_code, user_name, user_phone",
+      });
+    }
+
+    // Get promo code info
+    const [promos] = await db.query(
+      "SELECT id, code, name, discount_value, is_active FROM promo_codes WHERE code = ?",
+      [promo_code]
+    );
+
+    if (promos.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: `Promo code '${promo_code}' not found`,
+      });
+    }
+
+    const promo = promos[0];
+
+    if (!promo.is_active) {
+      return res.status(400).json({
+        success: false,
+        error: `Promo code '${promo_code}' is not active`,
+      });
+    }
+
+    // ⚠️ CRITICAL: Check duplicate BEFORE doing anything else
+    // This prevents race conditions when multiple requests come in simultaneously
+    const today = new Date().toISOString().split("T")[0];
+    const [existingUsage] = await db.query(
+      "SELECT id FROM promo_usage WHERE promo_code_id = ? AND user_phone = ? AND DATE(used_at) = ? AND deleted_at IS NULL",
+      [promo.id, user_phone, today]
+    );
+
+    if (existingUsage.length > 0) {
+      console.log(
+        `⚠️ [${new Date().toISOString()}] DUPLICATE TRACKING PREVENTED: ${promo_code} - ${user_phone}`
+      );
+      console.log(`   Existing usage ID: ${existingUsage[0].id}`);
+      return res.json({
+        success: true,
+        already_tracked: true,
+        message:
+          "You already used this promo code today. Discount still applies!",
+      });
+    }
+
+    console.log(
+      `✅ [${new Date().toISOString()}] No duplicate found, proceeding with tracking...`
+    );
+
+    // Use transaction to ensure atomicity (insert + increment happen together)
+    const connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // Insert usage record
+      const [result] = await connection.query(
+        `INSERT INTO promo_usage 
+         (promo_code_id, user_name, user_phone, user_email, program_name, 
+          original_amount, discount_amount, final_amount, follow_up_status) 
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending')`,
+        [
+          promo.id,
+          user_name,
+          user_phone,
+          user_email || null,
+          program_name || null,
+          original_amount || 0,
+          discount_amount || 0,
+          final_amount || 0,
+        ]
+      );
+
+      // Increment used_count
+      console.log(
+        `📈 [${new Date().toISOString()}] BEFORE INCREMENT - Getting current used_count...`
+      );
+
+      // Get current count first
+      const [beforeCount] = await connection.query(
+        "SELECT used_count FROM promo_codes WHERE id = ?",
+        [promo.id]
+      );
+      console.log(`   Current used_count: ${beforeCount[0].used_count}`);
+
+      await connection.query(
+        "UPDATE promo_codes SET used_count = used_count + 1 WHERE id = ?",
+        [promo.id]
+      );
+
+      // Get count after increment
+      const [afterCount] = await connection.query(
+        "SELECT used_count FROM promo_codes WHERE id = ?",
+        [promo.id]
+      );
+      console.log(
+        `📈 [${new Date().toISOString()}] AFTER INCREMENT - New used_count: ${
+          afterCount[0].used_count
+        }`
+      );
+      console.log(
+        `   Increment amount: +${
+          afterCount[0].used_count - beforeCount[0].used_count
+        }`
+      );
+
+      // Commit transaction
+      await connection.commit();
+      connection.release();
+
+      console.log(
+        `✅ [${new Date().toISOString()}] Promo usage tracked successfully: ${promo_code} - ${user_name} (${user_phone})`
+      );
+      console.log(`   Usage ID: ${result.insertId}`);
+      console.log(`   Promo Name: ${promo.name}`);
+
+      res.json({
+        success: true,
+        message: "Promo code usage tracked successfully",
+        usage_id: result.insertId,
+        promo_name: promo.name,
+      });
+    } catch (transactionError) {
+      // Rollback on error
+      await connection.rollback();
+      connection.release();
+      throw transactionError;
+    }
+  } catch (error) {
+    console.error("❌ Error tracking promo usage:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to track promo usage",
+    });
+  }
+});
+
+/**
+ * GET /api/promos/stats/:promo_id
+ * Get usage statistics for a specific promo code
+ */
+router.get("/stats/:promo_id", async (req, res) => {
+  try {
+    const { promo_id } = req.params;
+
+    // Get total uses (excluding deleted)
+    const [totalResult] = await db.query(
+      "SELECT COUNT(*) as total FROM promo_usage WHERE promo_code_id = ? AND deleted_at IS NULL",
+      [promo_id]
+    );
+
+    // Get today's uses
+    const today = new Date().toISOString().split("T")[0];
+    const [todayResult] = await db.query(
+      "SELECT COUNT(*) as today FROM promo_usage WHERE promo_code_id = ? AND DATE(used_at) = ? AND deleted_at IS NULL",
+      [promo_id, today]
+    );
+
+    // Get pending follow-ups
+    const [pendingResult] = await db.query(
+      "SELECT COUNT(*) as pending FROM promo_usage WHERE promo_code_id = ? AND follow_up_status = 'pending' AND deleted_at IS NULL",
+      [promo_id]
+    );
+
+    // Get contacted/follow-ups
+    const [followupsResult] = await db.query(
+      "SELECT COUNT(*) as followups FROM promo_usage WHERE promo_code_id = ? AND follow_up_status = 'contacted' AND deleted_at IS NULL",
+      [promo_id]
+    );
+
+    // Get conversions
+    const [conversionsResult] = await db.query(
+      "SELECT COUNT(*) as conversions FROM promo_usage WHERE promo_code_id = ? AND follow_up_status = 'converted' AND deleted_at IS NULL",
+      [promo_id]
+    );
+
+    // Get lost
+    const [lostResult] = await db.query(
+      "SELECT COUNT(*) as lost FROM promo_usage WHERE promo_code_id = ? AND follow_up_status = 'lost' AND deleted_at IS NULL",
+      [promo_id]
+    );
+
+    const stats = {
+      total_uses: totalResult[0].total,
+      today_uses: todayResult[0].today,
+      pending_followups: pendingResult[0].pending,
+      followups: followupsResult[0].followups,
+      conversions: conversionsResult[0].conversions,
+      lost: lostResult[0].lost,
+    };
+
+    res.json({ success: true, stats });
+  } catch (error) {
+    console.error("Error fetching promo stats:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to fetch promo stats" });
+  }
+});
+
+/**
+ * GET /api/promos/leads/:promo_id
+ * Get active leads (pending/contacted/converted) for a promo code
+ */
+router.get("/leads/:promo_id", async (req, res) => {
+  try {
+    const { promo_id } = req.params;
+
+    const [leads] = await db.query(
+      `SELECT 
+        pu.id,
+        pu.user_name,
+        pu.user_phone,
+        pu.user_email,
+        pu.program_name,
+        pu.original_amount,
+        pu.discount_amount,
+        pu.final_amount,
+        pu.follow_up_status,
+        pu.follow_up_notes,
+        pu.registered,
+        pu.used_at as first_used_at,
+        DATEDIFF(NOW(), pu.used_at) as days_ago,
+        pc.code as promo_code,
+        pc.name as promo_name
+       FROM promo_usage pu
+       JOIN promo_codes pc ON pu.promo_code_id = pc.id
+       WHERE pu.promo_code_id = ? 
+       AND pu.deleted_at IS NULL
+       AND pu.follow_up_status IN ('pending', 'contacted', 'converted')
+       ORDER BY pu.used_at DESC`,
+      [promo_id]
+    );
+
+    res.json({ success: true, leads });
+  } catch (error) {
+    console.error("Error fetching promo leads:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to fetch promo leads" });
+  }
+});
+
+/**
+ * GET /api/promos/lost-leads/:promo_id
+ * Get lost leads for a promo code
+ */
+router.get("/lost-leads/:promo_id", async (req, res) => {
+  try {
+    const { promo_id } = req.params;
+
+    const [leads] = await db.query(
+      `SELECT 
+        pu.id,
+        pu.user_name,
+        pu.user_phone,
+        pu.user_email,
+        pu.program_name,
+        pu.original_amount,
+        pu.discount_amount,
+        pu.final_amount,
+        pu.follow_up_status,
+        pu.follow_up_notes,
+        pu.registered,
+        pu.used_at as first_used_at,
+        DATEDIFF(NOW(), pu.used_at) as days_ago,
+        pc.code as promo_code,
+        pc.name as promo_name
+       FROM promo_usage pu
+       JOIN promo_codes pc ON pu.promo_code_id = pc.id
+       WHERE pu.promo_code_id = ? 
+       AND pu.deleted_at IS NULL
+       AND pu.follow_up_status = 'lost'
+       ORDER BY pu.used_at DESC`,
+      [promo_id]
+    );
+
+    res.json({ success: true, leads });
+  } catch (error) {
+    console.error("Error fetching lost leads:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to fetch lost leads" });
+  }
+});
+
+/**
+ * GET /api/promos/deleted-leads/:promo_id
+ * Get deleted leads for a promo code
+ */
+router.get("/deleted-leads/:promo_id", async (req, res) => {
+  try {
+    const { promo_id } = req.params;
+
+    const [leads] = await db.query(
+      `SELECT 
+        pu.id,
+        pu.user_name,
+        pu.user_phone,
+        pu.user_email,
+        pu.program_name,
+        pu.original_amount,
+        pu.discount_amount,
+        pu.final_amount,
+        pu.follow_up_status,
+        pu.used_at as first_used_at,
+        pu.deleted_at,
+        pu.deleted_by,
+        DATEDIFF(NOW(), pu.deleted_at) as days_deleted,
+        DATEDIFF(NOW(), pu.used_at) as days_ago,
+        pc.code as promo_code,
+        pc.name as promo_name
+       FROM promo_usage pu
+       JOIN promo_codes pc ON pu.promo_code_id = pc.id
+       WHERE pu.promo_code_id = ? 
+       AND pu.deleted_at IS NOT NULL
+       ORDER BY pu.deleted_at DESC`,
+      [promo_id]
+    );
+
+    res.json({ success: true, leads });
+  } catch (error) {
+    console.error("Error fetching deleted leads:", error);
+    res
+      .status(500)
+      .json({ success: false, error: "Failed to fetch deleted leads" });
+  }
+});
+
+/**
+ * PATCH /api/promos/update-status/:usage_id
+ * Update follow-up status for a promo usage
+ */
+router.patch("/update-status/:usage_id", async (req, res) => {
+  try {
+    const { usage_id } = req.params;
+    const { follow_up_status, registered } = req.body;
+
+    const validStatuses = ["pending", "contacted", "converted", "lost"];
+    if (!validStatuses.includes(follow_up_status)) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Invalid status. Must be: pending, contacted, converted, or lost",
+      });
+    }
+
+    await db.query(
+      `UPDATE promo_usage 
+       SET follow_up_status = ?, registered = ?, registered_at = IF(? = 1, NOW(), NULL)
+       WHERE id = ?`,
+      [follow_up_status, registered ? 1 : 0, registered ? 1 : 0, usage_id]
+    );
+
+    res.json({ success: true, message: "Status updated successfully" });
+  } catch (error) {
+    console.error("Error updating status:", error);
+    res.status(500).json({ success: false, error: "Failed to update status" });
+  }
+});
+
+/**
+ * DELETE /api/promos/lead/:usage_id
+ * Soft delete a promo lead
+ */
+router.delete("/lead/:usage_id", async (req, res) => {
+  try {
+    const { usage_id } = req.params;
+    const { deleted_by } = req.body;
+
+    await db.query(
+      "UPDATE promo_usage SET deleted_at = NOW(), deleted_by = ? WHERE id = ?",
+      [deleted_by || "admin", usage_id]
+    );
+
+    res.json({ success: true, message: "Lead soft deleted successfully" });
+  } catch (error) {
+    console.error("Error soft deleting lead:", error);
+    res.status(500).json({ success: false, error: "Failed to delete lead" });
+  }
+});
+
+/**
+ * PUT /api/promos/restore/:usage_id
+ * Restore a soft-deleted promo lead
+ */
+router.put("/restore/:usage_id", async (req, res) => {
+  try {
+    const { usage_id } = req.params;
+
+    await db.query(
+      "UPDATE promo_usage SET deleted_at = NULL, deleted_by = NULL WHERE id = ?",
+      [usage_id]
+    );
+
+    res.json({ success: true, message: "Lead restored successfully" });
+  } catch (error) {
+    console.error("Error restoring lead:", error);
+    res.status(500).json({ success: false, error: "Failed to restore lead" });
+  }
+});
+
+/**
+ * DELETE /api/promos/permanent-delete/:usage_id
+ * Permanently delete a promo lead (only if already soft-deleted)
+ */
+router.delete("/permanent-delete/:usage_id", async (req, res) => {
+  try {
+    const { usage_id } = req.params;
+
+    // Check if record exists and is soft-deleted
+    const [existing] = await db.query(
+      "SELECT id, user_name, deleted_at FROM promo_usage WHERE id = ?",
+      [usage_id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({ success: false, error: "Lead not found" });
+    }
+
+    if (!existing[0].deleted_at) {
+      return res.status(400).json({
+        success: false,
+        error:
+          "Cannot permanently delete active records. Please soft-delete first.",
+      });
+    }
+
+    // Permanent deletion
+    await db.query(
+      "DELETE FROM promo_usage WHERE id = ? AND deleted_at IS NOT NULL",
+      [usage_id]
+    );
+
+    console.log(
+      `🗑️ PERMANENT DELETE: Promo Lead ID ${usage_id} (${existing[0].user_name}) permanently removed`
+    );
+
+    res.json({
+      success: true,
+      message: "Lead permanently deleted from database",
+      deleted_id: usage_id,
+      deleted_user: existing[0].user_name,
+    });
+  } catch (error) {
+    console.error("Error permanently deleting lead:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to permanently delete lead",
+    });
+  }
+});
+
 export default router;

@@ -568,6 +568,63 @@ Segera follow-up user ini! 🚀`;
     );
   };
 
+  const handlePermanentDelete = async (leadId: number, leadName: string) => {
+    // First confirmation
+    showConfirm(
+      "⚠️ PERMANENT DELETE WARNING",
+      `Anda akan MENGHAPUS PERMANEN lead "${leadName}" dari database.\n\nData yang sudah dihapus permanen TIDAK BISA dikembalikan!\n\nApakah Anda yakin ingin melanjutkan?`,
+      () => {
+        // Second confirmation (double confirmation)
+        showConfirm(
+          "⚠️ KONFIRMASI TERAKHIR",
+          `Ini adalah konfirmasi terakhir!\n\nLead "${leadName}" akan dihapus PERMANEN dari database dan TIDAK BISA dikembalikan.\n\nKlik "Ya, Hapus Permanen" untuk melanjutkan.`,
+          async () => {
+            try {
+              const response = await fetch(
+                `http://localhost:3001/api/affiliate/permanent-delete/${leadId}`,
+                {
+                  method: "DELETE",
+                  headers: { "Content-Type": "application/json" },
+                }
+              );
+
+              const data = await response.json();
+
+              if (data.success && selectedAmbassador) {
+                // Refresh all lead lists and stats
+                fetchAffiliateLeads(selectedAmbassador);
+                fetchLostLeads(selectedAmbassador);
+                fetchDeletedLeads(selectedAmbassador);
+                fetchAffiliateStats(selectedAmbassador);
+                console.log("✅ Lead permanently deleted successfully");
+
+                showAlert(
+                  "Berhasil",
+                  `Lead "${leadName}" berhasil dihapus PERMANEN dari database.`,
+                  "success"
+                );
+              } else {
+                showAlert(
+                  "Gagal Hapus Permanen",
+                  data.error ||
+                    "Terjadi kesalahan saat menghapus permanen lead.",
+                  "error"
+                );
+              }
+            } catch (error) {
+              console.error("Error permanently deleting lead:", error);
+              showAlert(
+                "Gagal Hapus Permanen",
+                "Tidak dapat menghapus permanen lead. Silakan coba lagi.",
+                "error"
+              );
+            }
+          }
+        );
+      }
+    );
+  };
+
   const filteredAmbassadors = ambassadors.filter((ambassador) => {
     const matchesSearch =
       ambassador.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -1371,13 +1428,30 @@ Segera follow-up user ini! 🚀`;
                                     {lead.deleted_by || "admin"}
                                   </td>
                                   <td className="px-4 py-3">
-                                    <button
-                                      onClick={() => handleRestoreLead(lead.id)}
-                                      className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1"
-                                      title="Restore this lead"
-                                    >
-                                      <span>Restore</span>
-                                    </button>
+                                    <div className="flex items-center space-x-2">
+                                      <button
+                                        onClick={() =>
+                                          handleRestoreLead(lead.id)
+                                        }
+                                        className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-1"
+                                        title="Restore this lead"
+                                      >
+                                        <span>Restore</span>
+                                      </button>
+                                      <button
+                                        onClick={() =>
+                                          handlePermanentDelete(
+                                            lead.id,
+                                            lead.user_name
+                                          )
+                                        }
+                                        className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-1"
+                                        title="PERMANENTLY delete this lead (cannot be undone)"
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                        <span>Detele</span>
+                                      </button>
+                                    </div>
                                   </td>
                                 </tr>
                               ))}

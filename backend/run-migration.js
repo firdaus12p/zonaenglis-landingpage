@@ -14,11 +14,11 @@ const __dirname = path.dirname(__filename);
 const MIGRATION_FILE = path.join(
   __dirname,
   "migrations",
-  "add_last_viewed_to_ambassadors.sql"
+  "upgrade-promo-usage-table.sql"
 );
 
 console.log("\n================================================");
-console.log("  DATABASE MIGRATION - Badge Feature");
+console.log("  DATABASE MIGRATION - Promo Usage Tracking");
 console.log("================================================\n");
 
 async function runMigration() {
@@ -67,33 +67,27 @@ async function runMigration() {
     // Verify migration
     console.log("🔍 Verifying migration...");
     const [columns] = await db.query(
-      "SHOW COLUMNS FROM ambassadors LIKE 'last_viewed_at'"
+      "SHOW COLUMNS FROM promo_usage WHERE Field IN ('program_name', 'follow_up_status', 'deleted_at')"
     );
 
-    if (columns.length > 0) {
-      console.log('✅ Column "last_viewed_at" verified!');
-      console.log("📊 Column details:", columns[0]);
-
-      // Check index
-      const [indexes] = await db.query(
-        "SHOW INDEX FROM ambassadors WHERE Column_name = 'last_viewed_at'"
-      );
-
-      if (indexes.length > 0) {
-        console.log('✅ Index "idx_last_viewed" verified!');
-      } else {
-        console.log("⚠️  Index not found (might need manual creation)");
-      }
+    if (columns.length >= 3) {
+      console.log("✅ New columns verified!");
+      console.log("📊 Column details:");
+      columns.forEach((col) => console.log(`  - ${col.Field} (${col.Type})`));
 
       console.log("\n================================================");
       console.log("  ✅ MIGRATION SUCCESSFUL!");
       console.log("================================================\n");
       console.log("Next steps:");
-      console.log("1. Restart backend server");
-      console.log("2. Test badge feature in admin dashboard");
-      console.log("3. Badge should appear for new leads\n");
+      console.log("1. Implement promo tracking endpoints");
+      console.log("2. Update PromoHub.tsx to send user data");
+      console.log("3. Add tracking dashboard to PromoCodes.tsx\n");
     } else {
-      console.log("❌ Verification failed - column not found");
+      console.log("❌ Verification failed - some columns not found");
+      console.log(
+        "Found columns:",
+        columns.map((c) => c.Field)
+      );
     }
   } catch (error) {
     console.error("\n❌ Migration failed!");

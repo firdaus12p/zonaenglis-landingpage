@@ -606,4 +606,68 @@ router.put("/restore/:usage_id", async (req, res) => {
   }
 });
 
+
+/**
+ * DELETE /api/affiliate/permanent-delete/:usage_id
+ * PERMANENTLY delete a lead from database (only works on soft-deleted records)
+ * ⚠️ WARNING: This action CANNOT be undone! Record will be permanently removed.
+ * 
+ * Security: Only allows deletion of records that are already soft-deleted (deleted_at IS NOT NULL)
+ */
+router.delete("/permanent-delete/:usage_id", async (req, res) => {
+  try {
+    const { usage_id } = req.params;
+
+    // First, check if record exists and is soft-deleted
+    const [existing] = await db.query(
+      "SELECT id, user_name, deleted_at FROM affiliate_usage WHERE id = ?",
+      [usage_id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Record not found",
+      });
+    }
+
+    // Security check: Only allow permanent delete if already soft-deleted
+    if (!existing[0].deleted_at) {
+      return res.status(400).json({
+        success: false,
+        error: "Cannot permanently delete active records. Please soft-delete first.",
+      });
+    }
+
+    // Perform PERMANENT deletion
+    const [result] = await db.query(
+      "DELETE FROM affiliate_usage WHERE id = ? AND deleted_at IS NOT NULL",
+      [usage_id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(500).json({
+        success: false,
+        error: "Failed to permanently delete record",
+      });
+    }
+
+    console.log(`🗑️ PERMANENT DELETE: Lead ID ${usage_id} (${existing[0].user_name}) permanently removed from database`);
+
+    res.json({
+      success: true,
+      message: "Record permanently deleted from database",
+      deleted_id: parseInt(usage_id),
+      deleted_user: existing[0].user_name,
+    });
+  } catch (error) {
+    console.error("❌ Error permanently deleting lead:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to permanently delete lead",
+      details: error.message,
+    });
+  }
+});
+
 export default router;

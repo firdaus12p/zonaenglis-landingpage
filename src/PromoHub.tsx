@@ -311,11 +311,15 @@ const SuccessModal = ({ isOpen }: { isOpen: boolean }) => {
 
           {/* Success Message */}
           <h3 className="mb-2 text-xl font-bold text-slate-900">
-            Sukses Mengirim Data!
+            Data Berhasil Disimpan!
           </h3>
-          <p className="text-sm text-slate-600">
-            Silakan apply code-nya sekarang
+          <p className="text-sm text-slate-600 mb-3">
+            Mohon tunggu sebentar...
           </p>
+          <div className="flex items-center gap-2 text-xs text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-4 py-2">
+            <div className="animate-spin h-4 w-4 border-2 border-blue-700 border-t-transparent rounded-full"></div>
+            <span>Sedang memproses kode promo...</span>
+          </div>
         </div>
       </div>
     </div>
@@ -362,6 +366,140 @@ const ErrorModal = ({
   );
 };
 
+// Promo Status Modal Component (untuk inactive, expired, quota full)
+const PromoStatusModal = ({
+  isOpen,
+  title,
+  message,
+  reason,
+  onClose,
+}: {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  reason: "inactive" | "expired" | "quota_full" | "not_yet_valid";
+  onClose: () => void;
+}) => {
+  if (!isOpen) return null;
+
+  const getIconAndColor = () => {
+    switch (reason) {
+      case "inactive":
+        return {
+          icon: <XCircle className="h-10 w-10 text-slate-600" />,
+          bg: "bg-slate-100",
+          titleColor: "text-slate-900",
+          buttonBg: "bg-slate-600 hover:bg-slate-700",
+        };
+      case "expired":
+        return {
+          icon: <XCircle className="h-10 w-10 text-red-600" />,
+          bg: "bg-red-100",
+          titleColor: "text-slate-900",
+          buttonBg: "bg-red-600 hover:bg-red-700",
+        };
+      case "quota_full":
+        return {
+          icon: <XCircle className="h-10 w-10 text-amber-600" />,
+          bg: "bg-amber-100",
+          titleColor: "text-slate-900",
+          buttonBg: "bg-amber-600 hover:bg-amber-700",
+        };
+      case "not_yet_valid":
+        return {
+          icon: <XCircle className="h-10 w-10 text-blue-600" />,
+          bg: "bg-blue-100",
+          titleColor: "text-slate-900",
+          buttonBg: "bg-blue-600 hover:bg-blue-700",
+        };
+      default:
+        return {
+          icon: <XCircle className="h-10 w-10 text-slate-600" />,
+          bg: "bg-slate-100",
+          titleColor: "text-slate-900",
+          buttonBg: "bg-slate-600 hover:bg-slate-700",
+        };
+    }
+  };
+
+  const config = getIconAndColor();
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-xl animate-fade-in">
+        <div className="flex flex-col items-center text-center">
+          {/* Status Icon */}
+          <div
+            className={`mb-4 flex h-16 w-16 items-center justify-center rounded-full ${config.bg}`}
+          >
+            {config.icon}
+          </div>
+
+          {/* Title */}
+          <h3 className={`mb-2 text-xl font-bold ${config.titleColor}`}>
+            {title}
+          </h3>
+
+          {/* Message */}
+          <p className="text-sm text-slate-600 mb-6">{message}</p>
+
+          {/* Helpful Tips */}
+          <div className="mb-6 w-full rounded-lg bg-slate-50 border border-slate-200 p-4 text-left">
+            <p className="text-xs font-semibold text-slate-700 mb-2">
+              💡 Saran:
+            </p>
+            <ul className="text-xs text-slate-600 space-y-1">
+              {reason === "expired" && (
+                <>
+                  <li>• Cek promo terbaru yang masih aktif</li>
+                  <li>• Hubungi admin untuk info promo alternatif</li>
+                </>
+              )}
+              {reason === "inactive" && (
+                <>
+                  <li>• Kode ini sudah dinonaktifkan</li>
+                  <li>• Gunakan kode promo lain yang masih aktif</li>
+                </>
+              )}
+              {reason === "quota_full" && (
+                <>
+                  <li>• Kuota kode promo sudah habis</li>
+                  <li>• Gunakan kode ambassador/affiliate</li>
+                  <li>• Atau cek promo lain yang tersedia</li>
+                </>
+              )}
+              {reason === "not_yet_valid" && (
+                <>
+                  <li>• Kode ini belum dapat digunakan</li>
+                  <li>• Tunggu sampai tanggal berlaku</li>
+                </>
+              )}
+            </ul>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex w-full gap-2">
+            <button
+              onClick={onClose}
+              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors ${config.buttonBg}`}
+            >
+              Mengerti
+            </button>
+            <a
+              href="https://wa.me/6282188080688?text=Halo%2C%20saya%20butuh%20bantuan%20dengan%20kode%20promo"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex-1 rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 transition-colors"
+            >
+              Chat Admin
+            </a>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const PromoCard = ({
   promo,
   appliedCode,
@@ -379,7 +517,18 @@ const PromoCard = ({
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showPromoStatusModal, setShowPromoStatusModal] = useState(false);
+  const [promoStatusData, setPromoStatusData] = useState<{
+    title: string;
+    message: string;
+    reason: "inactive" | "expired" | "quota_full" | "not_yet_valid";
+  }>({
+    title: "",
+    message: "",
+    reason: "inactive",
+  });
   const isProcessingRef = useRef(false); // Track if form is being processed
+  const isTrackingRef = useRef(false); // Track if tracking is in progress to prevent duplicates
   const [userData, setUserData] = useState<{
     name: string;
     phone: string;
@@ -394,22 +543,40 @@ const PromoCard = ({
   const discount = appliedCode?.discount || 0;
   const finalPrice = promo.price ? Math.max(0, promo.price - discount) : null;
 
-  const handleApply = async () => {
+  const handleApply = async (providedUserData?: {
+    name: string;
+    phone: string;
+    email?: string;
+  }) => {
+    const callId = `${promo.id}-${Date.now()}`;
+    console.log(`🎯 [${callId}] handleApply called for promo: ${promo.title}`);
+
     if (!codeInput.trim()) {
       onValidationError("Masukkan kode terlebih dahulu");
       return;
     }
 
+    // Use provided user data (from auto-apply) or state
+    const currentUserData = providedUserData || userData;
+
     // Check if user data exists, if not show modal
     // But don't show if we're in the middle of processing (prevents re-opening during re-renders)
-    if (!userData) {
+    if (!currentUserData) {
       if (!isProcessingRef.current) {
+        console.log(`📝 [${callId}] No user data, opening modal...`);
         setIsModalOpen(true);
+      } else {
+        console.log(
+          `⏸️ [${callId}] Processing in progress, skipping modal open`
+        );
       }
       return;
     }
 
-    console.log("🔄 Starting validation for code:", codeInput.trim());
+    console.log(
+      `🔄 [${callId}] Starting validation for code:`,
+      codeInput.trim()
+    );
     setIsValidating(true);
     try {
       console.log("📡 Sending request to API...");
@@ -432,7 +599,35 @@ const PromoCard = ({
 
       if (!data.valid) {
         console.log("❌ Code invalid:", data.message);
-        onValidationError(data.message || "Kode tidak valid");
+
+        // Check if it's a promo code status issue (inactive, expired, quota full)
+        if (
+          data.reason &&
+          ["inactive", "expired", "quota_full", "not_yet_valid"].includes(
+            data.reason
+          )
+        ) {
+          const titles = {
+            inactive: "Kode Promo Tidak Aktif",
+            expired: "Kode Promo Kadaluarsa",
+            quota_full: "Kuota Penuh",
+            not_yet_valid: "Kode Belum Berlaku",
+          };
+
+          setPromoStatusData({
+            title: titles[data.reason as keyof typeof titles],
+            message: data.message,
+            reason: data.reason as
+              | "inactive"
+              | "expired"
+              | "quota_full"
+              | "not_yet_valid",
+          });
+          setShowPromoStatusModal(true);
+        } else {
+          // Generic error - show via onValidationError
+          onValidationError(data.message || "Kode tidak valid");
+        }
         return;
       }
 
@@ -472,13 +667,21 @@ const PromoCard = ({
       if (data.type === "ambassador" && data.ambassador) {
         console.log("📊 Tracking affiliate usage...");
         console.log("📊 Ambassador data:", data.ambassador);
-        console.log("📊 User data:", userData);
+        console.log("📊 User data:", currentUserData);
+
+        // Prevent double tracking
+        if (isTrackingRef.current) {
+          console.log("⚠️ Tracking already in progress, skipping...");
+          return;
+        }
+
+        isTrackingRef.current = true;
 
         try {
           const trackPayload = {
-            user_name: userData.name,
-            user_phone: userData.phone,
-            user_email: userData.email || "",
+            user_name: currentUserData.name,
+            user_phone: currentUserData.phone,
+            user_email: currentUserData.email || "",
             affiliate_code: codeInput.trim(),
             program_id: promo.id,
             program_name: promo.title,
@@ -522,6 +725,8 @@ const PromoCard = ({
             );
             setShowErrorModal(true);
 
+            // Reset tracking flag before returning
+            isTrackingRef.current = false;
             // Don't apply the code
             return;
           } else {
@@ -546,9 +751,101 @@ const PromoCard = ({
             stack: trackError instanceof Error ? trackError.stack : undefined,
           });
           // Don't fail the whole process if tracking fails
+        } finally {
+          // Reset tracking flag after a short delay to allow for genuine re-attempts
+          setTimeout(() => {
+            isTrackingRef.current = false;
+          }, 1000);
+        }
+      } else if (data.type === "promo" && data.promo) {
+        // Track promo code usage
+        const trackingId = `PROMO-${promo.id}-${Date.now()}`;
+        console.log(`📊 [${trackingId}] Tracking promo code usage...`);
+        console.log(`📊 [${trackingId}] Promo data:`, data.promo);
+        console.log(`📊 [${trackingId}] User data:`, userData);
+
+        // Prevent double tracking
+        if (isTrackingRef.current) {
+          console.log(
+            `⚠️ [${trackingId}] Tracking already in progress, skipping...`
+          );
+          return;
+        }
+
+        console.log(
+          `✅ [${trackingId}] No tracking in progress, proceeding...`
+        );
+        isTrackingRef.current = true;
+
+        try {
+          const trackPayload = {
+            promo_code: codeInput.trim(),
+            user_name: currentUserData.name,
+            user_phone: currentUserData.phone,
+            user_email: currentUserData.email || "",
+            program_name: promo.title,
+            original_amount: promo.price,
+            discount_amount: data.discount,
+            final_amount: promo.price - data.discount,
+          };
+          console.log(
+            `📊 [${trackingId}] Sending promo track payload:`,
+            trackPayload
+          );
+          console.log(
+            `📊 [${trackingId}] API endpoint: http://localhost:3001/api/promos/track`
+          );
+
+          const trackResponse = await fetch(
+            "http://localhost:3001/api/promos/track",
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(trackPayload),
+            }
+          );
+
+          console.log(
+            `📊 [${trackingId}] Promo track response status:`,
+            trackResponse.status
+          );
+          const trackData = await trackResponse.json();
+          console.log(
+            `📊 [${trackingId}] Promo track response data:`,
+            trackData
+          );
+
+          if (trackData.success) {
+            console.log(`✅ [${trackingId}] Promo usage tracked successfully!`);
+            console.log(`✅ [${trackingId}] Usage ID:`, trackData.usage_id);
+          } else if (trackData.already_tracked) {
+            console.log(
+              `⚠️ [${trackingId}] Promo already tracked today for this phone`
+            );
+          } else {
+            console.error(
+              `❌ [${trackingId}] Promo tracking failed:`,
+              trackData.error
+            );
+          }
+        } catch (trackError) {
+          console.error(
+            `❌ [${trackingId}] Error tracking promo usage:`,
+            trackError
+          );
+          // Don't fail the whole process if tracking fails
+        } finally {
+          // Reset tracking flag after a short delay to allow for genuine re-attempts
+          console.log(
+            `🔄 [${trackingId}] Resetting tracking flag in 1 second...`
+          );
+          setTimeout(() => {
+            isTrackingRef.current = false;
+            console.log(`✅ [${trackingId}] Tracking flag reset`);
+          }, 1000);
         }
       } else {
-        console.log("ℹ️ Not an ambassador code, skipping tracking");
+        console.log("ℹ️ Not an ambassador or promo code, skipping tracking");
         console.log("ℹ️ Code type:", data.type);
       }
 
@@ -586,15 +883,22 @@ const PromoCard = ({
       console.log("✅ Showing success modal...");
       setShowSuccessModal(true);
 
-      // Auto close success modal after 3 seconds and trigger validation
+      // Auto close success modal after 2 seconds and trigger validation
       setTimeout(() => {
         console.log("🔄 Closing success modal...");
         setShowSuccessModal(false);
-        console.log("🔄 Starting validation...");
-        handleApply();
-        // Reset processing flag after validation
-        isProcessingRef.current = false;
-      }, 3000);
+
+        // Small delay to ensure state is updated, then retry handleApply
+        // This time user data exists in state, so it will proceed with validation
+        setTimeout(() => {
+          // Reset processing flag so handleApply can run
+          isProcessingRef.current = false;
+
+          console.log("🚀 Auto-applying code now that user data is saved...");
+          // Pass the user data directly to avoid race condition with state update
+          handleApply(data);
+        }, 100);
+      }, 2000); // Reduced from 3s to 2s for better UX
     }, 100); // 100ms delay for smooth transition
   };
 
@@ -705,8 +1009,14 @@ const PromoCard = ({
             className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-100"
           />
           <button
-            onClick={handleApply}
-            disabled={isValidating || !codeInput.trim()}
+            onClick={() => handleApply()}
+            disabled={
+              isValidating ||
+              !codeInput.trim() ||
+              isModalOpen ||
+              showSuccessModal ||
+              isProcessingRef.current
+            }
             className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isValidating ? "Validasi..." : "Apply"}
@@ -793,6 +1103,15 @@ const PromoCard = ({
           setShowErrorModal(false);
           setErrorMessage("");
         }}
+      />
+
+      {/* Promo Status Modal */}
+      <PromoStatusModal
+        isOpen={showPromoStatusModal}
+        title={promoStatusData.title}
+        message={promoStatusData.message}
+        reason={promoStatusData.reason}
+        onClose={() => setShowPromoStatusModal(false)}
       />
     </div>
   );
