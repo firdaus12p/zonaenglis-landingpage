@@ -15,6 +15,7 @@ import programsRoutes from "./routes/programs.js";
 import validateRoutes from "./routes/validate.js";
 import uploadRoutes from "./routes/upload.js";
 import affiliateRoutes from "./routes/affiliate.js";
+import authRoutes from "./routes/auth.js";
 
 // Import database connection for cleanup tasks
 import db from "./db/connection.js";
@@ -94,6 +95,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // API Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/ambassadors", ambassadorsRoutes);
 app.use("/api/programs", programsRoutes);
 app.use("/api/promos", promosRoutes);
@@ -132,6 +134,9 @@ app.listen(PORT, async () => {
   console.log("");
   console.log("   Available Endpoints:");
   console.log("   GET    /api/health");
+  console.log("   POST   /api/auth/login");
+  console.log("   GET    /api/auth/verify");
+  console.log("   POST   /api/auth/logout");
   console.log("   GET    /api/ambassadors");
   console.log("   GET    /api/ambassadors/:id");
   console.log("   GET    /api/ambassadors/code/:affiliateCode");

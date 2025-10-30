@@ -3,6 +3,8 @@ import LearnMoreZE from "./LearnMoreZE";
 import PromoCenter from "./PromoCenter";
 import PromoHub from "./PromoHub";
 import Navbar from "./Navbar";
+import Login from "./pages/Login";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { Gift, Users } from "lucide-react";
 import { Button } from "./components";
 
@@ -42,68 +44,130 @@ function App() {
           <Route path="/" element={<LearnMoreZE />} />
           <Route path="/promo-center" element={<PromoCenter />} />
           <Route path="/promo-hub" element={<PromoHub />} />
+          <Route path="/login" element={<Login />} />
 
-          {/* Admin Routes */}
+          {/* Admin Routes - Protected */}
           <Route
             path="/admin"
-            element={<Dashboard setCurrentPage={(page) => navigate(page)} />}
+            element={
+              <ProtectedRoute requireAdmin>
+                <Dashboard setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/admin/dashboard"
-            element={<Dashboard setCurrentPage={(page) => navigate(page)} />}
+            element={
+              <ProtectedRoute requireAdmin>
+                <Dashboard setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
           />
 
           {/* Ambassadors */}
           <Route
             path="/admin/ambassadors"
-            element={<Ambassadors setCurrentPage={(page) => navigate(page)} />}
+            element={
+              <ProtectedRoute requireAdmin>
+                <Ambassadors setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
           />
           <Route
             path="/admin/ambassadors/new"
             element={
-              <AmbassadorForm
-                setCurrentPage={(page) => navigate(page)}
-                mode="create"
-              />
+              <ProtectedRoute requireAdmin>
+                <AmbassadorForm
+                  setCurrentPage={(page) => navigate(page)}
+                  mode="create"
+                />
+              </ProtectedRoute>
             }
           />
           <Route
             path="/admin/ambassadors/edit/:id"
             element={
-              <AmbassadorForm
-                setCurrentPage={(page) => navigate(page)}
-                mode="edit"
-                ambassadorData={
-                  localStorage.getItem("editingAmbassador")
-                    ? JSON.parse(localStorage.getItem("editingAmbassador")!)
-                    : null
-                }
-              />
+              <ProtectedRoute requireAdmin>
+                <AmbassadorForm
+                  setCurrentPage={(page) => navigate(page)}
+                  mode="edit"
+                  ambassadorData={
+                    localStorage.getItem("editingAmbassador")
+                      ? JSON.parse(localStorage.getItem("editingAmbassador")!)
+                      : null
+                  }
+                />
+              </ProtectedRoute>
             }
           />
 
           {/* Programs */}
-          <Route path="/admin/programs" element={<Programs />} />
-          <Route path="/admin/programs/new" element={<PromoForm />} />
-          <Route path="/admin/programs/edit/:id" element={<PromoForm />} />
+          <Route
+            path="/admin/programs"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Programs />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/programs/new"
+            element={
+              <ProtectedRoute requireAdmin>
+                <PromoForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/programs/edit/:id"
+            element={
+              <ProtectedRoute requireAdmin>
+                <PromoForm />
+              </ProtectedRoute>
+            }
+          />
 
           {/* Other Admin Routes */}
           <Route
             path="/admin/promos"
-            element={<PromoCodes setCurrentPage={(page) => navigate(page)} />}
+            element={
+              <ProtectedRoute requireAdmin>
+                <PromoCodes setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
           />
-          <Route path="/admin/promos/new" element={<PromoCodeForm />} />
-          <Route path="/admin/promos/edit/:id" element={<PromoCodeForm />} />
+          <Route
+            path="/admin/promos/new"
+            element={
+              <ProtectedRoute requireAdmin>
+                <PromoCodeForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/promos/edit/:id"
+            element={
+              <ProtectedRoute requireAdmin>
+                <PromoCodeForm />
+              </ProtectedRoute>
+            }
+          />
 
           <Route
             path="/admin/countdown"
             element={
-              <CountdownBatch setCurrentPage={(page) => navigate(page)} />
+              <ProtectedRoute requireAdmin>
+                <CountdownBatch setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
             }
           />
           <Route
             path="/admin/articles"
-            element={<Articles setCurrentPage={(page) => navigate(page)} />}
+            element={
+              <ProtectedRoute requireAdmin>
+                <Articles setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
           />
         </Routes>
       </div>

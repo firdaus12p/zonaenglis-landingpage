@@ -548,9 +548,6 @@ const PromoCard = ({
     phone: string;
     email?: string;
   }) => {
-    const callId = `${promo.id}-${Date.now()}`;
-    console.log(`🎯 [${callId}] handleApply called for promo: ${promo.title}`);
-
     if (!codeInput.trim()) {
       onValidationError("Masukkan kode terlebih dahulu");
       return;
@@ -560,26 +557,15 @@ const PromoCard = ({
     const currentUserData = providedUserData || userData;
 
     // Check if user data exists, if not show modal
-    // But don't show if we're in the middle of processing (prevents re-opening during re-renders)
     if (!currentUserData) {
       if (!isProcessingRef.current) {
-        console.log(`📝 [${callId}] No user data, opening modal...`);
         setIsModalOpen(true);
-      } else {
-        console.log(
-          `⏸️ [${callId}] Processing in progress, skipping modal open`
-        );
       }
       return;
     }
 
-    console.log(
-      `🔄 [${callId}] Starting validation for code:`,
-      codeInput.trim()
-    );
     setIsValidating(true);
     try {
-      console.log("📡 Sending request to API...");
       const response = await fetch("http://localhost:3001/api/validate/code", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -589,17 +575,9 @@ const PromoCard = ({
         }),
       });
 
-      console.log(
-        "✅ Response received:",
-        response.status,
-        response.statusText
-      );
       const data = await response.json();
-      console.log("📦 Response data:", data);
 
       if (!data.valid) {
-        console.log("❌ Code invalid:", data.message);
-
         // Check if it's a promo code status issue (inactive, expired, quota full)
         if (
           data.reason &&
@@ -631,7 +609,6 @@ const PromoCard = ({
         return;
       }
 
-      console.log("✅ Code valid! Building validation object...");
       // Build validation object based on type
       const validation: AppliedCode = {
         code: codeInput.trim(),
@@ -660,18 +637,12 @@ const PromoCard = ({
             : undefined,
       };
 
-      console.log("🎉 Calling onApplyCode with validation:", validation);
       onApplyCode(codeInput.trim(), validation);
 
       // Track affiliate usage if ambassador code
       if (data.type === "ambassador" && data.ambassador) {
-        console.log("📊 Tracking affiliate usage...");
-        console.log("📊 Ambassador data:", data.ambassador);
-        console.log("📊 User data:", currentUserData);
-
         // Prevent double tracking
         if (isTrackingRef.current) {
-          console.log("⚠️ Tracking already in progress, skipping...");
           return;
         }
 
@@ -687,10 +658,6 @@ const PromoCard = ({
             program_name: promo.title,
             discount_applied: data.discount,
           };
-          console.log("📊 Sending track payload:", trackPayload);
-          console.log(
-            "📊 API endpoint: http://localhost:3001/api/affiliate/track"
-          );
 
           const trackResponse = await fetch(
             "http://localhost:3001/api/affiliate/track",
@@ -701,18 +668,13 @@ const PromoCard = ({
             }
           );
 
-          console.log("📊 Track response status:", trackResponse.status);
           const trackData = await trackResponse.json();
-          console.log("📊 Track response data:", trackData);
 
           if (trackData.success) {
-            console.log("✅ Data berhasil dikirim ke admin dashboard!");
-            console.log("✅ Usage ID:", trackData.usage_id);
-            console.log("✅ Ambassador will be notified via WhatsApp");
+            // Success - data tracked
           } else if (trackResponse.status === 429) {
             // Phone number already used today
-            console.error("❌ Phone already used:", trackData.error);
-            console.error("❌ Existing code:", trackData.existing_code);
+            console.error("Phone already used:", trackData.error);
 
             // Clear user data from state and sessionStorage
             setUserData(null);
@@ -759,22 +721,10 @@ const PromoCard = ({
         }
       } else if (data.type === "promo" && data.promo) {
         // Track promo code usage
-        const trackingId = `PROMO-${promo.id}-${Date.now()}`;
-        console.log(`📊 [${trackingId}] Tracking promo code usage...`);
-        console.log(`📊 [${trackingId}] Promo data:`, data.promo);
-        console.log(`📊 [${trackingId}] User data:`, userData);
-
-        // Prevent double tracking
         if (isTrackingRef.current) {
-          console.log(
-            `⚠️ [${trackingId}] Tracking already in progress, skipping...`
-          );
           return;
         }
 
-        console.log(
-          `✅ [${trackingId}] No tracking in progress, proceeding...`
-        );
         isTrackingRef.current = true;
 
         try {
@@ -788,13 +738,6 @@ const PromoCard = ({
             discount_amount: data.discount,
             final_amount: promo.price - data.discount,
           };
-          console.log(
-            `📊 [${trackingId}] Sending promo track payload:`,
-            trackPayload
-          );
-          console.log(
-            `📊 [${trackingId}] API endpoint: http://localhost:3001/api/promos/track`
-          );
 
           const trackResponse = await fetch(
             "http://localhost:3001/api/promos/track",
@@ -805,58 +748,26 @@ const PromoCard = ({
             }
           );
 
-          console.log(
-            `📊 [${trackingId}] Promo track response status:`,
-            trackResponse.status
-          );
           const trackData = await trackResponse.json();
-          console.log(
-            `📊 [${trackingId}] Promo track response data:`,
-            trackData
-          );
 
-          if (trackData.success) {
-            console.log(`✅ [${trackingId}] Promo usage tracked successfully!`);
-            console.log(`✅ [${trackingId}] Usage ID:`, trackData.usage_id);
-          } else if (trackData.already_tracked) {
-            console.log(
-              `⚠️ [${trackingId}] Promo already tracked today for this phone`
-            );
-          } else {
-            console.error(
-              `❌ [${trackingId}] Promo tracking failed:`,
-              trackData.error
-            );
+          if (!trackData.success && !trackData.already_tracked) {
+            console.error("Promo tracking failed:", trackData.error);
           }
         } catch (trackError) {
-          console.error(
-            `❌ [${trackingId}] Error tracking promo usage:`,
-            trackError
-          );
-          // Don't fail the whole process if tracking fails
+          console.error("Error tracking promo usage:", trackError);
         } finally {
-          // Reset tracking flag after a short delay to allow for genuine re-attempts
-          console.log(
-            `🔄 [${trackingId}] Resetting tracking flag in 1 second...`
-          );
           setTimeout(() => {
             isTrackingRef.current = false;
-            console.log(`✅ [${trackingId}] Tracking flag reset`);
           }, 1000);
         }
-      } else {
-        console.log("ℹ️ Not an ambassador or promo code, skipping tracking");
-        console.log("ℹ️ Code type:", data.type);
       }
 
       setCodeInput("");
-      console.log("✅ Code applied successfully!");
     } catch (error) {
-      console.error("❌ Error validating code:", error);
+      console.error("Error validating code:", error);
       onValidationError("Gagal memvalidasi kode. Coba lagi.");
     } finally {
       setIsValidating(false);
-      console.log("🔄 Validation complete");
     }
   };
 
@@ -865,41 +776,33 @@ const PromoCard = ({
     phone: string;
     email?: string;
   }) => {
-    // Mark as processing to prevent modal re-opening during re-renders
+    // Mark as processing to prevent modal re-opening
     isProcessingRef.current = true;
 
     // Save to state and sessionStorage
     setUserData(data);
     sessionStorage.setItem("zonaenglis_user_data", JSON.stringify(data));
-    console.log("✅ User data saved:", data);
 
     // Close user data modal first
-    console.log("🔄 Closing form modal...");
     setIsModalOpen(false);
 
     // Wait for form modal to close, then show success modal
-    // Small delay ensures proper modal transition
     setTimeout(() => {
-      console.log("✅ Showing success modal...");
       setShowSuccessModal(true);
 
       // Auto close success modal after 2 seconds and trigger validation
       setTimeout(() => {
-        console.log("🔄 Closing success modal...");
         setShowSuccessModal(false);
 
-        // Small delay to ensure state is updated, then retry handleApply
-        // This time user data exists in state, so it will proceed with validation
         setTimeout(() => {
           // Reset processing flag so handleApply can run
           isProcessingRef.current = false;
 
-          console.log("🚀 Auto-applying code now that user data is saved...");
           // Pass the user data directly to avoid race condition with state update
           handleApply(data);
         }, 100);
-      }, 2000); // Reduced from 3s to 2s for better UX
-    }, 100); // 100ms delay for smooth transition
+      }, 2000);
+    }, 100);
   };
 
   return (
@@ -1251,12 +1154,10 @@ export default function PromoHub() {
     const handleDataUpdate = () => {
       // Skip if already refreshing
       if (isRefreshing) {
-        console.log("⏭️ Skipping refresh - already in progress");
         return;
       }
 
       isRefreshing = true;
-      console.log("🔄 Ambassador data updated, refreshing PromoHub...");
 
       const fetchData = async () => {
         try {
@@ -1300,7 +1201,6 @@ export default function PromoHub() {
           });
 
           setAmbassadorInstitutions(Object.values(grouped));
-          console.log("✅ Ambassador data refreshed in PromoHub");
         } catch (error) {
           console.error("❌ Error refreshing ambassador data:", error);
         } finally {
