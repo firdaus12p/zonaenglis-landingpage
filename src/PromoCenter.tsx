@@ -15,59 +15,251 @@ import { WHATSAPP_LINKS, CTA_REGISTER } from "./constants/cta";
 // Konstanta CTA untuk backward compatibility
 const CTA_WHATSAPP = WHATSAPP_LINKS.PROMO_CENTER;
 
-// Countdown Component
-const Countdown = ({ targetDate }: { targetDate: string }) => {
-  const [timeLeft, setTimeLeft] = useState({
+// Active Batch Display Component (replaces old hardcoded countdown)
+const ActiveBatchDisplay = () => {
+  const [activeBatch, setActiveBatch] = useState<{
+    id: number;
+    name: string;
+    start_date: string;
+    start_time: string;
+    end_date?: string;
+    end_time?: string;
+    timezone: string;
+    description: string;
+    instructor?: string;
+    location_mode?: "Online" | "Offline" | "Hybrid";
+    location_address?: string;
+    price?: number;
+    registration_deadline?: string;
+    target_students: number;
+    current_students: number;
+    status: string;
+    visibility: string;
+  } | null>(null);
+
+  const [countdown, setCountdown] = useState({
     days: 0,
     hours: 0,
     minutes: 0,
     seconds: 0,
+    expired: false,
   });
 
+  // Fetch active countdown batch
   useEffect(() => {
-    const calculateTimeLeft = () => {
-      const target = new Date(targetDate);
-      const now = new Date();
-      const difference = target.getTime() - now.getTime();
+    const fetchActiveBatch = async () => {
+      try {
+        const response = await fetch(
+          "http://localhost:3001/api/countdown/active"
+        );
+        const data = await response.json();
 
-      if (difference > 0) {
-        const days = Math.floor(difference / (1000 * 60 * 60 * 24));
-        const hours = Math.floor((difference / (1000 * 60 * 60)) % 24);
-        const minutes = Math.floor((difference / 1000 / 60) % 60);
-        const seconds = Math.floor((difference / 1000) % 60);
-
-        setTimeLeft({ days, hours, minutes, seconds });
-      } else {
-        setTimeLeft({ days: 0, hours: 0, minutes: 0, seconds: 0 });
+        if (data.success && data.data) {
+          setActiveBatch(data.data);
+        }
+      } catch (error) {
+        console.error("Error fetching active batch:", error);
       }
     };
 
-    calculateTimeLeft();
-    const timer = setInterval(calculateTimeLeft, 1000);
+    fetchActiveBatch();
+  }, []);
+
+  // Countdown timer effect
+  useEffect(() => {
+    if (!activeBatch) return;
+
+    const calculateTimeRemaining = () => {
+      // Extract date part from ISO timestamp
+      const dateOnly = activeBatch.start_date.split("T")[0];
+
+      // Map timezone to UTC offset
+      const timezoneOffsets: { [key: string]: string } = {
+        WIB: "+07:00",
+        WITA: "+08:00",
+        WIT: "+09:00",
+      };
+
+      const offset = timezoneOffsets[activeBatch.timezone] || "+08:00";
+      const targetDate = new Date(
+        `${dateOnly}T${activeBatch.start_time}${offset}`
+      );
+      const now = new Date();
+      const diff = targetDate.getTime() - now.getTime();
+
+      if (diff <= 0) {
+        setCountdown({
+          days: 0,
+          hours: 0,
+          minutes: 0,
+          seconds: 0,
+          expired: true,
+        });
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor(
+        (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+      );
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
+
+      setCountdown({ days, hours, minutes, seconds, expired: false });
+    };
+
+    // Calculate immediately
+    calculateTimeRemaining();
+
+    // Update every second
+    const timer = setInterval(calculateTimeRemaining, 1000);
 
     return () => clearInterval(timer);
-  }, [targetDate]);
+  }, [activeBatch]);
+
+  if (!activeBatch) return null;
 
   return (
-    <div className="grid grid-cols-4 gap-2 text-center">
-      {[
-        { label: "Hari", value: timeLeft.days },
-        { label: "Jam", value: timeLeft.hours },
-        { label: "Menit", value: timeLeft.minutes },
-        { label: "Detik", value: timeLeft.seconds },
-      ].map((item, index) => (
-        <div
-          key={index}
-          className="rounded-xl border border-slate-200 bg-white px-3 py-2"
-        >
-          <div className="text-xl font-extrabold text-slate-900">
-            {item.value}
-          </div>
-          <div className="text-xs uppercase tracking-wide text-slate-500">
-            {item.label}
+    <div className="mt-4 rounded-2xl border border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 p-5 shadow-md">
+      <div className="flex items-center gap-2 mb-4">
+        <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
+        <h3 className="text-lg font-bold text-emerald-900">
+          🎓 Batch Aktif Sedang Dibuka!
+        </h3>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-2">
+        {/* Left: Batch Info */}
+        <div>
+          <h4 className="text-xl font-extrabold text-slate-900 mb-2">
+            {activeBatch.name}
+          </h4>
+          {activeBatch.description && (
+            <p className="text-slate-600 mb-3 text-sm">
+              {activeBatch.description}
+            </p>
+          )}
+
+          <div className="space-y-2 text-sm">
+            {activeBatch.instructor && (
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">
+                  👨‍🏫 Instruktur:
+                </span>
+                <span className="text-slate-600">{activeBatch.instructor}</span>
+              </div>
+            )}
+            {activeBatch.location_mode && (
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">📍 Mode:</span>
+                <span className="text-slate-600">
+                  {activeBatch.location_mode}
+                </span>
+                {activeBatch.location_address && (
+                  <span className="text-slate-500 text-xs">
+                    (
+                    {activeBatch.location_address.length > 30
+                      ? activeBatch.location_address.substring(0, 30) + "..."
+                      : activeBatch.location_address}
+                    )
+                  </span>
+                )}
+              </div>
+            )}
+            {activeBatch.price !== undefined && activeBatch.price > 0 && (
+              <div className="flex items-center gap-2">
+                <span className="font-semibold text-slate-700">
+                  💰 Investasi:
+                </span>
+                <span className="text-emerald-700 font-bold">
+                  Rp {activeBatch.price.toLocaleString("id-ID")}
+                </span>
+              </div>
+            )}
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-700">
+                👥 Kapasitas:
+              </span>
+              <span className="text-slate-600">
+                {activeBatch.current_students} / {activeBatch.target_students}{" "}
+                siswa
+              </span>
+              <div className="flex-1 bg-slate-200 rounded-full h-2 ml-2">
+                <div
+                  className="bg-emerald-500 h-2 rounded-full transition-all duration-300"
+                  style={{
+                    width: `${
+                      (activeBatch.current_students /
+                        activeBatch.target_students) *
+                      100
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
           </div>
         </div>
-      ))}
+
+        {/* Right: Countdown Timer */}
+        <div className="flex flex-col justify-center">
+          <div className="text-center mb-3">
+            <p className="text-sm font-semibold text-slate-600 mb-1">
+              ⏰ Pendaftaran Ditutup Dalam:
+            </p>
+          </div>
+
+          <div className="grid grid-cols-4 gap-2 mb-4">
+            <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-200">
+              <div className="text-2xl md:text-3xl font-bold text-emerald-600">
+                {countdown.days}
+              </div>
+              <div className="text-xs text-slate-500 uppercase">Hari</div>
+            </div>
+            <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-200">
+              <div className="text-2xl md:text-3xl font-bold text-emerald-600">
+                {countdown.hours}
+              </div>
+              <div className="text-xs text-slate-500 uppercase">Jam</div>
+            </div>
+            <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-200">
+              <div className="text-2xl md:text-3xl font-bold text-emerald-600">
+                {countdown.minutes}
+              </div>
+              <div className="text-xs text-slate-500 uppercase">Menit</div>
+            </div>
+            <div className="bg-white rounded-xl p-3 shadow-sm border border-slate-200">
+              <div className="text-2xl md:text-3xl font-bold text-emerald-600">
+                {countdown.seconds}
+              </div>
+              <div className="text-xs text-slate-500 uppercase">Detik</div>
+            </div>
+          </div>
+
+          <a
+            href={`https://wa.me/6282188080688?text=Halo%2C%20saya%20ingin%20daftar%20batch%20${encodeURIComponent(
+              activeBatch.name
+            )}`}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white hover:bg-emerald-700 transition-all shadow-lg hover:shadow-xl"
+          >
+            <MessageCircle className="h-5 w-5" />
+            Daftar Sekarang via WhatsApp
+          </a>
+
+          {activeBatch.registration_deadline && (
+            <p className="text-xs text-center text-slate-500 mt-2">
+              Batas registrasi:{" "}
+              {new Date(activeBatch.registration_deadline).toLocaleDateString(
+                "id-ID",
+                {
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                }
+              )}
+            </p>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
@@ -380,15 +572,8 @@ export default function PromoCenter() {
               </p>
             </div>
 
-            {/* Countdown */}
-            <div className="mt-4 rounded-2xl border border-blue-100 bg-white p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="text-sm text-slate-700">
-                <Clock className="inline h-4 w-4 mr-1" />{" "}
-                <strong>Hitung Mundur Batch A</strong> • Mulai{" "}
-                <span className="font-semibold">03 Nov 2025, 09:00 WITA</span>
-              </div>
-              <Countdown targetDate="2025-11-03T09:00:00+08:00" />
-            </div>
+            {/* Active Batch Display with Dynamic Countdown */}
+            <ActiveBatchDisplay />
           </div>
         </div>
       </section>
