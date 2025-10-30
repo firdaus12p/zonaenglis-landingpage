@@ -1,173 +1,203 @@
-# Zona English Landing Page - Instruksi Coding AI
+# Zona English Landing Page - AI Agent Instructions
 
-## Gambaran Proyek
+A fullstack React + TypeScript + Express.js project for an English learning institution. This document provides essential knowledge for AI coding assistants.
 
-Ini adalah proyek landing page **React + TypeScript + Tailwind CSS** untuk Zona English, sebuah institusi pembelajaran bahasa Inggris. Proyek ini menggunakan **Vite** sebagai build tool dan menargetkan aplikasi single-page yang modern dan responsif.
+## Architecture Overview
 
-## Arsitektur & Struktur
+**Monorepo Structure**: Frontend (root) + Backend (`/backend`) with shared MySQL database.
 
-### Backend (Express.js API)
+### Frontend Stack
 
-- **Lokasi**: `/backend` folder
-- **Entry Point**: `server.js` (ES Modules)
-- **Database**: MySQL via connection pool (`backend/db/connection.js`)
-- **Routes**:
-  - `routes/ambassadors.js` - Ambassador CRUD
-  - `routes/promos.js` - Promo code management
-  - `routes/validate.js` - Validation endpoints
-- **Port**: 3001 (http://localhost:3001/api)
-- **Environment**: `.env` file (use `.env.example` as template)
+- **Build Tool**: Vite 7.x (HMR, fast builds)
+- **Framework**: React 19.1 + TypeScript 5.9
+- **Styling**: Tailwind CSS 4.x (utility-first, JIT compiler)
+- **Icons**: Lucide React (tree-shakeable)
+- **Routing**: React Router DOM 7.x (SPA navigation)
+- **Dev Server**: http://localhost:5173
 
-### Frontend (React)
+### Backend Stack
 
-- **Lokasi**: `/src` folder
-- **Entry Point**: `main.tsx`
-- **Main Components**:
-  - `LearnMoreZE.tsx` - Main landing page
-  - `PromoHub.tsx` - Ambassador promo hub (API integrated)
-  - `PromoCenter.tsx` - Promo center page
-- **Styling**: Tailwind utility classes
-- **Icons**: Lucide React
-- **Port**: 5173 (http://localhost:5173)
+- **Runtime**: Node.js with ES Modules (`"type": "module"`)
+- **Framework**: Express.js 5.x
+- **Database**: MySQL (via mysql2 promise pool)
+- **API Base**: http://localhost:3001/api
+- **Key Routes**: `/ambassadors`, `/promos`, `/programs`, `/validate`, `/affiliate`, `/upload`
 
-### Documentation
+**Critical**: Both servers must run simultaneously. Backend handles CORS for localhost:5173.
 
-- **Lokasi**: `/docs` folder (ALL documentation files)
-- **Key Files**:
-  - `PROJECT-STRUCTURE.md` - Complete project organization
-  - `API-INTEGRATION-GUIDE.md` - API endpoints guide
-  - `code.md` - React component code reference
-  - `prompt.md` - Setup instructions
+## Project-Specific Patterns
 
-### Serena MCP
+### 1. API Integration Pattern
 
-- **Lokasi**: `/.serena/memories`
-- **Purpose**: AI-readable project context
-- **Files**: project_overview.md, project_structure.md, tech_stack.md, etc.
-
-## Pola dan Konvensi Utama
-
-### Struktur Komponen
+**NO centralized API client** - direct fetch calls with hardcoded URLs:
 
 ```tsx
-// Komponen mengikuti pola ini dengan props TypeScript
-const ComponentName = ({
-  prop1,
-  prop2,
+// ❌ WRONG - Don't create axios instances
+import axios from "axios";
+
+// ✅ CORRECT - Use direct fetch with inline URLs
+const API_BASE = "http://localhost:3001/api";
+const response = await fetch(`${API_BASE}/promos/admin/all`);
+```
+
+**Why**: Simplicity over abstraction. Pattern established in `PromoHub.tsx`, `Ambassadors.tsx`, `PromoCodes.tsx`.
+
+### 2. Component Architecture
+
+**Inline TypeScript props** - no separate interface files:
+
+```tsx
+// ✅ Standard pattern
+const PromoCard = ({
+  code,
+  discount,
+  validUntil,
 }: {
-  prop1: string;
-  prop2: string[];
+  code: string;
+  discount: number;
+  validUntil: string;
 }) => (
   <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    {/* Konten */}
+    {/* Content */}
   </div>
 );
 ```
 
-### Skema Warna
+**Admin pages** follow this structure:
 
-- **Primary**: Varian biru (`blue-700`, `blue-600`, `blue-50`)
-- **Accent**: Emerald untuk CTA WhatsApp (`emerald-500`, `emerald-600`)
-- **Text**: Varian slate (`slate-900`, `slate-600`, `slate-500`)
-- **Status**: Kuning untuk bintang (`yellow-500`)
+1. State management with `useState` (loading, data, errors)
+2. Data fetching in `useEffect` on mount
+3. CRUD handlers (handleCreate, handleUpdate, handleDelete)
+4. Conditional rendering (loading → error → data)
 
-### Konstanta CTA
+See `src/pages/admin/Ambassadors.tsx` for reference implementation.
 
-Semua link call-to-action didefinisikan sebagai konstanta di bagian atas:
+### 3. Styling Conventions
 
-```tsx
-const CTA_WHATSAPP = "https://wa.me/...";
-const CTA_REGISTER = "#daftar";
-const CTA_SCHEDULE = "#jadwal";
-const CTA_TRYFREE = "#trial";
-```
+**Design tokens** (never deviate):
 
-## Alur Kerja Pengembangan
+- Primary: `blue-700`, `blue-600`, `blue-50`
+- Accent/CTA: `emerald-500`, `emerald-600`
+- Text: `slate-900`, `slate-600`, `slate-500`
+- Status: `yellow-500` (stars), `green-500` (success), `red-500` (error)
 
-### Perintah Setup
-
-**Frontend**:
-
-```bash
-# From root directory
-npm install
-npm run dev       # Start Vite dev server
-```
-
-**Backend**:
-
-```bash
-cd backend
-npm install
-cp .env.example .env    # Configure database
-npm run dev            # Start Express with --watch
-```
-
-### Dependensi yang Dibutuhkan
-
-**Frontend**:
-
-- React 18 + TypeScript (via Vite template)
-- Tailwind CSS 4.x untuk styling
-- Lucide React untuk ikon
-- Vite 7.x sebagai build tool
-
-**Backend**:
-
-- Express.js 5.x (with ES Modules)
-- mysql2 untuk MySQL database
-- cors untuk CORS middleware
-- dotenv untuk environment variables
-
-## Panduan Konten
-
-### Pola Responsiveness
-
-Semua bagian mengikuti pola grid responsif ini:
+**Responsive grid pattern**:
 
 ```tsx
 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
 ```
 
-### Penggunaan Ikon
+**Card pattern** (used everywhere):
 
-Ikon dari Lucide React digunakan secara konsisten:
+```tsx
+<div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+```
 
-- `CheckCircle2` untuk bullet points
-- `ArrowRight` untuk CTA
-- `Star` untuk testimonial
-- `MessageCircle` untuk chat/kontak
+**Custom animation** (defined in `tailwind.config.js`):
 
-### Struktur Bagian
+```tsx
+<div className="animate-slide-in-right">
+```
 
-Setiap bagian utama mengikuti pola ini:
+### 4. Business Logic Quirks
 
-1. Header dengan judul dan link CTA opsional
-2. Layout grid dengan breakpoint responsif
-3. Padding konsisten (`py-12`) dan max-width (`max-w-6xl`)
+**Ambassador Promo System**:
 
-## Konteks Bisnis
+- Codes validated via `/api/validate/code` POST
+- Usage tracked via `/api/affiliate` POST (localStorage-based tracking)
+- Each ambassador has unique code stored in DB
 
-- **Target audience**: Usia 3-25+ (pembelajar bahasa Inggris)
-- **Fitur utama**: Metode NBSN, AI Coach, kelas kecil, sistem reward
-- **Lokasi**: Kolaka, Makassar, Kendari (Indonesia) + online
-- **Integrasi**: Bagian dari ekosistem yang lebih besar (Hira Space, Doctorbee, dll.)
+**Soft Delete Pattern**:
 
-## Saat Melakukan Perubahan
+- Backend auto-purges records deleted >3 days ago
+- See `backend/server.js` for purge logic
+- Affects `affiliate_usage` table
 
-1. **Update CTA**: Semua link placeholder di konstanta perlu URL asli
-2. **Pertahankan desain responsif**: Test di breakpoint mobile, tablet, desktop
-3. **Jaga konsistensi komponen**: Ikuti pola komponen yang ada
-4. **Pertahankan aksesibilitas**: Pertahankan hierarki heading dan alt text yang tepat
-5. **Update testimonial**: Ganti dengan feedback pelanggan asli jika tersedia
+**MySQL Configuration**:
 
-## Prioritas File untuk AI
+- **Port 3307** (non-standard, likely XAMPP on Windows)
+- Database: `zona_english_admin`
+- Connection pool in `backend/db/connection.js`
 
-1. **docs/PROJECT-STRUCTURE.md** - Organisasi folder dan navigasi
-2. **docs/API-INTEGRATION-GUIDE.md** - API endpoints dan integrasi
-3. **docs/code.md** - Kode komponen React utama
-4. **docs/prompt.md** - Instruksi setup dan pengembangan proyek
-5. **.serena/memories/project_structure.md** - Serena AI context
-6. **README.md** - Dokumentasi utama proyek
+## Development Workflow
 
-**Catatan**: Fokus pada pendekatan fullstack dengan backend API terpisah untuk data persistence.
+### Running the Project
+
+```bash
+# Terminal 1 - Frontend
+npm run dev
+
+# Terminal 2 - Backend
+cd backend
+npm run dev  # Uses --watch flag for auto-reload
+```
+
+### Making Changes
+
+1. **API endpoints**: Edit `backend/routes/*.js` → changes auto-reload
+2. **UI components**: Edit `src/**/*.tsx` → HMR updates instantly
+3. **Styling**: Use Tailwind classes → JIT compiles on demand
+4. **New pages**: Add to `src/pages/admin/*.tsx` + update routes in `App.tsx`
+
+### Database Changes
+
+**Environment file** (`backend/.env`):
+
+```env
+DB_HOST=127.0.0.1
+DB_PORT=3307          # ⚠️ Non-standard port
+DB_USER=root
+DB_PASS=
+DB_NAME=zona_english_admin
+```
+
+**No ORM** - raw SQL queries via `mysql2`:
+
+```js
+const [rows] = await db.query(
+  "SELECT * FROM ambassadors WHERE deleted_at IS NULL"
+);
+```
+
+## Common Pitfalls
+
+1. **Mixed API base URLs**: Some files use `API_BASE` variable, others hardcode `http://localhost:3001/api`. Be consistent within each file.
+
+2. **Forgotten await**: Backend uses `async/await` with mysql2 promises. Forgetting `await` causes cryptic errors.
+
+3. **CORS issues**: If frontend can't reach backend, check `CORS_ORIGIN` in `.env` matches Vite dev server.
+
+4. **TypeScript strict mode**: Enabled globally. Explicitly type props, avoid `any`.
+
+5. **Missing Tailwind classes**: If styles don't apply, check `content` glob in `tailwind.config.js` includes file.
+
+## Documentation Priority
+
+When implementing features, reference in this order:
+
+1. **docs/API-INTEGRATION-GUIDE.md** - API endpoints, request/response formats
+2. **docs/PROJECT-STRUCTURE.md** - Folder organization, where to put files
+3. **Existing implementations** - Search codebase for similar features
+4. **.serena/memories/** - AI-readable project context (if Serena MCP active)
+
+## Anti-Patterns to Avoid
+
+❌ Creating utility folders (`/utils`, `/lib`) - keep code colocated
+❌ Abstracting fetch calls - prefer explicit inline fetches
+❌ Barrel exports everywhere - use named exports from origin
+❌ CSS files - use Tailwind classes exclusively (except `index.css` for globals)
+❌ Third-party state management - React hooks are sufficient
+
+## Key Files to Read
+
+Before modifying specific areas, read these:
+
+- **Admin features**: `src/pages/admin/Ambassadors.tsx` (canonical CRUD example)
+- **API integration**: `src/PromoHub.tsx` (fetch patterns, error handling)
+- **Component patterns**: `src/components/Card.tsx`, `Button.tsx` (reusable UI)
+- **Backend routes**: `backend/routes/ambassadors.js` (SQL queries, error handling)
+- **Database schema**: Check table structure via queries in route files
+
+---
+
+**Context for AI**: This project evolved from a simple landing page to a fullstack admin system. Code prioritizes pragmatism over patterns—what works ships. When in doubt, match existing code style rather than introducing "best practices".
