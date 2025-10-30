@@ -28,9 +28,9 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    // Find user by email
+    // Find user by email (select only needed fields)
     const [users] = await db.query(
-      "SELECT * FROM users WHERE email = ? AND is_active = true",
+      "SELECT id, email, password_hash, name, role, is_active FROM users WHERE email = ? AND is_active = true",
       [email]
     );
 

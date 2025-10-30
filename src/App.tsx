@@ -20,6 +20,7 @@ import {
   PromoForm,
   PromoCodeForm,
 } from "./components/admin";
+import CountdownBatchForm from "./pages/admin/CountdownBatchForm";
 
 function App() {
   const navigate = useNavigate();
@@ -158,6 +159,28 @@ function App() {
             element={
               <ProtectedRoute requireAdmin>
                 <CountdownBatch setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/countdown/new"
+            element={
+              <ProtectedRoute requireAdmin>
+                <CountdownBatchForm
+                  setCurrentPage={(page) => navigate(page)}
+                  mode="create"
+                />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/countdown/edit/:id"
+            element={
+              <ProtectedRoute requireAdmin>
+                <CountdownBatchForm
+                  setCurrentPage={(page) => navigate(page)}
+                  mode="edit"
+                />
               </ProtectedRoute>
             }
           />
