@@ -11,6 +11,9 @@ import {
   ThumbsUp,
   Send,
   Loader2,
+  CheckCircle2,
+  X,
+  AlertCircle,
 } from "lucide-react";
 
 const API_BASE = "http://localhost:3001/api";
@@ -54,6 +57,104 @@ interface ArticleDetail extends Article {
   images: ArticleImage[];
   approved_comments: ArticleComment[];
 }
+
+// =====================================================
+// MODAL COMPONENTS
+// =====================================================
+
+const SuccessModal = ({
+  isOpen,
+  onClose,
+  title = "Success!",
+  message,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  message: string;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-xl animate-scale-in">
+        <div className="flex flex-col items-center text-center">
+          {/* Success Icon */}
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+            <CheckCircle2 className="h-10 w-10 text-emerald-600" />
+          </div>
+
+          {/* Success Message */}
+          <h3 className="mb-2 text-xl font-bold text-slate-900">{title}</h3>
+          <p className="mb-6 text-sm text-slate-600">{message}</p>
+
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="w-full rounded-xl bg-emerald-600 px-6 py-3 font-semibold text-white transition-colors hover:bg-emerald-700"
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ErrorModal = ({
+  isOpen,
+  onClose,
+  title = "Oops!",
+  message,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  title?: string;
+  message: string;
+}) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 animate-fade-in">
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 shadow-xl animate-scale-in">
+        <div className="flex flex-col items-center text-center">
+          {/* Close X button */}
+          <button
+            onClick={onClose}
+            className="absolute right-4 top-4 rounded-lg p-2 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600"
+          >
+            <X className="h-5 w-5" />
+          </button>
+
+          {/* Error Icon */}
+          <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100">
+            <AlertCircle className="h-10 w-10 text-red-600" />
+          </div>
+
+          {/* Error Message */}
+          <h3 className="mb-2 text-xl font-bold text-slate-900">{title}</h3>
+          <p className="mb-6 text-sm text-slate-600">{message}</p>
+
+          {/* Action Buttons */}
+          <div className="flex w-full gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 rounded-xl border border-slate-300 bg-white px-6 py-3 font-semibold text-slate-700 transition-colors hover:bg-slate-50"
+            >
+              Close
+            </button>
+            <button
+              onClick={() => window.location.reload()}
+              className="flex-1 rounded-xl bg-blue-700 px-6 py-3 font-semibold text-white transition-colors hover:bg-blue-800"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const ArticleCard = ({ article }: { article: Article }) => {
   const handleViewArticle = async () => {
@@ -128,6 +229,7 @@ const ArticlesList = () => {
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
@@ -155,8 +257,10 @@ const ArticlesList = () => {
       const data = result.data || result; // Handle both {data: [...]} and [...] formats
       setArticles(data || []);
       setError("");
+      setShowErrorModal(false);
     } catch (err) {
       setError("Failed to load articles. Please try again.");
+      setShowErrorModal(true);
       console.error("Error fetching articles:", err);
     } finally {
       setLoading(false);
@@ -266,10 +370,6 @@ const ArticlesList = () => {
           <div className="flex items-center justify-center py-20">
             <Loader2 className="h-8 w-8 animate-spin text-blue-700" />
           </div>
-        ) : error ? (
-          <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-            <p className="text-red-700">{error}</p>
-          </div>
         ) : articles.length === 0 ? (
           <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center">
             <p className="text-slate-600">No articles found.</p>
@@ -282,6 +382,16 @@ const ArticlesList = () => {
           </div>
         )}
       </div>
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => {
+          setShowErrorModal(false);
+          setError("");
+        }}
+        message={error}
+      />
     </div>
   );
 };
@@ -291,6 +401,7 @@ const ArticleDetail = () => {
   const [article, setArticle] = useState<ArticleDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [userReaction, setUserReaction] = useState<"like" | "love" | null>(
     null
   );
@@ -301,6 +412,7 @@ const ArticleDetail = () => {
   });
   const [submittingComment, setSubmittingComment] = useState(false);
   const [commentSuccess, setCommentSuccess] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     if (slug) {
@@ -318,6 +430,7 @@ const ArticleDetail = () => {
       const articleData = result.data || result; // Handle both {data: {...}} and {...} formats
       setArticle(articleData);
       setError("");
+      setShowErrorModal(false);
 
       // Track view
       await fetch(`${API_BASE}/articles/${articleData.id}/view`, {
@@ -325,6 +438,7 @@ const ArticleDetail = () => {
       });
     } catch (err) {
       setError("Failed to load article. Please try again.");
+      setShowErrorModal(true);
       console.error("Error fetching article:", err);
     } finally {
       setLoading(false);
@@ -387,8 +501,14 @@ const ArticleDetail = () => {
 
       if (response.ok) {
         setCommentSuccess(true);
+        setShowSuccessModal(true);
         setCommentForm({ user_name: "", user_email: "", comment: "" });
-        setTimeout(() => setCommentSuccess(false), 5000);
+
+        // Auto close modal after 5 seconds
+        setTimeout(() => {
+          setCommentSuccess(false);
+          setShowSuccessModal(false);
+        }, 5000);
       }
     } catch (err) {
       console.error("Error submitting comment:", err);
@@ -405,11 +525,12 @@ const ArticleDetail = () => {
     );
   }
 
-  if (error || !article) {
+  if (!article) {
     return (
       <div className="flex min-h-screen items-center justify-center px-4">
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
-          <p className="mb-4 text-red-700">{error || "Article not found"}</p>
+        <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <AlertCircle className="mx-auto mb-4 h-12 w-12 text-slate-400" />
+          <p className="mb-4 text-slate-700">Article not found</p>
           <Link
             to="/articles"
             className="inline-flex items-center gap-2 text-blue-700 hover:text-blue-800"
@@ -632,11 +753,6 @@ const ArticleDetail = () => {
                   )}
                   Submit Comment
                 </button>
-                {commentSuccess && (
-                  <p className="text-sm text-green-600">
-                    Comment submitted! It will appear after approval.
-                  </p>
-                )}
               </div>
             </form>
 
@@ -669,6 +785,27 @@ const ArticleDetail = () => {
           </div>
         </div>
       </article>
+
+      {/* Success Modal - Comment Submitted */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          setCommentSuccess(false);
+        }}
+        title="Comment Submitted!"
+        message="Your comment has been submitted successfully. It will appear after approval by our admin."
+      />
+
+      {/* Error Modal */}
+      <ErrorModal
+        isOpen={showErrorModal}
+        onClose={() => {
+          setShowErrorModal(false);
+          setError("");
+        }}
+        message={error}
+      />
     </div>
   );
 };
