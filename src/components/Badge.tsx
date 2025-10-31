@@ -1,5 +1,3 @@
-import React from "react";
-
 /**
  * Badge Component - Universal badge component untuk konsistensi di seluruh aplikasi
  * Menggabungkan semua variants dari PromoCenter dan PromoHub
@@ -53,21 +51,20 @@ export const BADGE_VARIANTS = {
   warning: "border-amber-300 bg-amber-50 text-amber-700",
   danger: "border-red-300 bg-red-50 text-red-700",
   info: "border-cyan-300 bg-cyan-50 text-cyan-700",
-} as const;;
+} as const;
 
-// Size variants untuk badge
 const SIZE_VARIANTS = {
   sm: "px-2 py-0.5 text-xs",
   md: "px-3 py-1 text-xs",
   lg: "px-4 py-1.5 text-sm",
 } as const;
 
-export const Badge: React.FC<BadgeProps> = ({
+export const Badge = ({
   children,
   variant = "default",
   className = "",
   size = "md",
-}) => {
+}: BadgeProps) => {
   const variantClasses = BADGE_VARIANTS[variant] || BADGE_VARIANTS.default;
   const sizeClasses = SIZE_VARIANTS[size];
 

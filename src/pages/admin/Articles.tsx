@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, Badge } from "../../components";
 import {
@@ -7,9 +7,7 @@ import {
   Edit,
   Trash2,
   Eye,
-  Calendar,
   FileText,
-  User,
   Heart,
   MessageCircle,
   BookOpen,
@@ -17,9 +15,6 @@ import {
   Save,
   Upload,
   Loader2,
-  Tag,
-  CheckCircle,
-  XCircle,
 } from "lucide-react";
 
 const API_BASE = "http://localhost:3001/api";
@@ -137,9 +132,7 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
   const fetchArticleHashtags = async (articleId: number) => {
     try {
-      const response = await fetch(
-        `${API_BASE}/articles/admin/${articleId}`
-      );
+      const response = await fetch(`${API_BASE}/articles/admin/${articleId}`);
       if (response.ok) {
         const result = await response.json();
         const article = result.data;
@@ -771,11 +764,7 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                   >
                     Cancel
                   </Button>
-                  <Button
-                    type="submit"
-                    variant="primary"
-                    disabled={submitting}
-                  >
+                  <Button type="submit" variant="primary" disabled={submitting}>
                     {submitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />

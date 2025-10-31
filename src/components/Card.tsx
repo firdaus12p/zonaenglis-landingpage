@@ -1,5 +1,3 @@
-import React from "react";
-
 /**
  * Card Component - Universal card component untuk layout konsisten
  * Menggabungkan semua patterns card yang digunakan berulang di aplikasi
@@ -56,7 +54,7 @@ export const HOVER_EFFECTS = {
   lift: "hover:-translate-y-1 hover:shadow-lg",
 } as const;
 
-export const Card: React.FC<CardProps> = ({
+export const Card = ({
   children,
   variant = "default",
   padding = "lg",
@@ -64,7 +62,7 @@ export const Card: React.FC<CardProps> = ({
   hover = false,
   clickable = false,
   onClick,
-}) => {
+}: CardProps) => {
   const baseClasses = "rounded-2xl border transition-all duration-200";
   const variantClasses = CARD_VARIANTS[variant] || CARD_VARIANTS.default;
   const paddingClasses = PADDING_VARIANTS[padding];
@@ -102,12 +100,17 @@ export const Card: React.FC<CardProps> = ({
 // Specialized card components untuk use cases umum
 
 // Feature Card untuk section About
-export const FeatureCard: React.FC<{
+export const FeatureCard = ({
+  icon: Icon,
+  title,
+  description,
+  className = "",
+}: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
   description: string;
   className?: string;
-}> = ({ icon: Icon, title, description, className = "" }) => (
+}) => (
   <Card variant="default" padding="lg" hover className={`group ${className}`}>
     <div className="mb-3 flex items-center gap-3">
       <div className="rounded-xl bg-blue-600/10 p-2">
@@ -120,11 +123,15 @@ export const FeatureCard: React.FC<{
 );
 
 // Program Card untuk menampilkan program/class
-export const ProgramCard: React.FC<{
+export const ProgramCard = ({
+  children,
+  className = "",
+  fullHeight = true,
+}: {
   children: React.ReactNode;
   className?: string;
   fullHeight?: boolean;
-}> = ({ children, className = "", fullHeight = true }) => (
+}) => (
   <Card
     variant="default"
     padding="lg"
@@ -138,32 +145,43 @@ export const ProgramCard: React.FC<{
 );
 
 // Testimonial Card
-export const TestimonialCard: React.FC<{
+export const TestimonialCard = ({
+  children,
+  className = "",
+}: {
   children: React.ReactNode;
   className?: string;
-}> = ({ children, className = "" }) => (
+}) => (
   <Card variant="default" padding="lg" className={className}>
     {children}
   </Card>
 );
 
 // Stats Card untuk menampilkan statistik
-export const StatsCard: React.FC<{
+export const StatsCard = ({
+  children,
+  className = "",
+}: {
   children: React.ReactNode;
   className?: string;
-}> = ({ children, className = "" }) => (
+}) => (
   <Card variant="default" padding="md" className={`text-center ${className}`}>
     {children}
   </Card>
 );
 
 // Step Card untuk how-to sections
-export const StepCard: React.FC<{
+export const StepCard = ({
+  step,
+  title,
+  description,
+  className = "",
+}: {
   step: string;
   title: string;
   description: string;
   className?: string;
-}> = ({ step, title, description, className = "" }) => (
+}) => (
   <Card variant="default" padding="xl" className={className}>
     <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-blue-700">
       {step}

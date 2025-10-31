@@ -1,4 +1,3 @@
-import React from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card } from "../../components";
 import {
@@ -12,8 +11,10 @@ import {
   Activity,
 } from "lucide-react";
 
-const Dashboard: React.FC<{ setCurrentPage: (page: string) => void }> = ({
+const Dashboard = ({
   setCurrentPage,
+}: {
+  setCurrentPage: (page: string) => void;
 }) => {
   // Mock data - akan diganti dengan data real dari API
   const stats = [

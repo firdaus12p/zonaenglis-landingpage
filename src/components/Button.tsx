@@ -1,5 +1,3 @@
-import React from "react";
-
 /**
  * Button Component - Universal button component untuk konsistensi di seluruh aplikasi
  * Menggabungkan semua patterns button yang digunakan berulang
@@ -65,7 +63,7 @@ export const SHAPE_VARIANTS = {
   square: "rounded-lg",
 } as const;
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button = ({
   children,
   variant = "primary",
   size = "md",
@@ -77,7 +75,7 @@ export const Button: React.FC<ButtonProps> = ({
   fullWidth = false,
   disabled,
   ...props
-}) => {
+}: ButtonProps) => {
   const baseClasses =
     "inline-flex items-center justify-center gap-2 font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed";
 
@@ -143,10 +141,7 @@ export const Button: React.FC<ButtonProps> = ({
 };
 
 // Floating Button untuk WhatsApp (sering digunakan)
-export const FloatingButton: React.FC<ButtonProps> = ({
-  className = "",
-  ...props
-}) => {
+export const FloatingButton = ({ className = "", ...props }: ButtonProps) => {
   return (
     <Button
       className={`fixed bottom-5 left-5 shadow-lg z-30 ${SHAPE_VARIANTS.pill} ${className}`}
