@@ -1,11 +1,9 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, Badge } from "../../components";
 import {
   Plus,
   Search,
-  Filter,
-  MoreVertical,
   Edit,
   Trash2,
   Eye,
@@ -14,10 +12,17 @@ import {
   User,
   Heart,
   MessageCircle,
-  Share2,
   BookOpen,
-  TrendingUp,
+  X,
+  Save,
+  Upload,
+  Loader2,
+  Tag,
+  CheckCircle,
+  XCircle,
 } from "lucide-react";
+
+const API_BASE = "http://localhost:3001/api";
 
 interface Article {
   id: number;
@@ -27,156 +32,44 @@ interface Article {
   content: string;
   author: string;
   category: string;
-  tags: string[];
   status: "Published" | "Draft" | "Scheduled" | "Archived";
-  publishedAt: string;
-  updatedAt: string;
+  published_at: string;
+  updated_at: string;
   views: number;
-  likes: number;
-  comments: number;
-  featured: boolean;
-  seoTitle: string;
-  seoDescription: string;
-  featuredImage: string;
+  likes_count: number;
+  loves_count: number;
+  comments_count: number;
+  featured_image: string | null;
+  seo_title: string | null;
+  seo_description: string | null;
 }
 
 const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   setCurrentPage,
 }) => {
+  const [articles, setArticles] = useState<Article[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterStatus, setFilterStatus] = useState<
-    "All" | "Published" | "Draft" | "Scheduled" | "Archived"
-  >("All");
-  const [filterCategory, setFilterCategory] = useState<
-    | "All"
-    | "Grammar"
-    | "Vocabulary"
-    | "Speaking"
-    | "Listening"
-    | "Tips"
-    | "News"
-  >("All");
-
-  // Mock data - akan diganti dengan data real dari API
-  const articles: Article[] = [
-    {
-      id: 1,
-      title: "Tips Mudah Belajar Grammar Bahasa Inggris untuk Pemula",
-      slug: "tips-mudah-belajar-grammar-bahasa-inggris-pemula",
-      excerpt:
-        "Pelajari cara efektif menguasai grammar bahasa Inggris dengan metode yang mudah dipahami dan praktis untuk diterapkan.",
-      content: "Content here...",
-      author: "Admin",
-      category: "Grammar",
-      tags: ["grammar", "tips", "pemula", "belajar"],
-      status: "Published",
-      publishedAt: "2024-03-15",
-      updatedAt: "2024-03-15",
-      views: 1247,
-      likes: 89,
-      comments: 23,
-      featured: true,
-      seoTitle:
-        "Tips Mudah Belajar Grammar Bahasa Inggris untuk Pemula | Zona English",
-      seoDescription:
-        "Pelajari cara efektif menguasai grammar bahasa Inggris dengan metode yang mudah dipahami. Cocok untuk pemula yang ingin belajar bahasa Inggris.",
-      featuredImage: "/images/grammar-tips.jpg",
-    },
-    {
-      id: 2,
-      title: "50 Vocabulary Harian yang Wajib Dikuasai",
-      slug: "50-vocabulary-harian-wajib-dikuasai",
-      excerpt:
-        "Kumpulan 50 kosakata bahasa Inggris yang sering digunakan dalam percakapan sehari-hari beserta contoh penggunaannya.",
-      content: "Content here...",
-      author: "Sarah Teacher",
-      category: "Vocabulary",
-      tags: ["vocabulary", "daily", "conversation", "practice"],
-      status: "Published",
-      publishedAt: "2024-03-12",
-      updatedAt: "2024-03-12",
-      views: 892,
-      likes: 67,
-      comments: 18,
-      featured: false,
-      seoTitle: "50 Vocabulary Harian yang Wajib Dikuasai | Zona English",
-      seoDescription:
-        "Kumpulan 50 kosakata bahasa Inggris untuk percakapan sehari-hari. Tingkatkan kemampuan vocabulary Anda dengan daftar lengkap ini.",
-      featuredImage: "/images/vocabulary-daily.jpg",
-    },
-    {
-      id: 3,
-      title: "Cara Meningkatkan Speaking Skill dengan Confidence",
-      slug: "cara-meningkatkan-speaking-skill-confidence",
-      excerpt:
-        "Strategi praktis untuk meningkatkan kemampuan berbicara bahasa Inggris dengan percaya diri tanpa takut salah.",
-      content: "Content here...",
-      author: "Michael English",
-      category: "Speaking",
-      tags: ["speaking", "confidence", "practice", "fluency"],
-      status: "Draft",
-      publishedAt: "",
-      updatedAt: "2024-03-18",
-      views: 0,
-      likes: 0,
-      comments: 0,
-      featured: false,
-      seoTitle:
-        "Cara Meningkatkan Speaking Skill dengan Confidence | Zona English",
-      seoDescription:
-        "Pelajari strategi praktis untuk meningkatkan kemampuan berbicara bahasa Inggris dengan percaya diri. Tips dari expert Zona English.",
-      featuredImage: "/images/speaking-confidence.jpg",
-    },
-    {
-      id: 4,
-      title: "Listening Exercise: Understanding Native Speakers",
-      slug: "listening-exercise-understanding-native-speakers",
-      excerpt:
-        "Latihan listening comprehension untuk memahami percakapan native speaker dengan aksen dan kecepatan berbicara yang natural.",
-      content: "Content here...",
-      author: "Emma Native",
-      category: "Listening",
-      tags: ["listening", "native", "comprehension", "exercise"],
-      status: "Scheduled",
-      publishedAt: "2024-03-25",
-      updatedAt: "2024-03-18",
-      views: 0,
-      likes: 0,
-      comments: 0,
-      featured: true,
-      seoTitle:
-        "Listening Exercise: Understanding Native Speakers | Zona English",
-      seoDescription:
-        "Latihan listening comprehension untuk memahami native speaker. Tingkatkan kemampuan mendengar bahasa Inggris Anda.",
-      featuredImage: "/images/listening-native.jpg",
-    },
-    {
-      id: 5,
-      title: "Common Mistakes in English and How to Avoid Them",
-      slug: "common-mistakes-english-how-avoid-them",
-      excerpt:
-        "Daftar kesalahan umum yang sering dilakukan pembelajar bahasa Inggris Indonesia beserta cara menghindarinya.",
-      content: "Content here...",
-      author: "Admin",
-      category: "Tips",
-      tags: ["mistakes", "common", "avoid", "learning"],
-      status: "Published",
-      publishedAt: "2024-03-10",
-      updatedAt: "2024-03-10",
-      views: 1156,
-      likes: 94,
-      comments: 31,
-      featured: false,
-      seoTitle:
-        "Common Mistakes in English and How to Avoid Them | Zona English",
-      seoDescription:
-        "Pelajari kesalahan umum dalam bahasa Inggris dan cara menghindarinya. Tips praktis untuk pembelajar Indonesia.",
-      featuredImage: "/images/common-mistakes.jpg",
-    },
-  ];
+  const [filterStatus, setFilterStatus] = useState<string>("All");
+  const [filterCategory, setFilterCategory] = useState<string>("All");
+  const [showModal, setShowModal] = useState(false);
+  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [formData, setFormData] = useState({
+    title: "",
+    excerpt: "",
+    content: "",
+    author: "Admin Zona English",
+    category: "Grammar",
+    status: "Draft" as "Published" | "Draft" | "Scheduled" | "Archived",
+    seo_title: "",
+    seo_description: "",
+    hashtags: "",
+  });
+  const [featuredImage, setFeaturedImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
 
   const categories = [
-    "All",
     "Grammar",
     "Vocabulary",
     "Speaking",
@@ -185,13 +78,194 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     "News",
   ];
 
+  useEffect(() => {
+    fetchArticles();
+  }, []);
+
+  const fetchArticles = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch(`${API_BASE}/articles/admin/all`);
+      if (!response.ok) throw new Error("Failed to fetch articles");
+      const result = await response.json();
+      setArticles(result.data || []);
+    } catch (error) {
+      console.error("Error fetching articles:", error);
+      alert("Failed to load articles");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateNew = () => {
+    setEditingArticle(null);
+    setFormData({
+      title: "",
+      excerpt: "",
+      content: "",
+      author: "Admin Zona English",
+      category: "Grammar",
+      status: "Draft",
+      seo_title: "",
+      seo_description: "",
+      hashtags: "",
+    });
+    setFeaturedImage(null);
+    setImagePreview("");
+    setShowModal(true);
+  };
+
+  const handleEdit = (article: Article) => {
+    setEditingArticle(article);
+    setFormData({
+      title: article.title,
+      excerpt: article.excerpt || "",
+      content: article.content,
+      author: article.author,
+      category: article.category,
+      status: article.status,
+      seo_title: article.seo_title || "",
+      seo_description: article.seo_description || "",
+      hashtags: "",
+    });
+    setImagePreview(article.featured_image || "");
+    setShowModal(true);
+
+    // Fetch hashtags for this article
+    fetchArticleHashtags(article.id);
+  };
+
+  const fetchArticleHashtags = async (articleId: number) => {
+    try {
+      const response = await fetch(
+        `${API_BASE}/articles/admin/${articleId}`
+      );
+      if (response.ok) {
+        const result = await response.json();
+        const article = result.data;
+        if (article.hashtags) {
+          setFormData((prev) => ({
+            ...prev,
+            hashtags: Array.isArray(article.hashtags)
+              ? article.hashtags.join(", ")
+              : article.hashtags,
+          }));
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching hashtags:", error);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setFeaturedImage(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const generateSlug = (title: string) => {
+    return title
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .trim();
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const slug = editingArticle?.slug || generateSlug(formData.title);
+
+      // Prepare form data for file upload
+      const submitData = new FormData();
+      submitData.append("title", formData.title);
+      submitData.append("slug", slug);
+      submitData.append("excerpt", formData.excerpt);
+      submitData.append("content", formData.content);
+      submitData.append("author", formData.author);
+      submitData.append("category", formData.category);
+      submitData.append("status", formData.status);
+      submitData.append("seo_title", formData.seo_title);
+      submitData.append("seo_description", formData.seo_description);
+
+      // Add hashtags
+      const hashtags = formData.hashtags
+        .split(",")
+        .map((h) => h.trim())
+        .filter((h) => h);
+      submitData.append("hashtags", JSON.stringify(hashtags));
+
+      // Add published_at for Published status
+      if (formData.status === "Published") {
+        submitData.append("published_at", new Date().toISOString());
+      }
+
+      // Add image if selected
+      if (featuredImage) {
+        submitData.append("featured_image", featuredImage);
+      }
+
+      const url = editingArticle
+        ? `${API_BASE}/articles/${editingArticle.id}`
+        : `${API_BASE}/articles`;
+      const method = editingArticle ? "PUT" : "POST";
+
+      const response = await fetch(url, {
+        method,
+        body: submitData,
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to save article");
+      }
+
+      alert(
+        editingArticle
+          ? "Article updated successfully!"
+          : "Article created successfully!"
+      );
+      setShowModal(false);
+      fetchArticles();
+    } catch (error: any) {
+      console.error("Error saving article:", error);
+      alert(error.message || "Failed to save article");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this article?")) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/articles/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) throw new Error("Failed to delete article");
+
+      alert("Article deleted successfully!");
+      fetchArticles();
+    } catch (error) {
+      console.error("Error deleting article:", error);
+      alert("Failed to delete article");
+    }
+  };
+
   const filteredArticles = articles.filter((article) => {
     const matchesSearch =
       article.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      article.excerpt.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      article.tags.some((tag) =>
-        tag.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      article.excerpt?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       filterStatus === "All" || article.status === filterStatus;
     const matchesCategory =
@@ -215,25 +289,6 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     }
   };
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "Grammar":
-        return "primary";
-      case "Vocabulary":
-        return "secondary";
-      case "Speaking":
-        return "info";
-      case "Listening":
-        return "success";
-      case "Tips":
-        return "warning";
-      case "News":
-        return "danger";
-      default:
-        return "default";
-    }
-  };
-
   const formatDate = (dateString: string) => {
     if (!dateString) return "-";
     return new Date(dateString).toLocaleDateString("id-ID", {
@@ -243,47 +298,40 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     });
   };
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000) {
-      return (num / 1000).toFixed(1) + "k";
-    }
-    return num.toString();
-  };
-
   return (
     <AdminLayout currentPage="/admin/articles" setCurrentPage={setCurrentPage}>
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-2xl font-bold text-slate-900">Articles</h1>
-            <p className="text-slate-600 mt-1">
-              Create and manage educational content for your students
+            <p className="mt-1 text-slate-600">
+              Create and manage educational content
             </p>
           </div>
           <Button
             variant="primary"
             className="w-full sm:w-auto"
-            onClick={() => (window.location.href = "/admin/articles/new")}
+            onClick={handleCreateNew}
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             Write Article
           </Button>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-6 md:grid-cols-5">
+        <div className="grid gap-6 md:grid-cols-4">
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">
                   Total Articles
                 </p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">
+                <p className="mt-1 text-2xl font-bold text-slate-900">
                   {articles.length}
                 </p>
               </div>
-              <div className="p-3 bg-blue-100 rounded-xl">
+              <div className="rounded-xl bg-blue-100 p-3">
                 <FileText className="h-6 w-6 text-blue-600" />
               </div>
             </div>
@@ -293,11 +341,11 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">Published</p>
-                <p className="text-2xl font-bold text-emerald-600 mt-1">
+                <p className="mt-1 text-2xl font-bold text-emerald-600">
                   {articles.filter((a) => a.status === "Published").length}
                 </p>
               </div>
-              <div className="p-3 bg-emerald-100 rounded-xl">
+              <div className="rounded-xl bg-emerald-100 p-3">
                 <BookOpen className="h-6 w-6 text-emerald-600" />
               </div>
             </div>
@@ -309,11 +357,11 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                 <p className="text-sm font-medium text-slate-600">
                   Total Views
                 </p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">
-                  {formatNumber(articles.reduce((sum, a) => sum + a.views, 0))}
+                <p className="mt-1 text-2xl font-bold text-slate-900">
+                  {articles.reduce((sum, a) => sum + (a.views || 0), 0)}
                 </p>
               </div>
-              <div className="p-3 bg-purple-100 rounded-xl">
+              <div className="rounded-xl bg-purple-100 p-3">
                 <Eye className="h-6 w-6 text-purple-600" />
               </div>
             </div>
@@ -322,222 +370,428 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">
-                  Total Likes
-                </p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">
-                  {articles.reduce((sum, a) => sum + a.likes, 0)}
-                </p>
-              </div>
-              <div className="p-3 bg-pink-100 rounded-xl">
-                <Heart className="h-6 w-6 text-pink-600" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
                 <p className="text-sm font-medium text-slate-600">Drafts</p>
-                <p className="text-2xl font-bold text-amber-600 mt-1">
+                <p className="mt-1 text-2xl font-bold text-amber-600">
                   {articles.filter((a) => a.status === "Draft").length}
                 </p>
               </div>
-              <div className="p-3 bg-amber-100 rounded-xl">
+              <div className="rounded-xl bg-amber-100 p-3">
                 <Edit className="h-6 w-6 text-amber-600" />
               </div>
             </div>
           </Card>
         </div>
 
-        {/* Filters and Search */}
+        {/* Filters */}
         <Card className="p-6">
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="text"
                 placeholder="Search articles..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full rounded-lg border border-slate-300 py-2 pl-10 pr-4 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
               />
             </div>
 
-            {/* Status Filter */}
-            <div className="flex items-center space-x-2">
-              <Filter className="h-4 w-4 text-slate-400" />
-              <select
-                value={filterStatus}
-                onChange={(e) =>
-                  setFilterStatus(e.target.value as typeof filterStatus)
-                }
-                className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="All">All Status</option>
-                <option value="Published">Published</option>
-                <option value="Draft">Draft</option>
-                <option value="Scheduled">Scheduled</option>
-                <option value="Archived">Archived</option>
-              </select>
-            </div>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="rounded-lg border border-slate-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="All">All Status</option>
+              <option value="Published">Published</option>
+              <option value="Draft">Draft</option>
+              <option value="Scheduled">Scheduled</option>
+              <option value="Archived">Archived</option>
+            </select>
 
-            {/* Category Filter */}
-            <div>
-              <select
-                value={filterCategory}
-                onChange={(e) =>
-                  setFilterCategory(e.target.value as typeof filterCategory)
-                }
-                className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category === "All" ? "All Categories" : category}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={filterCategory}
+              onChange={(e) => setFilterCategory(e.target.value)}
+              className="rounded-lg border border-slate-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+            >
+              <option value="All">All Categories</option>
+              {categories.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
           </div>
         </Card>
 
-        {/* Articles Grid */}
-        <div className="grid gap-6 lg:grid-cols-2">
-          {filteredArticles.map((article) => (
-            <Card key={article.id} className="p-6">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <Badge variant={getStatusColor(article.status)}>
-                      {article.status}
-                    </Badge>
-                    <Badge variant={getCategoryColor(article.category)}>
-                      {article.category}
-                    </Badge>
-                    {article.featured && (
-                      <Badge variant="warning">Featured</Badge>
+        {/* Articles Table */}
+        {loading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 className="h-8 w-8 animate-spin text-blue-700" />
+          </div>
+        ) : (
+          <Card>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b border-slate-200 bg-slate-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-700">
+                      Article
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-700">
+                      Category
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-700">
+                      Status
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-700">
+                      Stats
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider text-slate-700">
+                      Date
+                    </th>
+                    <th className="px-6 py-3 text-right text-xs font-medium uppercase tracking-wider text-slate-700">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 bg-white">
+                  {filteredArticles.map((article) => (
+                    <tr
+                      key={article.id}
+                      className="transition-colors hover:bg-slate-50"
+                    >
+                      <td className="px-6 py-4">
+                        <div className="flex items-start gap-3">
+                          {article.featured_image && (
+                            <img
+                              src={article.featured_image}
+                              alt={article.title}
+                              className="h-12 w-12 rounded-lg object-cover"
+                            />
+                          )}
+                          <div>
+                            <p className="font-medium text-slate-900">
+                              {article.title}
+                            </p>
+                            <p className="text-sm text-slate-500">
+                              by {article.author}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant="default">{article.category}</Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant={getStatusColor(article.status)}>
+                          {article.status}
+                        </Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex gap-4 text-sm text-slate-600">
+                          <span className="flex items-center gap-1">
+                            <Eye className="h-4 w-4" />
+                            {article.views || 0}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Heart className="h-4 w-4" />
+                            {(article.likes_count || 0) +
+                              (article.loves_count || 0)}
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <MessageCircle className="h-4 w-4" />
+                            {article.comments_count || 0}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm">
+                          <p className="text-slate-900">
+                            {formatDate(article.published_at)}
+                          </p>
+                          <p className="text-slate-500">
+                            Updated: {formatDate(article.updated_at)}
+                          </p>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleEdit(article)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="danger"
+                            size="sm"
+                            onClick={() => handleDelete(article.id)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {filteredArticles.length === 0 && (
+                <div className="py-12 text-center">
+                  <p className="text-slate-600">No articles found.</p>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* Create/Edit Modal */}
+        {showModal && (
+          <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/50 p-4">
+            <div className="my-8 w-full max-w-4xl rounded-2xl bg-white p-6 shadow-xl">
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-slate-900">
+                  {editingArticle ? "Edit Article" : "Create New Article"}
+                </h2>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                {/* Featured Image Upload */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Featured Image
+                  </label>
+                  <div className="flex items-center gap-4">
+                    {imagePreview && (
+                      <img
+                        src={imagePreview}
+                        alt="Preview"
+                        className="h-32 w-32 rounded-lg object-cover"
+                      />
                     )}
+                    <label className="cursor-pointer rounded-lg border-2 border-dashed border-slate-300 px-6 py-4 text-center hover:border-blue-500">
+                      <Upload className="mx-auto h-8 w-8 text-slate-400" />
+                      <p className="mt-2 text-sm text-slate-600">
+                        Click to upload image
+                      </p>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
-                  <h3 className="text-lg font-semibold text-slate-900 mb-2 line-clamp-2">
-                    {article.title}
-                  </h3>
-                  <p className="text-sm text-slate-600 mb-3 line-clamp-2">
-                    {article.excerpt}
+                </div>
+
+                {/* Title */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Title *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.title}
+                    onChange={(e) =>
+                      setFormData({ ...formData, title: e.target.value })
+                    }
+                    required
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    placeholder="Enter article title"
+                  />
+                </div>
+
+                {/* Author & Category */}
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Author *
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.author}
+                      onChange={(e) =>
+                        setFormData({ ...formData, author: e.target.value })
+                      }
+                      required
+                      className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Category *
+                    </label>
+                    <select
+                      value={formData.category}
+                      onChange={(e) =>
+                        setFormData({ ...formData, category: e.target.value })
+                      }
+                      required
+                      className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    >
+                      {categories.map((cat) => (
+                        <option key={cat} value={cat}>
+                          {cat}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Excerpt */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Excerpt
+                  </label>
+                  <textarea
+                    value={formData.excerpt}
+                    onChange={(e) =>
+                      setFormData({ ...formData, excerpt: e.target.value })
+                    }
+                    rows={2}
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    placeholder="Short description of the article"
+                  />
+                </div>
+
+                {/* Content */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Content * (HTML supported)
+                  </label>
+                  <textarea
+                    value={formData.content}
+                    onChange={(e) =>
+                      setFormData({ ...formData, content: e.target.value })
+                    }
+                    required
+                    rows={12}
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2 font-mono text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    placeholder="<h2>Heading</h2><p>Your content here...</p>"
+                  />
+                  <p className="mt-1 text-xs text-slate-500">
+                    You can use HTML tags: &lt;h2&gt;, &lt;h3&gt;, &lt;p&gt;,
+                    &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;ol&gt;,
+                    &lt;li&gt;
                   </p>
                 </div>
 
-                <div className="flex items-center space-x-1 ml-4">
-                  <button className="p-2 text-slate-400 hover:text-blue-600 rounded-lg hover:bg-blue-50">
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50">
-                    <Edit className="h-4 w-4" />
-                  </button>
-                  <button className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50">
-                    <Trash2 className="h-4 w-4" />
-                  </button>
-                  <button className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-50">
-                    <MoreVertical className="h-4 w-4" />
-                  </button>
+                {/* Hashtags */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Hashtags
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.hashtags}
+                    onChange={(e) =>
+                      setFormData({ ...formData, hashtags: e.target.value })
+                    }
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                    placeholder="grammar, tips, learning (comma-separated)"
+                  />
                 </div>
-              </div>
 
-              {/* Article Stats */}
-              <div className="flex items-center justify-between mb-4 text-sm text-slate-500">
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center">
-                    <Eye className="h-4 w-4 mr-1" />
-                    {formatNumber(article.views)}
+                {/* SEO Fields */}
+                <div className="space-y-4 rounded-lg border border-slate-200 p-4">
+                  <h3 className="font-semibold text-slate-900">SEO Settings</h3>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      SEO Title
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.seo_title}
+                      onChange={(e) =>
+                        setFormData({ ...formData, seo_title: e.target.value })
+                      }
+                      className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      placeholder="SEO-optimized title"
+                    />
                   </div>
-                  <div className="flex items-center">
-                    <Heart className="h-4 w-4 mr-1" />
-                    {article.likes}
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      SEO Description
+                    </label>
+                    <textarea
+                      value={formData.seo_description}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          seo_description: e.target.value,
+                        })
+                      }
+                      rows={2}
+                      className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                      placeholder="Meta description for search engines"
+                    />
                   </div>
-                  <div className="flex items-center">
-                    <MessageCircle className="h-4 w-4 mr-1" />
-                    {article.comments}
-                  </div>
                 </div>
-                <div className="flex items-center">
-                  <User className="h-4 w-4 mr-1" />
-                  {article.author}
-                </div>
-              </div>
 
-              {/* Tags */}
-              <div className="flex flex-wrap gap-1 mb-4">
-                {article.tags.slice(0, 3).map((tag) => (
-                  <span
-                    key={tag}
-                    className="px-2 py-1 bg-slate-100 text-slate-600 text-xs rounded-lg"
+                {/* Status */}
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Status *
+                  </label>
+                  <select
+                    value={formData.status}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        status: e.target.value as any,
+                      })
+                    }
+                    required
+                    className="w-full rounded-lg border border-slate-300 px-4 py-2 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   >
-                    #{tag}
-                  </span>
-                ))}
-                {article.tags.length > 3 && (
-                  <span className="px-2 py-1 bg-slate-100 text-slate-500 text-xs rounded-lg">
-                    +{article.tags.length - 3} more
-                  </span>
-                )}
-              </div>
-
-              {/* Footer */}
-              <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-                <div className="flex items-center text-sm text-slate-500">
-                  <Calendar className="h-4 w-4 mr-1" />
-                  <span>
-                    {article.status === "Published"
-                      ? "Published"
-                      : article.status === "Scheduled"
-                      ? "Scheduled for"
-                      : "Updated"}{" "}
-                    {formatDate(article.publishedAt || article.updatedAt)}
-                  </span>
+                    <option value="Draft">Draft</option>
+                    <option value="Published">Published</option>
+                    <option value="Scheduled">Scheduled</option>
+                    <option value="Archived">Archived</option>
+                  </select>
                 </div>
-                <div className="flex items-center space-x-2">
-                  <button
-                    className="p-1 text-slate-400 hover:text-slate-600"
-                    title="Share article"
-                  >
-                    <Share2 className="h-4 w-4" />
-                  </button>
-                  <button
-                    className="p-1 text-slate-400 hover:text-blue-600"
-                    title="View analytics"
-                  >
-                    <TrendingUp className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
 
-        {filteredArticles.length === 0 && (
-          <Card className="p-12">
-            <div className="text-center">
-              <FileText className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-slate-900 mb-2">
-                No articles found
-              </h3>
-              <p className="text-slate-500 mb-6">
-                {searchTerm ||
-                filterStatus !== "All" ||
-                filterCategory !== "All"
-                  ? "Try adjusting your search or filters."
-                  : "Start creating educational content for your students."}
-              </p>
-              {!searchTerm &&
-                filterStatus === "All" &&
-                filterCategory === "All" && (
-                  <Button variant="primary">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Write Article
+                {/* Actions */}
+                <div className="flex justify-end gap-3 border-t border-slate-200 pt-6">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setShowModal(false)}
+                    disabled={submitting}
+                  >
+                    Cancel
                   </Button>
-                )}
+                  <Button
+                    type="submit"
+                    variant="primary"
+                    disabled={submitting}
+                  >
+                    {submitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        {editingArticle ? "Update Article" : "Create Article"}
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
             </div>
-          </Card>
+          </div>
         )}
       </div>
     </AdminLayout>

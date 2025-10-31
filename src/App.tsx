@@ -2,6 +2,8 @@ import { Routes, Route, useNavigate, useLocation } from "react-router-dom";
 import LearnMoreZE from "./LearnMoreZE";
 import PromoCenter from "./PromoCenter";
 import PromoHub from "./PromoHub";
+import Articles from "./pages/Articles";
+import ArticleComments from "./pages/admin/ArticleComments";
 import Navbar from "./Navbar";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -14,7 +16,7 @@ import {
   Ambassadors,
   PromoCodes,
   CountdownBatch,
-  Articles,
+  Articles as AdminArticles,
   Programs,
   AmbassadorForm,
   PromoForm,
@@ -45,6 +47,8 @@ function App() {
           <Route path="/" element={<LearnMoreZE />} />
           <Route path="/promo-center" element={<PromoCenter />} />
           <Route path="/promo-hub" element={<PromoHub />} />
+          <Route path="/articles" element={<Articles />} />
+          <Route path="/articles/:slug" element={<Articles />} />
           <Route path="/login" element={<Login />} />
 
           {/* Admin Routes - Protected */}
@@ -188,7 +192,15 @@ function App() {
             path="/admin/articles"
             element={
               <ProtectedRoute requireAdmin>
-                <Articles setCurrentPage={(page) => navigate(page)} />
+                <AdminArticles setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/articles/comments"
+            element={
+              <ProtectedRoute requireAdmin>
+                <ArticleComments setCurrentPage={(page) => navigate(page)} />
               </ProtectedRoute>
             }
           />

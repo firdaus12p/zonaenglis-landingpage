@@ -7,6 +7,7 @@ import {
   Users,
   MessageCircle,
   LogOut,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "./components";
 import { WHATSAPP_LINKS } from "./constants/cta";
@@ -86,6 +87,12 @@ export default function Navbar({ currentPage, setCurrentPage }: NavbarProps) {
       label: "Promo Hub",
       icon: Users,
       description: "Partnership & Ambassador",
+    },
+    {
+      key: "/articles",
+      label: "Articles",
+      icon: BookOpen,
+      description: "Tips & artikel belajar bahasa Inggris",
     },
   ];
 
