@@ -18,6 +18,7 @@ import affiliateRoutes from "./routes/affiliate.js";
 import authRoutes from "./routes/auth.js";
 import countdownRoutes from "./routes/countdown.js";
 import articlesRoutes from "./routes/articles.js";
+import settingsRoutes from "./routes/settings.js";
 
 // Import database connection for cleanup tasks
 import db from "./db/connection.js";
@@ -106,6 +107,7 @@ app.use("/api/upload", uploadRoutes);
 app.use("/api/affiliate", affiliateRoutes);
 app.use("/api/countdown", countdownRoutes);
 app.use("/api/articles", articlesRoutes);
+app.use("/api/settings", settingsRoutes);
 
 // 404 handler
 app.use((req, res) => {

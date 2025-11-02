@@ -35,6 +35,14 @@ const ArticleComments: React.FC<{
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("Pending");
   const [searchTerm, setSearchTerm] = useState("");
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(
+    null
+  );
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    message: string;
+    type: "success" | "error";
+  }>({ show: false, message: "", type: "success" });
 
   useEffect(() => {
     fetchComments();
@@ -57,7 +65,15 @@ const ArticleComments: React.FC<{
       setComments(result.data || []);
     } catch (error) {
       console.error("Error fetching comments:", error);
-      alert("Failed to load comments");
+      setNotification({
+        show: true,
+        message: "Failed to load comments",
+        type: "error",
+      });
+      setTimeout(
+        () => setNotification({ show: false, message: "", type: "success" }),
+        3000
+      );
     } finally {
       setLoading(false);
     }
@@ -74,17 +90,31 @@ const ArticleComments: React.FC<{
 
       if (!response.ok) throw new Error("Failed to approve comment");
 
-      alert("Comment approved!");
+      setNotification({
+        show: true,
+        message: "Comment approved successfully!",
+        type: "success",
+      });
+      setTimeout(
+        () => setNotification({ show: false, message: "", type: "success" }),
+        3000
+      );
       fetchComments();
     } catch (error) {
       console.error("Error approving comment:", error);
-      alert("Failed to approve comment");
+      setNotification({
+        show: true,
+        message: "Failed to approve comment",
+        type: "error",
+      });
+      setTimeout(
+        () => setNotification({ show: false, message: "", type: "success" }),
+        3000
+      );
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this comment?")) return;
-
     try {
       const response = await fetch(
         `${API_BASE}/articles/admin/comments/${id}`,
@@ -95,18 +125,36 @@ const ArticleComments: React.FC<{
 
       if (!response.ok) throw new Error("Failed to delete comment");
 
-      alert("Comment deleted!");
+      setNotification({
+        show: true,
+        message: "Comment deleted successfully!",
+        type: "success",
+      });
+      setTimeout(
+        () => setNotification({ show: false, message: "", type: "success" }),
+        3000
+      );
+      setShowDeleteConfirm(null);
       fetchComments();
     } catch (error) {
       console.error("Error deleting comment:", error);
-      alert("Failed to delete comment");
+      setNotification({
+        show: true,
+        message: "Failed to delete comment",
+        type: "error",
+      });
+      setTimeout(
+        () => setNotification({ show: false, message: "", type: "success" }),
+        3000
+      );
     }
   };
 
-  const filteredComments = comments.filter((comment) =>
-    comment.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    comment.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    comment.article_title.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredComments = comments.filter(
+    (comment) =>
+      comment.comment.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      comment.user_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      comment.article_title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusColor = (status: string) => {
@@ -301,7 +349,7 @@ const ArticleComments: React.FC<{
                     <Button
                       variant="danger"
                       size="sm"
-                      onClick={() => handleDelete(comment.id)}
+                      onClick={() => setShowDeleteConfirm(comment.id)}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -316,6 +364,52 @@ const ArticleComments: React.FC<{
                 <p className="text-slate-600">No comments found.</p>
               </Card>
             )}
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                Konfirmasi Hapus
+              </h3>
+              <p className="text-slate-600 mb-6">
+                Apakah Anda yakin ingin menghapus komentar ini? Tindakan ini
+                tidak dapat dibatalkan.
+              </p>
+              <div className="flex space-x-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="flex-1"
+                >
+                  Batal
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={() => handleDelete(showDeleteConfirm)}
+                  className="flex-1"
+                >
+                  Hapus
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notification */}
+        {notification.show && (
+          <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+            <div
+              className={`rounded-lg px-6 py-4 shadow-lg ${
+                notification.type === "success"
+                  ? "bg-emerald-500 text-white"
+                  : "bg-red-500 text-white"
+              }`}
+            >
+              <p className="font-medium">{notification.message}</p>
+            </div>
           </div>
         )}
       </div>

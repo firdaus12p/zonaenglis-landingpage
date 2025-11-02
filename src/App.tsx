@@ -21,6 +21,7 @@ import {
   AmbassadorForm,
   PromoForm,
   PromoCodeForm,
+  Settings,
 } from "./components/admin";
 import CountdownBatchForm from "./pages/admin/CountdownBatchForm";
 
@@ -201,6 +202,14 @@ function App() {
             element={
               <ProtectedRoute requireAdmin>
                 <ArticleComments setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/settings"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Settings setCurrentPage={(page) => navigate(page)} />
               </ProtectedRoute>
             }
           />

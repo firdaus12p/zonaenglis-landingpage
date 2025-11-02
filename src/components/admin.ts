@@ -8,6 +8,7 @@ export { default as PromoCodes } from "../pages/admin/PromoCodes";
 export { default as CountdownBatch } from "../pages/admin/CountdownBatch";
 export { default as Articles } from "../pages/admin/Articles";
 export { default as Programs } from "../pages/admin/Programs";
+export { default as Settings } from "../pages/admin/Settings";
 
 // Form Components
 export { default as AmbassadorForm } from "../pages/admin/AmbassadorForm";

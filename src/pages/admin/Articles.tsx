@@ -49,6 +49,14 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const [filterCategory, setFilterCategory] = useState<string>("All");
   const [showModal, setShowModal] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(
+    null
+  );
+  const [notification, setNotification] = useState<{
+    show: boolean;
+    message: string;
+    type: "success" | "error";
+  }>({ show: false, message: "", type: "success" });
   const [formData, setFormData] = useState({
     title: "",
     excerpt: "",
@@ -86,7 +94,15 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       setArticles(result.data || []);
     } catch (error) {
       console.error("Error fetching articles:", error);
-      alert("Failed to load articles");
+      setNotification({
+        show: true,
+        message: "Failed to load articles",
+        type: "error",
+      });
+      setTimeout(
+        () => setNotification({ show: false, message: "", type: "success" }),
+        3000
+      );
     } finally {
       setLoading(false);
     }
@@ -222,24 +238,36 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         throw new Error(error.message || "Failed to save article");
       }
 
-      alert(
-        editingArticle
+      setNotification({
+        show: true,
+        message: editingArticle
           ? "Article updated successfully!"
-          : "Article created successfully!"
+          : "Article created successfully!",
+        type: "success",
+      });
+      setTimeout(
+        () => setNotification({ show: false, message: "", type: "success" }),
+        3000
       );
       setShowModal(false);
       fetchArticles();
     } catch (error: any) {
       console.error("Error saving article:", error);
-      alert(error.message || "Failed to save article");
+      setNotification({
+        show: true,
+        message: error.message || "Failed to save article",
+        type: "error",
+      });
+      setTimeout(
+        () => setNotification({ show: false, message: "", type: "success" }),
+        3000
+      );
     } finally {
       setSubmitting(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Are you sure you want to delete this article?")) return;
-
     try {
       const response = await fetch(`${API_BASE}/articles/${id}`, {
         method: "DELETE",
@@ -247,11 +275,28 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
       if (!response.ok) throw new Error("Failed to delete article");
 
-      alert("Article deleted successfully!");
+      setNotification({
+        show: true,
+        message: "Article deleted successfully!",
+        type: "success",
+      });
+      setTimeout(
+        () => setNotification({ show: false, message: "", type: "success" }),
+        3000
+      );
+      setShowDeleteConfirm(null);
       fetchArticles();
     } catch (error) {
       console.error("Error deleting article:", error);
-      alert("Failed to delete article");
+      setNotification({
+        show: true,
+        message: "Failed to delete article",
+        type: "error",
+      });
+      setTimeout(
+        () => setNotification({ show: false, message: "", type: "success" }),
+        3000
+      );
     }
   };
 
@@ -519,7 +564,7 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                           <Button
                             variant="danger"
                             size="sm"
-                            onClick={() => handleDelete(article.id)}
+                            onClick={() => setShowDeleteConfirm(article.id)}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -779,6 +824,52 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                   </Button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
+              <h3 className="text-lg font-semibold text-slate-900 mb-2">
+                Konfirmasi Hapus
+              </h3>
+              <p className="text-slate-600 mb-6">
+                Apakah Anda yakin ingin menghapus artikel ini? Tindakan ini
+                tidak dapat dibatalkan.
+              </p>
+              <div className="flex space-x-3">
+                <Button
+                  variant="secondary"
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="flex-1"
+                >
+                  Batal
+                </Button>
+                <Button
+                  variant="danger"
+                  onClick={() => handleDelete(showDeleteConfirm)}
+                  className="flex-1"
+                >
+                  Hapus
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Notification */}
+        {notification.show && (
+          <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+            <div
+              className={`rounded-lg px-6 py-4 shadow-lg ${
+                notification.type === "success"
+                  ? "bg-emerald-500 text-white"
+                  : "bg-red-500 text-white"
+              }`}
+            >
+              <p className="font-medium">{notification.message}</p>
             </div>
           </div>
         )}
