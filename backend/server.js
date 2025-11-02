@@ -16,6 +16,7 @@ import validateRoutes from "./routes/validate.js";
 import uploadRoutes from "./routes/upload.js";
 import affiliateRoutes from "./routes/affiliate.js";
 import authRoutes from "./routes/auth.js";
+import usersRoutes from "./routes/users.js";
 import countdownRoutes from "./routes/countdown.js";
 import articlesRoutes from "./routes/articles.js";
 import settingsRoutes from "./routes/settings.js";
@@ -147,6 +148,7 @@ app.get("/api/health", (req, res) => {
 
 // API Routes
 app.use("/api/auth", authRoutes);
+app.use("/api/users", usersRoutes);
 app.use("/api/ambassadors", ambassadorsRoutes);
 app.use("/api/programs", programsRoutes);
 app.use("/api/promos", promosRoutes);

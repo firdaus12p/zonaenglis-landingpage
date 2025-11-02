@@ -89,6 +89,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         currentPage.startsWith("/admin/articles"),
     },
     {
+      name: "Users",
+      page: "/admin/users",
+      icon: Users,
+      current:
+        currentPage === "Users" || currentPage.startsWith("/admin/users"),
+    },
+    {
       name: "Settings",
       page: "/admin/settings",
       icon: Settings,
@@ -188,7 +195,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
               <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-lg shadow-lg border border-slate-200 py-1">
                 <button
                   onClick={() => {
-                    handleNavigation("/admin/settings");
+                    handleNavigation("/admin/profile");
                     setDropdownOpen(false);
                   }}
                   className="flex items-center w-full px-3 py-2 text-sm text-slate-600 hover:bg-slate-50"

@@ -466,7 +466,7 @@ const ArticleDetail = () => {
       const response = await fetch(`${API_BASE}/articles/${article.id}/like`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reaction_type: type }),
+        body: JSON.stringify({ reactionType: type }),
       });
 
       if (response.ok) {

@@ -4,10 +4,12 @@ import PromoCenter from "./PromoCenter";
 import PromoHub from "./PromoHub";
 import Articles from "./pages/Articles";
 import ArticleComments from "./pages/admin/ArticleComments";
+import Profile from "./pages/admin/Profile";
+import Users from "./pages/admin/Users";
 import Navbar from "./Navbar";
 import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
-import { Gift, Users } from "lucide-react";
+import { Gift, Users as UsersIcon } from "lucide-react";
 import { Button } from "./components";
 
 // Admin Dashboard Components
@@ -213,6 +215,22 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/admin/profile"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Profile setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/users"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Users setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
+          />
         </Routes>
       </div>
 
@@ -235,7 +253,7 @@ function App() {
             size="md"
             className="rounded-full shadow-lg hover:scale-105 transition-all duration-200"
           >
-            <Users className="h-4 w-4" />
+            <UsersIcon className="h-4 w-4" />
             Promo Hub
           </Button>
 
