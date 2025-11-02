@@ -91,10 +91,15 @@ router.get("/public", async (req, res) => {
       SELECT 
         a.*,
         GROUP_CONCAT(DISTINCT ah.hashtag) as hashtags,
-        COUNT(DISTINCT ai.id) as image_count
+        COUNT(DISTINCT ai.id) as image_count,
+        COUNT(DISTINCT CASE WHEN al.reaction_type = 'like' THEN al.id END) as likes_count,
+        COUNT(DISTINCT CASE WHEN al.reaction_type = 'love' THEN al.id END) as loves_count,
+        COUNT(DISTINCT CASE WHEN ac.status = 'Approved' THEN ac.id END) as comments_count
       FROM articles a
       LEFT JOIN article_hashtags ah ON a.id = ah.article_id
       LEFT JOIN article_images ai ON a.id = ai.article_id
+      LEFT JOIN article_likes al ON a.id = al.article_id
+      LEFT JOIN article_comments ac ON a.id = ac.article_id
       WHERE a.status = 'Published' 
       AND a.deleted_at IS NULL
       AND (a.published_at IS NULL OR a.published_at <= NOW())
@@ -165,9 +170,12 @@ router.get("/public/:slug", async (req, res) => {
       `
       SELECT 
         a.*,
-        GROUP_CONCAT(DISTINCT ah.hashtag) as hashtags
+        GROUP_CONCAT(DISTINCT ah.hashtag) as hashtags,
+        COUNT(DISTINCT CASE WHEN al.reaction_type = 'like' THEN al.id END) as likes_count,
+        COUNT(DISTINCT CASE WHEN al.reaction_type = 'love' THEN al.id END) as loves_count
       FROM articles a
       LEFT JOIN article_hashtags ah ON a.id = ah.article_id
+      LEFT JOIN article_likes al ON a.id = al.article_id
       WHERE a.slug = ? 
       AND a.status = 'Published'
       AND a.deleted_at IS NULL
@@ -287,6 +295,7 @@ router.post("/:id/like", async (req, res) => {
       [id, userIdentifier]
     );
 
+    let action;
     if (existing.length > 0) {
       // User already reacted
       if (existing[0].reaction_type === reactionType) {
@@ -294,22 +303,14 @@ router.post("/:id/like", async (req, res) => {
         await db.query("DELETE FROM article_likes WHERE id = ?", [
           existing[0].id,
         ]);
-        return res.json({
-          success: true,
-          message: "Reaction removed",
-          action: "removed",
-        });
+        action = "removed";
       } else {
         // Different reaction - update it
         await db.query(
           "UPDATE article_likes SET reaction_type = ? WHERE id = ?",
           [reactionType, existing[0].id]
         );
-        return res.json({
-          success: true,
-          message: "Reaction updated",
-          action: "updated",
-        });
+        action = "updated";
       }
     } else {
       // New reaction
@@ -317,12 +318,37 @@ router.post("/:id/like", async (req, res) => {
         "INSERT INTO article_likes (article_id, user_identifier, reaction_type) VALUES (?, ?, ?)",
         [id, userIdentifier, reactionType]
       );
-      res.json({
-        success: true,
-        message: "Reaction added",
-        action: "added",
-      });
+      action = "added";
     }
+
+    // Get updated counts and user reaction
+    const [likeCounts] = await db.query(
+      "SELECT COUNT(*) as count FROM article_likes WHERE article_id = ? AND reaction_type = 'like'",
+      [id]
+    );
+    const [loveCounts] = await db.query(
+      "SELECT COUNT(*) as count FROM article_likes WHERE article_id = ? AND reaction_type = 'love'",
+      [id]
+    );
+    const [userReaction] = await db.query(
+      "SELECT reaction_type FROM article_likes WHERE article_id = ? AND user_identifier = ?",
+      [id, userIdentifier]
+    );
+
+    res.json({
+      success: true,
+      message:
+        action === "removed"
+          ? "Reaction removed"
+          : action === "updated"
+          ? "Reaction updated"
+          : "Reaction added",
+      action,
+      likes_count: likeCounts[0].count,
+      loves_count: loveCounts[0].count,
+      user_reaction:
+        userReaction.length > 0 ? userReaction[0].reaction_type : null,
+    });
   } catch (error) {
     console.error("Error toggling like:", error);
     console.error("Error details:", {
@@ -344,10 +370,10 @@ router.post("/:id/like", async (req, res) => {
 router.post("/:id/comment", async (req, res) => {
   try {
     const { id } = req.params;
-    const { userName, userEmail, comment } = req.body;
+    const { user_name, user_email, comment } = req.body;
     const userIdentifier = getUserIdentifier(req);
 
-    if (!userName || !comment) {
+    if (!user_name || !comment) {
       return res.status(400).json({
         success: false,
         message: "Name and comment are required",
@@ -362,8 +388,8 @@ router.post("/:id/comment", async (req, res) => {
     `,
       [
         id,
-        userName,
-        userEmail || null,
+        user_name,
+        user_email || null,
         comment,
         req.ip || req.connection.remoteAddress,
         req.headers["user-agent"] || "unknown",
@@ -432,10 +458,15 @@ router.get("/admin/all", async (req, res) => {
       SELECT 
         a.*,
         GROUP_CONCAT(DISTINCT ah.hashtag) as hashtags,
-        COUNT(DISTINCT ai.id) as image_count
+        COUNT(DISTINCT ai.id) as image_count,
+        COUNT(DISTINCT CASE WHEN al.reaction_type = 'like' THEN al.id END) as likes_count,
+        COUNT(DISTINCT CASE WHEN al.reaction_type = 'love' THEN al.id END) as loves_count,
+        COUNT(DISTINCT CASE WHEN ac.status = 'Approved' THEN ac.id END) as comments_count
       FROM articles a
       LEFT JOIN article_hashtags ah ON a.id = ah.article_id
       LEFT JOIN article_images ai ON a.id = ai.article_id
+      LEFT JOIN article_likes al ON a.id = al.article_id
+      LEFT JOIN article_comments ac ON a.id = ac.article_id
       WHERE a.deleted_at IS NULL
       GROUP BY a.id
       ORDER BY a.created_at DESC
@@ -450,6 +481,87 @@ router.get("/admin/all", async (req, res) => {
     res.json({ success: true, data: formattedArticles });
   } catch (error) {
     console.error("Error fetching admin articles:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * GET /api/articles/admin/comments
+ * Get all comments (admin view)
+ */
+router.get("/admin/comments", async (req, res) => {
+  try {
+    const { status, articleId } = req.query;
+
+    let query = `
+      SELECT 
+        c.*,
+        a.title as article_title,
+        a.slug as article_slug
+      FROM article_comments c
+      JOIN articles a ON c.article_id = a.id
+      WHERE c.status != 'Deleted'
+    `;
+
+    const params = [];
+
+    if (status) {
+      query += " AND c.status = ?";
+      params.push(status);
+    }
+
+    if (articleId) {
+      query += " AND c.article_id = ?";
+      params.push(articleId);
+    }
+
+    query += " ORDER BY c.created_at DESC";
+
+    const [comments] = await db.query(query, params);
+
+    res.json({ success: true, data: comments });
+  } catch (error) {
+    console.error("Error fetching comments:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * PUT /api/articles/admin/comments/:id/approve
+ * Approve comment
+ */
+router.put("/admin/comments/:id/approve", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await db.query(
+      "UPDATE article_comments SET status = 'Approved' WHERE id = ?",
+      [id]
+    );
+
+    res.json({ success: true, message: "Comment approved" });
+  } catch (error) {
+    console.error("Error approving comment:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * DELETE /api/articles/admin/comments/:id
+ * Delete comment
+ */
+router.delete("/admin/comments/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await db.query(
+      "UPDATE article_comments SET status = 'Deleted' WHERE id = ?",
+      [id]
+    );
+
+    res.json({ success: true, message: "Comment deleted" });
+  } catch (error) {
+    console.error("Error deleting comment:", error);
     res.status(500).json({ success: false, message: "Server error" });
   }
 });
@@ -813,87 +925,6 @@ router.post(
     }
   }
 );
-
-/**
- * GET /api/articles/admin/comments
- * Get all comments (admin view)
- */
-router.get("/admin/comments", async (req, res) => {
-  try {
-    const { status, articleId } = req.query;
-
-    let query = `
-      SELECT 
-        c.*,
-        a.title as article_title,
-        a.slug as article_slug
-      FROM article_comments c
-      JOIN articles a ON c.article_id = a.id
-      WHERE c.status != 'Deleted'
-    `;
-
-    const params = [];
-
-    if (status) {
-      query += " AND c.status = ?";
-      params.push(status);
-    }
-
-    if (articleId) {
-      query += " AND c.article_id = ?";
-      params.push(articleId);
-    }
-
-    query += " ORDER BY c.created_at DESC";
-
-    const [comments] = await db.query(query, params);
-
-    res.json({ success: true, data: comments });
-  } catch (error) {
-    console.error("Error fetching comments:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
-
-/**
- * PUT /api/articles/admin/comments/:id/approve
- * Approve comment
- */
-router.put("/admin/comments/:id/approve", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    await db.query(
-      "UPDATE article_comments SET status = 'Approved' WHERE id = ?",
-      [id]
-    );
-
-    res.json({ success: true, message: "Comment approved" });
-  } catch (error) {
-    console.error("Error approving comment:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
-
-/**
- * DELETE /api/articles/admin/comments/:id
- * Delete comment
- */
-router.delete("/admin/comments/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    await db.query(
-      "UPDATE article_comments SET status = 'Deleted' WHERE id = ?",
-      [id]
-    );
-
-    res.json({ success: true, message: "Comment deleted" });
-  } catch (error) {
-    console.error("Error deleting comment:", error);
-    res.status(500).json({ success: false, message: "Server error" });
-  }
-});
 
 /**
  * GET /api/articles/categories
