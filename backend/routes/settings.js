@@ -66,7 +66,7 @@ router.get("/:key", async (req, res) => {
     const { key } = req.params;
 
     const [settings] = await db.query(
-      "SELECT * FROM settings WHERE setting_key = ?",
+      "SELECT id, setting_key, setting_value, setting_type, category, label, description, created_at, updated_at FROM settings WHERE setting_key = ?",
       [key]
     );
 
@@ -109,7 +109,7 @@ router.put("/:key", async (req, res) => {
 
     // Check if setting exists
     const [existing] = await db.query(
-      "SELECT * FROM settings WHERE setting_key = ?",
+      "SELECT id, setting_key, setting_value, setting_type, category, label FROM settings WHERE setting_key = ?",
       [key]
     );
 
@@ -152,7 +152,7 @@ router.put("/:key", async (req, res) => {
 
     // Fetch updated setting
     const [updated] = await db.query(
-      "SELECT * FROM settings WHERE setting_key = ?",
+      "SELECT id, setting_key, setting_value, setting_type, category, label, description FROM settings WHERE setting_key = ?",
       [key]
     );
 
@@ -204,7 +204,7 @@ router.put("/", async (req, res) => {
 
       // Check if setting exists and get type
       const [existing] = await connection.query(
-        "SELECT * FROM settings WHERE setting_key = ?",
+        "SELECT id, setting_key, setting_value, setting_type FROM settings WHERE setting_key = ?",
         [key]
       );
 

@@ -8,10 +8,7 @@ const router = express.Router();
 router.post("/code", async (req, res) => {
   const { code, purchaseAmount } = req.body;
 
-  console.log("🔍 Validating code:", { code, purchaseAmount });
-
   if (!code) {
-    console.log("❌ No code provided");
     return res.status(400).json({
       valid: false,
       error: "Kode diperlukan",
@@ -20,7 +17,6 @@ router.post("/code", async (req, res) => {
 
   try {
     // Check if it's an affiliate/ambassador code first
-    console.log("🔎 Checking ambassadors table...");
     const [ambassadorRows] = await db.query(
       `SELECT id, name, role, location, institution, affiliate_code, testimonial, phone, commission_rate 
        FROM ambassadors 
@@ -29,11 +25,8 @@ router.post("/code", async (req, res) => {
       [code]
     );
 
-    console.log(`✅ Ambassador query result: ${ambassadorRows.length} rows`);
-
     if (ambassadorRows.length > 0) {
       const ambassador = ambassadorRows[0];
-      console.log("🎉 Ambassador code found:", ambassador.name);
       return res.json({
         valid: true,
         type: "ambassador",
@@ -55,17 +48,16 @@ router.post("/code", async (req, res) => {
     }
 
     // Check if it's a promo code
-    console.log("🔎 Checking promo_codes table...");
-
     // First, check if code exists at all
     const [allPromoRows] = await db.query(
-      `SELECT * FROM promo_codes WHERE code = ?`,
+      `SELECT id, code, name, description, discount_type, discount_value, min_purchase, max_discount, 
+              usage_limit, used_count, valid_from, valid_until, is_active
+       FROM promo_codes WHERE code = ?`,
       [code]
     );
 
     if (allPromoRows.length === 0) {
       // Code doesn't exist
-      console.log("❌ Code not found in database");
       return res.json({
         valid: false,
         message: "Kode tidak valid. Periksa kembali kode yang Anda masukkan.",
@@ -77,7 +69,6 @@ router.post("/code", async (req, res) => {
 
     // Check if inactive
     if (promo.is_active === 0) {
-      console.log("❌ Promo code is inactive");
       return res.json({
         valid: false,
         message: `Kode promo "${promo.code}" sudah tidak aktif.`,
@@ -95,7 +86,6 @@ router.post("/code", async (req, res) => {
     const validUntil = new Date(promo.valid_until);
 
     if (now < validFrom) {
-      console.log("❌ Promo code not yet valid");
       return res.json({
         valid: false,
         message: `Kode promo "${
@@ -113,7 +103,6 @@ router.post("/code", async (req, res) => {
     }
 
     if (now > validUntil) {
-      console.log("❌ Promo code expired");
       return res.json({
         valid: false,
         message: `Kode promo "${
@@ -130,11 +119,8 @@ router.post("/code", async (req, res) => {
       });
     }
 
-    console.log("🎉 Promo code found and valid:", promo.name);
-
     // Check usage limit (quota)
     if (promo.usage_limit !== null && promo.used_count >= promo.usage_limit) {
-      console.log("❌ Usage limit reached");
       return res.json({
         valid: false,
         message: `Kode promo "${promo.code}" sudah mencapai batas penggunaan (${promo.used_count}/${promo.usage_limit}).`,
@@ -176,12 +162,6 @@ router.post("/code", async (req, res) => {
     }
 
     const finalAmount = purchaseAmount ? purchaseAmount - discountAmount : null;
-
-    console.log("✅ Sending success response:", {
-      type: "promo",
-      discount: discountAmount,
-      finalAmount,
-    });
 
     res.json({
       valid: true,

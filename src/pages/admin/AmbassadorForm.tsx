@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button } from "../../components";
-import LocalStorageTest from "../../components/debug/LocalStorageTest";
 import {
   ArrowLeft,
   Upload,
@@ -197,8 +196,7 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
         throw new Error(errorData.error || "Failed to save ambassador");
       }
 
-      const result = await response.json();
-      console.log("Ambassador saved:", result);
+      await response.json(); // Consume response
 
       // Show success message
       showAlert(
@@ -214,7 +212,6 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
         setCurrentPage("/admin/ambassadors");
       }, 2000);
     } catch (error) {
-      console.error("Error saving ambassador:", error);
       showAlert(
         "Gagal Menyimpan",
         `Terjadi kesalahan saat menyimpan data ambassador: ${
@@ -249,9 +246,6 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
       setCurrentPage={setCurrentPage}
     >
       <div className="space-y-6">
-        {/* Debug Component - Remove in production */}
-        <LocalStorageTest />
-
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">

@@ -23,9 +23,12 @@ router.get("/", async (req, res) => {
 // GET /api/programs/:id - Get single program
 router.get("/:id", async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM promos WHERE id = ?", [
-      req.params.id,
-    ]);
+    const [rows] = await db.query(
+      `SELECT id, title, branch, type, program, start_date, end_date, quota, price, perks, image_url, 
+              wa_link, is_active, created_at, updated_at 
+       FROM promos WHERE id = ?`,
+      [req.params.id]
+    );
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Program not found" });

@@ -20,9 +20,13 @@ router.get("/", async (req, res) => {
 // GET /api/ambassadors/:id - Get single ambassador
 router.get("/:id", async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM ambassadors WHERE id = ?", [
-      req.params.id,
-    ]);
+    const [rows] = await db.query(
+      `SELECT id, name, role, location, institution, achievement, commission, referrals, badge_text, badge_variant, 
+              image_url, affiliate_code, testimonial, is_active, phone, email, bank_account, bank_name, commission_rate, 
+              total_earnings, created_at, updated_at 
+       FROM ambassadors WHERE id = ?`,
+      [req.params.id]
+    );
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Ambassador not found" });
@@ -198,7 +202,9 @@ router.delete("/:id", async (req, res) => {
 router.get("/code/:affiliateCode", async (req, res) => {
   try {
     const [rows] = await db.query(
-      "SELECT * FROM ambassadors WHERE affiliate_code = ? AND is_active = 1",
+      `SELECT id, name, role, location, institution, affiliate_code, testimonial, phone, email, commission_rate, 
+              badge_text, badge_variant, image_url, total_earnings 
+       FROM ambassadors WHERE affiliate_code = ? AND is_active = 1`,
       [req.params.affiliateCode]
     );
 

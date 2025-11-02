@@ -354,6 +354,11 @@ router.post("/validate", async (req, res) => {
 
 // POST /api/promos/use - Record promo code usage
 router.post("/use", async (req, res) => {
+  console.log(
+    `\n⚠️ [${new Date().toISOString()}] /use endpoint called! This should NOT be used!`
+  );
+  console.log("📦 Request body:", req.body);
+
   const { code, userId, purchaseAmount, discountAmount } = req.body;
 
   if (!code) {
@@ -412,7 +417,10 @@ router.post("/use", async (req, res) => {
 router.post("/track", async (req, res) => {
   try {
     const timestamp = new Date().toISOString();
-    console.log(`\n🔍 [${timestamp}] Promo tracking request received:`);
+    const requestId = Math.random().toString(36).substring(7);
+    console.log(
+      `\n🔍 [${timestamp}] [REQ:${requestId}] Promo tracking request received:`
+    );
     console.log("📦 Request body:", req.body);
     console.log("🌐 Client IP:", req.ip || req.connection.remoteAddress);
 
@@ -460,33 +468,37 @@ router.post("/track", async (req, res) => {
     // ⚠️ CRITICAL: Check duplicate BEFORE doing anything else
     // This prevents race conditions when multiple requests come in simultaneously
     const today = new Date().toISOString().split("T")[0];
-    const [existingUsage] = await db.query(
-      "SELECT id FROM promo_usage WHERE promo_code_id = ? AND user_phone = ? AND DATE(used_at) = ? AND deleted_at IS NULL",
-      [promo.id, user_phone, today]
-    );
 
-    if (existingUsage.length > 0) {
-      console.log(
-        `⚠️ [${new Date().toISOString()}] DUPLICATE TRACKING PREVENTED: ${promo_code} - ${user_phone}`
-      );
-      console.log(`   Existing usage ID: ${existingUsage[0].id}`);
-      return res.json({
-        success: true,
-        already_tracked: true,
-        message:
-          "You already used this promo code today. Discount still applies!",
-      });
-    }
-
-    console.log(
-      `✅ [${new Date().toISOString()}] No duplicate found, proceeding with tracking...`
-    );
-
-    // Use transaction to ensure atomicity (insert + increment happen together)
+    // Use FOR UPDATE to lock the row and prevent race conditions
     const connection = await db.getConnection();
     await connection.beginTransaction();
 
     try {
+      const [existingUsage] = await connection.query(
+        "SELECT id FROM promo_usage WHERE promo_code_id = ? AND user_phone = ? AND DATE(used_at) = ? AND deleted_at IS NULL FOR UPDATE",
+        [promo.id, user_phone, today]
+      );
+
+      if (existingUsage.length > 0) {
+        await connection.rollback();
+        connection.release();
+
+        console.log(
+          `⚠️ [${new Date().toISOString()}] [REQ:${requestId}] DUPLICATE TRACKING PREVENTED: ${promo_code} - ${user_phone}`
+        );
+        console.log(`   Existing usage ID: ${existingUsage[0].id}`);
+        return res.json({
+          success: true,
+          already_tracked: true,
+          message:
+            "You already used this promo code today. Discount still applies!",
+        });
+      }
+
+      console.log(
+        `✅ [${new Date().toISOString()}] [REQ:${requestId}] No duplicate found, proceeding with tracking...`
+      );
+
       // Insert usage record
       const [result] = await connection.query(
         `INSERT INTO promo_usage 
@@ -505,37 +517,24 @@ router.post("/track", async (req, res) => {
         ]
       );
 
-      // Increment used_count
+      // ⚠️ REMOVED MANUAL INCREMENT - Database trigger handles this!
+      // Trigger 'after_promo_usage_insert' calls UpdatePromoUsage() stored procedure
+      // which sets used_count = COUNT(*) of all active promo_usage records
+      // Manual increment here causes DOUBLE counting!
+
       console.log(
-        `📈 [${new Date().toISOString()}] BEFORE INCREMENT - Getting current used_count...`
+        `📈 [${new Date().toISOString()}] [REQ:${requestId}] Waiting for database trigger to update used_count...`
       );
 
-      // Get current count first
-      const [beforeCount] = await connection.query(
-        "SELECT used_count FROM promo_codes WHERE id = ?",
-        [promo.id]
-      );
-      console.log(`   Current used_count: ${beforeCount[0].used_count}`);
-
-      await connection.query(
-        "UPDATE promo_codes SET used_count = used_count + 1 WHERE id = ?",
-        [promo.id]
-      );
-
-      // Get count after increment
+      // Get count after trigger execution (trigger fires AFTER INSERT)
       const [afterCount] = await connection.query(
         "SELECT used_count FROM promo_codes WHERE id = ?",
         [promo.id]
       );
       console.log(
-        `📈 [${new Date().toISOString()}] AFTER INCREMENT - New used_count: ${
+        `📈 [${new Date().toISOString()}] [REQ:${requestId}] AFTER TRIGGER - used_count: ${
           afterCount[0].used_count
-        }`
-      );
-      console.log(
-        `   Increment amount: +${
-          afterCount[0].used_count - beforeCount[0].used_count
-        }`
+        } (auto-updated by trigger)`
       );
 
       // Commit transaction
@@ -543,10 +542,10 @@ router.post("/track", async (req, res) => {
       connection.release();
 
       console.log(
-        `✅ [${new Date().toISOString()}] Promo usage tracked successfully: ${promo_code} - ${user_name} (${user_phone})`
+        `✅ [${new Date().toISOString()}] [REQ:${requestId}] Promo usage tracked successfully: ${promo_code} - ${user_name} (${user_phone})`
       );
-      console.log(`   Usage ID: ${result.insertId}`);
-      console.log(`   Promo Name: ${promo.name}`);
+      console.log(`   [REQ:${requestId}] Usage ID: ${result.insertId}`);
+      console.log(`   [REQ:${requestId}] Promo Name: ${promo.name}`);
 
       res.json({
         success: true,
@@ -860,22 +859,51 @@ router.delete("/permanent-delete/:usage_id", async (req, res) => {
       });
     }
 
-    // Permanent deletion
-    await db.query(
-      "DELETE FROM promo_usage WHERE id = ? AND deleted_at IS NOT NULL",
+    // Get promo_code_id before deletion to decrement used_count
+    const [usageData] = await db.query(
+      "SELECT promo_code_id FROM promo_usage WHERE id = ?",
       [usage_id]
     );
 
-    console.log(
-      `🗑️ PERMANENT DELETE: Promo Lead ID ${usage_id} (${existing[0].user_name}) permanently removed`
-    );
+    const promoCodeId = usageData[0].promo_code_id;
 
-    res.json({
-      success: true,
-      message: "Lead permanently deleted from database",
-      deleted_id: usage_id,
-      deleted_user: existing[0].user_name,
-    });
+    // Use transaction to ensure atomicity (delete + decrement happen together)
+    const connection = await db.getConnection();
+    await connection.beginTransaction();
+
+    try {
+      // Permanent deletion
+      await connection.query(
+        "DELETE FROM promo_usage WHERE id = ? AND deleted_at IS NOT NULL",
+        [usage_id]
+      );
+
+      // Decrement used_count (but never go below 0)
+      await connection.query(
+        "UPDATE promo_codes SET used_count = GREATEST(used_count - 1, 0) WHERE id = ?",
+        [promoCodeId]
+      );
+
+      // Commit transaction
+      await connection.commit();
+      connection.release();
+
+      console.log(
+        `🗑️ PERMANENT DELETE: Promo Lead ID ${usage_id} (${existing[0].user_name}) permanently removed & used_count decremented`
+      );
+
+      res.json({
+        success: true,
+        message: "Lead permanently deleted from database",
+        deleted_id: usage_id,
+        deleted_user: existing[0].user_name,
+      });
+    } catch (transactionError) {
+      // Rollback on error
+      await connection.rollback();
+      connection.release();
+      throw transactionError;
+    }
   } catch (error) {
     console.error("Error permanently deleting lead:", error);
     res.status(500).json({

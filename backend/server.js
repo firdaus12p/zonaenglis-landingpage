@@ -26,16 +26,64 @@ import db from "./db/connection.js";
 // Auto-purge function: Delete records that have been soft-deleted for 3+ days
 async function purgeOldDeletedRecords() {
   try {
-    const [result] = await db.query(
+    // Purge affiliate_usage (existing functionality)
+    const [affiliateResult] = await db.query(
       `DELETE FROM affiliate_usage 
        WHERE deleted_at IS NOT NULL 
        AND DATEDIFF(NOW(), deleted_at) >= 3`
     );
 
-    if (result.affectedRows > 0) {
+    if (affiliateResult.affectedRows > 0) {
       console.log(
-        `🗑️  Auto-purge: Permanently deleted ${result.affectedRows} records (>3 days old)`
+        `🗑️  Auto-purge: Permanently deleted ${affiliateResult.affectedRows} affiliate records (>3 days old)`
       );
+    }
+
+    // Purge promo_usage with used_count decrement
+    // Get records to be purged first (to decrement counters)
+    const [promoRecords] = await db.query(
+      `SELECT id, promo_code_id FROM promo_usage
+       WHERE deleted_at IS NOT NULL 
+       AND DATEDIFF(NOW(), deleted_at) >= 3`
+    );
+
+    if (promoRecords.length > 0) {
+      const connection = await db.getConnection();
+      await connection.beginTransaction();
+
+      try {
+        // Delete the records
+        await connection.query(
+          `DELETE FROM promo_usage 
+           WHERE deleted_at IS NOT NULL 
+           AND DATEDIFF(NOW(), deleted_at) >= 3`
+        );
+
+        // Decrement used_count for each affected promo code
+        const promoIds = [...new Set(promoRecords.map((r) => r.promo_code_id))];
+        for (const promoId of promoIds) {
+          const countToDecrement = promoRecords.filter(
+            (r) => r.promo_code_id === promoId
+          ).length;
+          await connection.query(
+            `UPDATE promo_codes 
+             SET used_count = GREATEST(used_count - ?, 0) 
+             WHERE id = ?`,
+            [countToDecrement, promoId]
+          );
+        }
+
+        await connection.commit();
+        connection.release();
+
+        console.log(
+          `🗑️  Auto-purge: Permanently deleted ${promoRecords.length} promo usage records (>3 days old) and decremented counters`
+        );
+      } catch (transactionError) {
+        await connection.rollback();
+        connection.release();
+        throw transactionError;
+      }
     }
   } catch (error) {
     console.error("❌ Auto-purge error:", error.message);
