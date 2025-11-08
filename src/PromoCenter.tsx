@@ -395,77 +395,109 @@ const MapSection = () => {
 
 // Gallery Section
 const GallerySection = () => {
-  const galleryData: Array<{
-    title: string;
-    badge: { text: string; variant: keyof typeof BADGE_VARIANTS };
-    media: Array<
-      | { type: "image"; src: string; alt: string }
-      | { type: "video"; src: string }
-      | { type: "youtube"; src: string; title?: string }
-    >;
-  }> = [
-    {
-      title: "Kids (4–12 th)",
-      badge: { text: "Fun Phonics • Vocabulary", variant: "kids" },
-      media: [
-        {
-          type: "image",
-          src: "https://images.unsplash.com/photo-1588072432836-e10032774350?q=80&w=1200&auto=format&fit=crop",
-          alt: "Kids Class 1",
-        },
-        {
-          type: "image",
-          src: "https://images.unsplash.com/photo-1509062522246-3755977927d7?q=80&w=1200&auto=format&fit=crop",
-          alt: "Kids Class 2",
-        },
-        {
-          type: "video",
-          src: "https://cdn.coverr.co/videos/coverr-a-boy-doing-homework-5561/1080p.mp4",
-        },
-      ],
-    },
-    {
-      title: "Teens (14–17 th)",
-      badge: { text: "Speaking • Confidence", variant: "teens" },
-      media: [
-        {
-          type: "image",
-          src: "https://images.unsplash.com/photo-1523580846011-d3a5bc25702b?q=80&w=1200&auto=format&fit=crop",
-          alt: "Teens 1",
-        },
-        {
-          type: "image",
-          src: "https://images.unsplash.com/photo-1517486808906-6ca8b3f04846?q=80&w=1200&auto=format&fit=crop",
-          alt: "Teens 2",
-        },
-        {
-          type: "youtube",
-          src: "https://www.youtube.com/embed/wnHW6o8WMas",
-          title: "Speaking practice video",
-        },
-      ],
-    },
-    {
-      title: "Intensive (Mon–Fri, 3–5 jam/hari)",
-      badge: { text: "Sprint + Project", variant: "sprint" },
-      media: [
-        {
-          type: "image",
-          src: "https://images.unsplash.com/photo-1513258496099-48168024aec0?q=80&w=1200&auto=format&fit=crop",
-          alt: "Intensive 1",
-        },
-        {
-          type: "image",
-          src: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?q=80&w=1200&auto=format&fit=crop",
-          alt: "Intensive 2",
-        },
-        {
-          type: "video",
-          src: "https://cdn.coverr.co/videos/coverr-students-in-a-classroom-8708/1080p.mp4",
-        },
-      ],
-    },
-  ];
+  const [galleryData, setGalleryData] = useState<
+    Array<{
+      title: string;
+      badge: { text: string; variant: keyof typeof BADGE_VARIANTS };
+      media: Array<{ type: "image"; src: string; alt: string }>;
+    }>
+  >([]);
+  const [loading, setLoading] = useState(true);
+
+  const API_BASE = "http://localhost:3001/api";
+
+  useEffect(() => {
+    const fetchGallery = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/gallery`);
+        const data = await response.json();
+
+        // Group by category
+        const grouped: {
+          [key: string]: Array<{
+            type: "image";
+            src: string;
+            alt: string;
+          }>;
+        } = {
+          Kids: [],
+          Teens: [],
+          Intensive: [],
+        };
+
+        data.forEach((item: any) => {
+          if (grouped[item.category]) {
+            grouped[item.category].push({
+              type: "image",
+              src: `${API_BASE.replace("/api", "")}${item.image_url}`,
+              alt: item.title,
+            });
+          }
+        });
+
+        // Transform to galleryData format
+        const transformed = [
+          {
+            title: "Kids (4–12 th)",
+            badge: {
+              text: "Fun Phonics • Vocabulary",
+              variant: "kids" as const,
+            },
+            media: grouped.Kids,
+          },
+          {
+            title: "Teens (14–17 th)",
+            badge: { text: "Speaking • Confidence", variant: "teens" as const },
+            media: grouped.Teens,
+          },
+          {
+            title: "Intensive (Mon–Fri, 3–5 jam/hari)",
+            badge: { text: "Sprint + Project", variant: "sprint" as const },
+            media: grouped.Intensive,
+          },
+        ].filter((category) => category.media.length > 0); // Only show categories with media
+
+        setGalleryData(transformed);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error fetching gallery:", error);
+        setLoading(false);
+      }
+    };
+
+    fetchGallery();
+  }, []);
+
+  if (loading) {
+    return (
+      <section className="mx-auto max-w-6xl px-4 pb-16">
+        <h2 className="text-2xl font-bold mb-2">Galeri Kegiatan</h2>
+        <p className="text-slate-600 mb-6">
+          Cuplikan foto & video kegiatan sesuai program.
+        </p>
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
+            <p className="mt-3 text-slate-600">Memuat galeri...</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (galleryData.length === 0) {
+    return (
+      <section className="mx-auto max-w-6xl px-4 pb-16">
+        <h2 className="text-2xl font-bold mb-2">Galeri Kegiatan</h2>
+        <p className="text-slate-600 mb-6">
+          Cuplikan foto & video kegiatan sesuai program.
+        </p>
+        <div className="text-center py-12 text-slate-500">
+          Belum ada galeri yang tersedia.
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="mx-auto max-w-6xl px-4 pb-16">
@@ -481,42 +513,14 @@ const GallerySection = () => {
             <Badge variant={program.badge.variant}>{program.badge.text}</Badge>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
-            {program.media.map((item, mediaIndex) => {
-              if (item.type === "image") {
-                return (
-                  <img
-                    key={mediaIndex}
-                    className="rounded-xl border border-slate-200 w-full h-48 object-cover"
-                    src={item.src}
-                    alt={item.alt}
-                  />
-                );
-              } else if (item.type === "video") {
-                return (
-                  <video
-                    key={mediaIndex}
-                    className="rounded-xl border border-slate-200 w-full h-48 object-cover"
-                    controls
-                    preload="metadata"
-                    src={item.src}
-                  />
-                );
-              } else if (item.type === "youtube") {
-                return (
-                  <iframe
-                    key={mediaIndex}
-                    className="rounded-xl border border-slate-200 w-full aspect-video"
-                    loading="lazy"
-                    src={item.src}
-                    title={
-                      "title" in item ? item.title : `Video ${mediaIndex + 1}`
-                    }
-                    allowFullScreen
-                  />
-                );
-              }
-              return null;
-            })}
+            {program.media.map((item, mediaIndex) => (
+              <img
+                key={mediaIndex}
+                className="rounded-xl border border-slate-200 w-full h-48 object-cover"
+                src={item.src}
+                alt={item.alt}
+              />
+            ))}
           </div>
         </div>
       ))}

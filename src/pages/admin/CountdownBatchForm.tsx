@@ -98,11 +98,18 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
 
       if (data.success) {
         const batch = data.data;
+
+        // Helper function to format date from ISO timestamp to YYYY-MM-DD
+        const formatDate = (isoDate: string | null): string => {
+          if (!isoDate) return "";
+          return isoDate.split("T")[0]; // Extract date part only
+        };
+
         setFormData({
           name: batch.name,
-          startDate: batch.start_date,
-          startTime: batch.start_time.substring(0, 5), // HH:MM format
-          endDate: batch.end_date || "",
+          startDate: formatDate(batch.start_date),
+          startTime: batch.start_time?.substring(0, 5) || "", // HH:MM format
+          endDate: formatDate(batch.end_date),
           endTime: batch.end_time?.substring(0, 5) || "",
           timezone: batch.timezone,
           description: batch.description || "",
@@ -110,7 +117,7 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
           locationMode: batch.location_mode || "Online",
           locationAddress: batch.location_address || "",
           price: batch.price || 0,
-          registrationDeadline: batch.registration_deadline || "",
+          registrationDeadline: formatDate(batch.registration_deadline),
           targetStudents: batch.target_students,
           currentStudents: batch.current_students,
           status: batch.status,

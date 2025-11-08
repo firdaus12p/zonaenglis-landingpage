@@ -13,6 +13,7 @@ import {
   LogOut,
   ChevronDown,
   Gift,
+  Image,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -94,6 +95,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       icon: Users,
       current:
         currentPage === "Users" || currentPage.startsWith("/admin/users"),
+    },
+    {
+      name: "Galeri Kegiatan",
+      page: "/admin/gallery",
+      icon: Image,
+      current: currentPage.startsWith("/admin/gallery"),
     },
     {
       name: "Settings",

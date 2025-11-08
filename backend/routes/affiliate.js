@@ -356,7 +356,7 @@ router.get("/leads/:ambassador_id", async (req, res) => {
         p.start_date, p.end_date
        FROM affiliate_usage au
        LEFT JOIN ambassadors amb ON au.ambassador_id = amb.id
-       LEFT JOIN promos p ON au.program_id = p.id
+       LEFT JOIN programs p ON au.program_id = p.id
        WHERE au.ambassador_id = ? 
          AND au.deleted_at IS NULL
          AND au.follow_up_status IN ('pending', 'contacted', 'converted')
@@ -406,7 +406,7 @@ router.get("/lost-leads/:ambassador_id", async (req, res) => {
         p.start_date, p.end_date
       FROM affiliate_usage au
       LEFT JOIN ambassadors amb ON au.ambassador_id = amb.id
-      LEFT JOIN promos p ON au.program_id = p.id
+      LEFT JOIN programs p ON au.program_id = p.id
       WHERE au.ambassador_id = ? 
         AND au.deleted_at IS NULL 
         AND au.follow_up_status = 'lost'
@@ -606,12 +606,11 @@ router.put("/restore/:usage_id", async (req, res) => {
   }
 });
 
-
 /**
  * DELETE /api/affiliate/permanent-delete/:usage_id
  * PERMANENTLY delete a lead from database (only works on soft-deleted records)
  * ⚠️ WARNING: This action CANNOT be undone! Record will be permanently removed.
- * 
+ *
  * Security: Only allows deletion of records that are already soft-deleted (deleted_at IS NOT NULL)
  */
 router.delete("/permanent-delete/:usage_id", async (req, res) => {
@@ -635,7 +634,8 @@ router.delete("/permanent-delete/:usage_id", async (req, res) => {
     if (!existing[0].deleted_at) {
       return res.status(400).json({
         success: false,
-        error: "Cannot permanently delete active records. Please soft-delete first.",
+        error:
+          "Cannot permanently delete active records. Please soft-delete first.",
       });
     }
 
@@ -652,7 +652,9 @@ router.delete("/permanent-delete/:usage_id", async (req, res) => {
       });
     }
 
-    console.log(`🗑️ PERMANENT DELETE: Lead ID ${usage_id} (${existing[0].user_name}) permanently removed from database`);
+    console.log(
+      `🗑️ PERMANENT DELETE: Lead ID ${usage_id} (${existing[0].user_name}) permanently removed from database`
+    );
 
     res.json({
       success: true,

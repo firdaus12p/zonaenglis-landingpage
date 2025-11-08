@@ -20,6 +20,7 @@ import usersRoutes from "./routes/users.js";
 import countdownRoutes from "./routes/countdown.js";
 import articlesRoutes from "./routes/articles.js";
 import settingsRoutes from "./routes/settings.js";
+import galleryRoutes from "./routes/gallery.js";
 
 // Import database connection for cleanup tasks
 import db from "./db/connection.js";
@@ -158,6 +159,7 @@ app.use("/api/affiliate", affiliateRoutes);
 app.use("/api/countdown", countdownRoutes);
 app.use("/api/articles", articlesRoutes);
 app.use("/api/settings", settingsRoutes);
+app.use("/api/gallery", galleryRoutes);
 
 // 404 handler
 app.use((req, res) => {
@@ -223,14 +225,14 @@ app.listen(PORT, async () => {
   console.log("   ========================================");
   console.log("");
 
-  // Run auto-purge on startup
-  console.log("🔄 Running initial auto-purge of old deleted records...");
-  await purgeOldDeletedRecords();
+  // TEMPORARILY DISABLED: Run auto-purge on startup
+  // console.log("🔄 Running initial auto-purge of old deleted records...");
+  // await purgeOldDeletedRecords();
 
-  // Schedule daily auto-purge at midnight
-  const PURGE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-  setInterval(purgeOldDeletedRecords, PURGE_INTERVAL);
-  console.log("⏰ Auto-purge scheduled to run daily at midnight");
+  // TEMPORARILY DISABLED: Schedule daily auto-purge at midnight
+  // const PURGE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+  // setInterval(purgeOldDeletedRecords, PURGE_INTERVAL);
+  console.log("⏰ Auto-purge temporarily disabled for testing");
   console.log("");
 });
 

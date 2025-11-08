@@ -31,7 +31,7 @@ const ProtectedRoute = ({
   }
 
   // Check admin role if required
-  if (requireAdmin && user?.role !== "admin") {
+  if (requireAdmin && user?.role !== "admin" && user?.role !== "super_admin") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 px-4">
         <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 shadow-lg p-8 text-center">

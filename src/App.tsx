@@ -26,6 +26,7 @@ import {
   Settings,
 } from "./components/admin";
 import CountdownBatchForm from "./pages/admin/CountdownBatchForm";
+import Gallery from "./pages/admin/Gallery";
 
 function App() {
   const navigate = useNavigate();
@@ -228,6 +229,14 @@ function App() {
             element={
               <ProtectedRoute requireAdmin>
                 <Users setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/gallery"
+            element={
+              <ProtectedRoute requireAdmin>
+                <Gallery />
               </ProtectedRoute>
             }
           />

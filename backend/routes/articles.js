@@ -204,7 +204,7 @@ router.get("/public/:slug", async (req, res) => {
     // Get approved comments
     const [comments] = await db.query(
       `
-      SELECT id, user_name, comment, created_at
+      SELECT id, author_name as user_name, content as comment, created_at
       FROM article_comments
       WHERE article_id = ? AND status = 'Approved'
       ORDER BY created_at DESC
@@ -383,7 +383,7 @@ router.post("/:id/comment", async (req, res) => {
     // Insert comment with 'Pending' status
     const [result] = await db.query(
       `
-      INSERT INTO article_comments (article_id, user_name, user_email, comment, status, ip_address, user_agent)
+      INSERT INTO article_comments (article_id, author_name, author_email, content, status, user_ip, user_agent)
       VALUES (?, ?, ?, ?, 'Pending', ?, ?)
     `,
       [

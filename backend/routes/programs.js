@@ -9,7 +9,7 @@ router.get("/", async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT id, title, branch, type, program, start_date, end_date, quota, price, perks, image_url, wa_link, is_active, created_at 
-       FROM promos 
+       FROM programs 
        WHERE is_active = 1 
        ORDER BY start_date DESC`
     );
@@ -26,7 +26,7 @@ router.get("/:id", async (req, res) => {
     const [rows] = await db.query(
       `SELECT id, title, branch, type, program, start_date, end_date, quota, price, perks, image_url, 
               wa_link, is_active, created_at, updated_at 
-       FROM promos WHERE id = ?`,
+       FROM programs WHERE id = ?`,
       [req.params.id]
     );
 
@@ -74,7 +74,7 @@ router.post("/", async (req, res) => {
 
   try {
     const [result] = await db.query(
-      `INSERT INTO promos 
+      `INSERT INTO programs 
       (title, branch, type, program, start_date, end_date, quota, price, perks, image_url, wa_link, is_active) 
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)`,
       [
@@ -121,7 +121,7 @@ router.put("/:id", async (req, res) => {
 
   try {
     const [result] = await db.query(
-      `UPDATE promos 
+      `UPDATE programs 
        SET title = ?, branch = ?, type = ?, program = ?, start_date = ?, end_date = ?, 
            quota = ?, price = ?, perks = ?, image_url = ?, wa_link = ?, is_active = ?
        WHERE id = ?`,
@@ -157,7 +157,7 @@ router.put("/:id", async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     const [result] = await db.query(
-      "UPDATE promos SET is_active = 0 WHERE id = ?",
+      "UPDATE programs SET is_active = 0 WHERE id = ?",
       [req.params.id]
     );
 

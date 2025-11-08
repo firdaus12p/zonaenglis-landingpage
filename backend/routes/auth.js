@@ -30,7 +30,7 @@ router.post("/login", async (req, res) => {
 
     // Find user by email (select only needed fields)
     const [users] = await db.query(
-      "SELECT id, email, password_hash, name, role, is_active FROM users WHERE email = ? AND is_active = true",
+      "SELECT id, email, password_hash, name, role, is_active FROM admin_users WHERE email = ? AND is_active = true",
       [email]
     );
 
@@ -54,7 +54,7 @@ router.post("/login", async (req, res) => {
     }
 
     // Update last login
-    await db.query("UPDATE users SET last_login = NOW() WHERE id = ?", [
+    await db.query("UPDATE admin_users SET last_login = NOW() WHERE id = ?", [
       user.id,
     ]);
 
@@ -115,7 +115,7 @@ router.get("/verify", async (req, res) => {
 
     // Get fresh user data from database
     const [users] = await db.query(
-      "SELECT id, email, name, role, is_active FROM users WHERE id = ?",
+      "SELECT id, email, name, role, is_active FROM admin_users WHERE id = ?",
       [decoded.id]
     );
 
