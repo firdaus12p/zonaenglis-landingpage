@@ -8,6 +8,14 @@ import { WHATSAPP_LINKS } from "./constants/cta";
 // Konstanta CTA
 const CTA_WHATSAPP = WHATSAPP_LINKS.PROMO_HUB;
 
+// Utility: Generate slug from program name for anchor links
+const generateSlug = (text: string): string => {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "") // Remove all non-alphanumeric characters
+    .trim();
+};
+
 // Types
 interface PromoMedia {
   kind: "img" | "vid" | "yt";
@@ -806,7 +814,10 @@ const PromoCard = ({
   };
 
   return (
-    <div className="card flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+    <div
+      id={generateSlug(promo.title)}
+      className="card flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md"
+    >
       <div>
         {/* Media */}
         {media && (
@@ -1147,6 +1158,20 @@ export default function PromoHub() {
     fetchData();
   }, []);
 
+  // Scroll to anchor link when page loads with hash
+  useEffect(() => {
+    if (!loading && window.location.hash) {
+      const id = window.location.hash.substring(1); // Remove the # symbol
+      const element = document.getElementById(id);
+      if (element) {
+        // Wait a bit for rendering to complete
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }, 100);
+      }
+    }
+  }, [loading, promos]); // Trigger after programs are loaded
+
   // Refresh data when returning to page or when ambassador data is updated
   useEffect(() => {
     let isRefreshing = false; // Prevent multiple simultaneous refreshes
@@ -1323,17 +1348,6 @@ export default function PromoHub() {
                   Chat Admin (WA)
                 </a>
               </div>
-            </div>
-            <div className="mt-5 rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-yellow-50 p-4">
-              <div className="text-xs font-semibold uppercase tracking-wider text-amber-800">
-                Undangan Belajar Gratis — Kelas Premium
-              </div>
-              <p className="mt-1 text-sm text-slate-700">
-                <b>Semua fasilitas premium</b> • Kelas kecil <b>8–12 siswa</b> •{" "}
-                <b>Kuota 100 peserta</b>/batch. Gunakan{" "}
-                <b>kode Ambassador/Affiliate</b> dari sekolah/kampus/kantor kamu
-                untuk potongan ekstra.
-              </p>
             </div>
           </div>
         </div>

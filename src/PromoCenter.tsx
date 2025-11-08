@@ -539,7 +539,7 @@ export default function PromoCenter() {
                 </div>
                 <h1 className="text-3xl font-extrabold leading-tight text-slate-900 md:text-4xl">
                   Zona English —{" "}
-                  <span className="text-blue-700">Promo Center</span>
+                  <span className="text-blue-700">New Center</span>
                 </h1>
                 <p className="mt-2 max-w-2xl text-slate-600">
                   Semua program promo & <em>Undangan Belajar Gratis</em> ada di

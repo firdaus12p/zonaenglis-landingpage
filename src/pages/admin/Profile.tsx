@@ -52,7 +52,6 @@ const Profile = ({
   }>({ show: false, message: "", type: "success" });
 
   useEffect(() => {
-    setCurrentPage("Profile");
     fetchProfile();
   }, []);
 
