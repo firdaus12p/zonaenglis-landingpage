@@ -15,7 +15,7 @@ const router = express.Router();
  * Middleware to check if user is admin
  */
 const requireAdmin = (req, res, next) => {
-  if (req.user.role !== "admin") {
+  if (req.user.role !== "admin" && req.user.role !== "super_admin") {
     return res.status(403).json({
       success: false,
       message: "Akses ditolak. Hanya admin yang dapat mengakses fitur ini",
@@ -43,7 +43,7 @@ router.get("/", requireAdmin, async (req, res) => {
         last_login, 
         created_at, 
         updated_at 
-      FROM users 
+      FROM admin_users 
       ORDER BY created_at DESC`
     );
 
@@ -78,7 +78,7 @@ router.get("/:id", requireAdmin, async (req, res) => {
         last_login, 
         created_at, 
         updated_at 
-      FROM users 
+      FROM admin_users 
       WHERE id = ?`,
       [id]
     );
@@ -137,9 +137,10 @@ router.post("/", requireAdmin, async (req, res) => {
     }
 
     // Check if email already exists
-    const [existing] = await db.query("SELECT id FROM users WHERE email = ?", [
-      email,
-    ]);
+    const [existing] = await db.query(
+      "SELECT id FROM admin_users WHERE email = ?",
+      [email]
+    );
 
     if (existing.length > 0) {
       return res.status(400).json({
@@ -153,7 +154,7 @@ router.post("/", requireAdmin, async (req, res) => {
 
     // Insert user
     const [result] = await db.query(
-      `INSERT INTO users (email, password_hash, name, role, is_active) 
+      `INSERT INTO admin_users (email, password_hash, name, role, is_active) 
        VALUES (?, ?, ?, ?, true)`,
       [email, password_hash, name, role]
     );
@@ -187,9 +188,10 @@ router.put("/:id", requireAdmin, async (req, res) => {
     const { email, name, role, is_active } = req.body;
 
     // Check if user exists
-    const [existing] = await db.query("SELECT id FROM users WHERE id = ?", [
-      id,
-    ]);
+    const [existing] = await db.query(
+      "SELECT id FROM admin_users WHERE id = ?",
+      [id]
+    );
 
     if (existing.length === 0) {
       return res.status(404).json({
@@ -210,7 +212,7 @@ router.put("/:id", requireAdmin, async (req, res) => {
 
       // Check if email is taken by another user
       const [emailCheck] = await db.query(
-        "SELECT id FROM users WHERE email = ? AND id != ?",
+        "SELECT id FROM admin_users WHERE email = ? AND id != ?",
         [email, id]
       );
 
@@ -253,7 +255,7 @@ router.put("/:id", requireAdmin, async (req, res) => {
     values.push(id);
 
     await db.query(
-      `UPDATE users SET ${updates.join(", ")} WHERE id = ?`,
+      `UPDATE admin_users SET ${updates.join(", ")} WHERE id = ?`,
       values
     );
 
@@ -308,7 +310,7 @@ router.put("/:id/password", authenticateToken, async (req, res) => {
       }
 
       const [users] = await db.query(
-        "SELECT password_hash FROM users WHERE id = ?",
+        "SELECT password_hash FROM admin_users WHERE id = ?",
         [id]
       );
 
@@ -336,7 +338,7 @@ router.put("/:id/password", authenticateToken, async (req, res) => {
     const password_hash = await bcrypt.hash(newPassword, 10);
 
     // Update password
-    await db.query("UPDATE users SET password_hash = ? WHERE id = ?", [
+    await db.query("UPDATE admin_users SET password_hash = ? WHERE id = ?", [
       password_hash,
       id,
     ]);
@@ -371,7 +373,9 @@ router.delete("/:id", requireAdmin, async (req, res) => {
     }
 
     // Check if user exists
-    const [users] = await db.query("SELECT id FROM users WHERE id = ?", [id]);
+    const [users] = await db.query("SELECT id FROM admin_users WHERE id = ?", [
+      id,
+    ]);
 
     if (users.length === 0) {
       return res.status(404).json({
@@ -381,7 +385,9 @@ router.delete("/:id", requireAdmin, async (req, res) => {
     }
 
     // Soft delete by setting is_active to false
-    await db.query("UPDATE users SET is_active = false WHERE id = ?", [id]);
+    await db.query("UPDATE admin_users SET is_active = false WHERE id = ?", [
+      id,
+    ]);
 
     res.json({
       success: true,
@@ -411,7 +417,7 @@ router.get("/profile/me", authenticateToken, async (req, res) => {
         is_active, 
         last_login, 
         created_at 
-      FROM users 
+      FROM admin_users 
       WHERE id = ?`,
       [req.user.id]
     );
@@ -456,7 +462,7 @@ router.put("/profile/me", authenticateToken, async (req, res) => {
 
       // Check if email is taken by another user
       const [emailCheck] = await db.query(
-        "SELECT id FROM users WHERE email = ? AND id != ?",
+        "SELECT id FROM admin_users WHERE email = ? AND id != ?",
         [email, req.user.id]
       );
 
@@ -491,7 +497,7 @@ router.put("/profile/me", authenticateToken, async (req, res) => {
     values.push(req.user.id);
 
     await db.query(
-      `UPDATE users SET ${updates.join(", ")} WHERE id = ?`,
+      `UPDATE admin_users SET ${updates.join(", ")} WHERE id = ?`,
       values
     );
 

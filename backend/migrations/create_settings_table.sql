@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS settings (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   updated_by INT COMMENT 'Admin user ID who last updated',
-  FOREIGN KEY (updated_by) REFERENCES users(id) ON DELETE SET NULL,
+  FOREIGN KEY (updated_by) REFERENCES admin_users(id) ON DELETE SET NULL,
   INDEX idx_category (category),
   INDEX idx_key (setting_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='System settings for admin configuration';
