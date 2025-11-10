@@ -52,7 +52,8 @@ const upload = multer({
 router.get("/", async (req, res) => {
   try {
     const { category } = req.query;
-    let query = "SELECT * FROM gallery";
+    let query = `SELECT id, title, category, description, image_url, order_index, created_at, updated_at 
+                 FROM gallery`;
     const params = [];
 
     if (category && ["Kids", "Teens", "Intensive"].includes(category)) {
@@ -73,9 +74,11 @@ router.get("/", async (req, res) => {
 // GET /api/gallery/:id - Get single gallery item
 router.get("/:id", async (req, res) => {
   try {
-    const [rows] = await db.query("SELECT * FROM gallery WHERE id = ?", [
-      req.params.id,
-    ]);
+    const [rows] = await db.query(
+      `SELECT id, title, category, description, image_url, order_index, created_at, updated_at 
+       FROM gallery WHERE id = ?`,
+      [req.params.id]
+    );
 
     if (rows.length === 0) {
       return res.status(404).json({ error: "Gallery item not found" });
@@ -114,9 +117,11 @@ router.post("/", upload.single("image"), async (req, res) => {
       [title, imageUrl, category, description || null, order_index || 0]
     );
 
-    const [newItem] = await db.query("SELECT * FROM gallery WHERE id = ?", [
-      result.insertId,
-    ]);
+    const [newItem] = await db.query(
+      `SELECT id, title, category, description, image_url, order_index, created_at, updated_at 
+       FROM gallery WHERE id = ?`,
+      [result.insertId]
+    );
 
     res.status(201).json({
       success: true,
@@ -139,9 +144,10 @@ router.put("/:id", upload.single("image"), async (req, res) => {
     const { title, category, description, order_index } = req.body;
 
     // Check if item exists
-    const [existing] = await db.query("SELECT * FROM gallery WHERE id = ?", [
-      req.params.id,
-    ]);
+    const [existing] = await db.query(
+      `SELECT id, image_url FROM gallery WHERE id = ?`,
+      [req.params.id]
+    );
 
     if (existing.length === 0) {
       if (req.file) {
@@ -203,9 +209,11 @@ router.put("/:id", upload.single("image"), async (req, res) => {
       values
     );
 
-    const [updated] = await db.query("SELECT * FROM gallery WHERE id = ?", [
-      req.params.id,
-    ]);
+    const [updated] = await db.query(
+      `SELECT id, title, category, description, image_url, order_index, created_at, updated_at 
+       FROM gallery WHERE id = ?`,
+      [req.params.id]
+    );
 
     res.json({
       success: true,
@@ -225,9 +233,10 @@ router.put("/:id", upload.single("image"), async (req, res) => {
 router.delete("/:id", async (req, res) => {
   try {
     // Get item to find image path
-    const [existing] = await db.query("SELECT * FROM gallery WHERE id = ?", [
-      req.params.id,
-    ]);
+    const [existing] = await db.query(
+      `SELECT id, image_url FROM gallery WHERE id = ?`,
+      [req.params.id]
+    );
 
     if (existing.length === 0) {
       return res.status(404).json({ error: "Gallery item not found" });

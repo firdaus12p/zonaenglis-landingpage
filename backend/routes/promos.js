@@ -49,11 +49,17 @@ router.get("/:id", async (req, res) => {
     let query, params;
     if (isNumericId) {
       // Admin fetching by ID
-      query = "SELECT * FROM promo_codes WHERE id = ?";
+      query = `SELECT id, code, name, description, discount_type, discount_value, 
+               min_purchase, max_discount, usage_limit, used_count, 
+               valid_from, valid_until, is_active, applicable_to, created_at, updated_at
+               FROM promo_codes WHERE id = ?`;
       params = [req.params.id];
     } else {
       // Public fetching by code
-      query = `SELECT * FROM promo_codes 
+      query = `SELECT id, code, name, description, discount_type, discount_value, 
+               min_purchase, max_discount, usage_limit, used_count, 
+               valid_from, valid_until, is_active, applicable_to
+               FROM promo_codes 
                WHERE code = ? 
                AND is_active = 1
                AND NOW() BETWEEN valid_from AND valid_until`;
@@ -283,7 +289,10 @@ router.post("/validate", async (req, res) => {
 
   try {
     const [rows] = await db.query(
-      `SELECT * FROM promo_codes 
+      `SELECT id, code, name, description, discount_type, discount_value, 
+       min_purchase, max_discount, usage_limit, used_count, 
+       valid_from, valid_until, is_active, applicable_to
+       FROM promo_codes 
        WHERE code = ? 
        AND is_active = 1
        AND NOW() BETWEEN valid_from AND valid_until`,

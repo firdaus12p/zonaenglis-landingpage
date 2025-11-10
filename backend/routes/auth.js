@@ -9,6 +9,21 @@ const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || "zona-english-secret-key-2025";
 const JWT_EXPIRES_IN = "7d"; // Token valid for 7 days
 
+// Simple rate limiting: Track failed login attempts
+const loginAttempts = new Map(); // Store IP -> { count, lastAttempt }
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_DURATION = 15 * 60 * 1000; // 15 minutes
+
+// Clean up old attempts every hour
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, data] of loginAttempts.entries()) {
+    if (now - data.lastAttempt > LOCKOUT_DURATION) {
+      loginAttempts.delete(ip);
+    }
+  }
+}, 60 * 60 * 1000);
+
 /**
  * POST /api/auth/login
  * Authenticate user and return JWT token
@@ -19,6 +34,31 @@ const JWT_EXPIRES_IN = "7d"; // Token valid for 7 days
 router.post("/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+    const clientIp = req.ip || req.connection.remoteAddress;
+
+    // Check rate limiting
+    const attempts = loginAttempts.get(clientIp);
+    if (attempts) {
+      const timeSinceLastAttempt = Date.now() - attempts.lastAttempt;
+
+      if (
+        attempts.count >= MAX_ATTEMPTS &&
+        timeSinceLastAttempt < LOCKOUT_DURATION
+      ) {
+        const remainingTime = Math.ceil(
+          (LOCKOUT_DURATION - timeSinceLastAttempt) / 60000
+        );
+        return res.status(429).json({
+          success: false,
+          message: `Terlalu banyak percobaan login gagal. Coba lagi dalam ${remainingTime} menit.`,
+        });
+      }
+
+      // Reset if lockout duration has passed
+      if (timeSinceLastAttempt >= LOCKOUT_DURATION) {
+        loginAttempts.delete(clientIp);
+      }
+    }
 
     // Validate input
     if (!email || !password) {
@@ -35,6 +75,16 @@ router.post("/login", async (req, res) => {
     );
 
     if (users.length === 0) {
+      // Record failed attempt
+      const current = loginAttempts.get(clientIp) || {
+        count: 0,
+        lastAttempt: 0,
+      };
+      loginAttempts.set(clientIp, {
+        count: current.count + 1,
+        lastAttempt: Date.now(),
+      });
+
       return res.status(401).json({
         success: false,
         message: "Email atau password salah",
@@ -47,11 +97,24 @@ router.post("/login", async (req, res) => {
     const isPasswordValid = await bcrypt.compare(password, user.password_hash);
 
     if (!isPasswordValid) {
+      // Record failed attempt
+      const current = loginAttempts.get(clientIp) || {
+        count: 0,
+        lastAttempt: 0,
+      };
+      loginAttempts.set(clientIp, {
+        count: current.count + 1,
+        lastAttempt: Date.now(),
+      });
+
       return res.status(401).json({
         success: false,
         message: "Email atau password salah",
       });
     }
+
+    // Clear failed attempts on successful login
+    loginAttempts.delete(clientIp);
 
     // Update last login
     await db.query("UPDATE admin_users SET last_login = NOW() WHERE id = ?", [

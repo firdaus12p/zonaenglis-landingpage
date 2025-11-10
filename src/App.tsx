@@ -53,7 +53,9 @@ function App() {
           <Route path="/promo-hub" element={<PromoHub />} />
           <Route path="/articles" element={<Articles />} />
           <Route path="/articles/:slug" element={<Articles />} />
-          <Route path="/login" element={<Login />} />
+
+          {/* Hidden Admin Login - Only accessible via direct URL */}
+          <Route path="/ze-admin-portal-2025" element={<Login />} />
 
           {/* Admin Routes - Protected */}
           <Route
@@ -264,16 +266,6 @@ function App() {
           >
             <UsersIcon className="h-4 w-4" />
             Promo Hub
-          </Button>
-
-          {/* Admin Access Button (for development/testing) */}
-          <Button
-            onClick={() => navigate("/admin")}
-            variant="secondary"
-            size="sm"
-            className="rounded-full shadow-lg hover:scale-105 transition-all duration-200 text-xs"
-          >
-            Admin
           </Button>
         </div>
       )}

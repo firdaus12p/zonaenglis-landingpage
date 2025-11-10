@@ -411,7 +411,6 @@ const ArticleDetail = () => {
     comment: "",
   });
   const [submittingComment, setSubmittingComment] = useState(false);
-  const [commentSuccess, setCommentSuccess] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
@@ -500,13 +499,11 @@ const ArticleDetail = () => {
       );
 
       if (response.ok) {
-        setCommentSuccess(true);
         setShowSuccessModal(true);
         setCommentForm({ user_name: "", user_email: "", comment: "" });
 
         // Auto close modal after 5 seconds
         setTimeout(() => {
-          setCommentSuccess(false);
           setShowSuccessModal(false);
         }, 5000);
       }
@@ -791,7 +788,6 @@ const ArticleDetail = () => {
         isOpen={showSuccessModal}
         onClose={() => {
           setShowSuccessModal(false);
-          setCommentSuccess(false);
         }}
         title="Comment Submitted!"
         message="Your comment has been submitted successfully. It will appear after approval by our admin."

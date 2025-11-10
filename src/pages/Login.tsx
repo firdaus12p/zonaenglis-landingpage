@@ -142,22 +142,6 @@ const Login = () => {
               )}
             </button>
           </form>
-
-          {/* Development Credentials */}
-          <div className="mt-6 pt-6 border-t border-slate-200">
-            <p className="text-xs text-slate-500 text-center mb-2">
-              Development Mode - Default Credentials:
-            </p>
-            <div className="bg-slate-50 rounded-lg p-3 text-xs font-mono space-y-1">
-              <p className="text-slate-700">
-                <span className="font-semibold">Email:</span>{" "}
-                admin@zonaenglish.com
-              </p>
-              <p className="text-slate-700">
-                <span className="font-semibold">Password:</span> admin123
-              </p>
-            </div>
-          </div>
         </div>
 
         {/* Back to Home Link */}

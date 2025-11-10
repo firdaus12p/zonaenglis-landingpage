@@ -197,7 +197,8 @@ router.get("/public/:slug", async (req, res) => {
 
     // Get article images
     const [images] = await db.query(
-      "SELECT * FROM article_images WHERE article_id = ? ORDER BY display_order",
+      `SELECT id, article_id, image_url, caption, display_order, created_at 
+       FROM article_images WHERE article_id = ? ORDER BY display_order`,
       [article.id]
     );
 
@@ -597,7 +598,8 @@ router.get("/admin/:id", async (req, res) => {
 
     // Get images
     const [images] = await db.query(
-      "SELECT * FROM article_images WHERE article_id = ? ORDER BY display_order",
+      `SELECT id, article_id, image_url, caption, display_order, created_at 
+       FROM article_images WHERE article_id = ? ORDER BY display_order`,
       [article.id]
     );
 
@@ -752,7 +754,8 @@ router.put("/:id", upload.single("featuredImage"), async (req, res) => {
 
     // Get existing article
     const [existing] = await connection.query(
-      "SELECT * FROM articles WHERE id = ? AND deleted_at IS NULL",
+      `SELECT id, slug, title, featured_image, status, author_id 
+       FROM articles WHERE id = ? AND deleted_at IS NULL`,
       [id]
     );
 
