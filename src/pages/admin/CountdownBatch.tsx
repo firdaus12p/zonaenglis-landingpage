@@ -233,11 +233,11 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         // Refresh stats
         fetchStats();
       } else {
-        alert(data.message || "Failed to toggle batch status");
+        alert(data.message || "Gagal mengubah status batch");
       }
     } catch (err: any) {
       console.error("Error toggling batch status:", err);
-      alert("Failed to toggle batch status");
+      alert("Gagal mengubah status batch");
     }
   };
 

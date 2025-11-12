@@ -989,25 +989,25 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
                         <Card className="p-6 max-w-md mx-4">
                           <h3 className="text-lg font-bold text-slate-900 mb-2">
-                            Delete Promo Code?
+                            Hapus Kode Promo?
                           </h3>
                           <p className="text-slate-600 mb-6">
-                            Are you sure you want to delete "{promo.code}"? This
-                            action cannot be undone.
+                            Apakah Anda yakin ingin menghapus "{promo.code}"?
+                            Tindakan ini tidak dapat dibatalkan.
                           </p>
                           <div className="flex gap-3 justify-end">
                             <Button
                               variant="secondary"
                               onClick={() => setDeleteConfirm(null)}
                             >
-                              Cancel
+                              Batal
                             </Button>
                             <Button
                               variant="primary"
                               onClick={() => handleDelete(promo.id)}
                               className="bg-red-600 hover:bg-red-700"
                             >
-                              Delete
+                              Hapus
                             </Button>
                           </div>
                         </Card>
@@ -1256,7 +1256,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                           : "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
                       }`}
                     >
-                      Deleted History ({deletedPromoLeads.length})
+                      Riwayat Terhapus ({deletedPromoLeads.length})
                     </button>
                   </div>
                 </div>
@@ -1525,16 +1525,16 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                                   Program
                                 </th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                                  Deleted At
+                                  Dihapus Pada
                                 </th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                                  Days Until Purge
+                                  Hari Sebelum Dihapus Permanen
                                 </th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                                  Deleted By
+                                  Dihapus Oleh
                                 </th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                                  Actions
+                                  Aksi
                                 </th>
                               </tr>
                             </thead>
@@ -1595,10 +1595,10 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                                           )
                                         }
                                         className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-1"
-                                        title="PERMANENTLY delete this lead"
+                                        title="Hapus PERMANEN lead ini"
                                       >
                                         <Trash2 className="h-3 w-3" />
-                                        <span>Delete</span>
+                                        <span>Hapus</span>
                                       </button>
                                     </div>
                                   </td>

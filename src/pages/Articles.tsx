@@ -526,7 +526,7 @@ const ArticleDetail = () => {
       <div className="flex min-h-screen items-center justify-center px-4">
         <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
           <AlertCircle className="mx-auto mb-4 h-12 w-12 text-slate-400" />
-          <p className="mb-4 text-slate-700">Article not found</p>
+          <p className="mb-4 text-slate-700">Artikel tidak ditemukan</p>
           <Link
             to="/articles"
             className="inline-flex items-center gap-2 text-blue-700 hover:text-blue-800"
@@ -747,7 +747,7 @@ const ArticleDetail = () => {
                   ) : (
                     <Send className="h-5 w-5" />
                   )}
-                  Submit Comment
+                  Kirim Komentar
                 </button>
               </div>
             </form>
@@ -788,8 +788,8 @@ const ArticleDetail = () => {
         onClose={() => {
           setShowSuccessModal(false);
         }}
-        title="Comment Submitted!"
-        message="Your comment has been submitted successfully. It will appear after approval by our admin."
+        title="Komentar Terkirim!"
+        message="Komentar Anda berhasil dikirim. Komentar akan muncul setelah disetujui oleh admin kami."
       />
 
       {/* Error Modal */}

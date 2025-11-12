@@ -703,7 +703,7 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
                   disabled={isSubmitting}
                 >
                   <X className="h-4 w-4 mr-2" />
-                  Cancel
+                  Batal
                 </Button>
 
                 <Button
@@ -715,12 +715,12 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
                   {isSubmitting ? (
                     <>
                       <Clock className="h-4 w-4 mr-2 animate-spin" />
-                      Saving...
+                      Menyimpan...
                     </>
                   ) : (
                     <>
                       <Save className="h-4 w-4 mr-2" />
-                      {mode === "create" ? "Create Batch" : "Save Changes"}
+                      {mode === "create" ? "Buat Batch" : "Simpan Perubahan"}
                     </>
                   )}
                 </Button>

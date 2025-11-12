@@ -868,7 +868,7 @@ Segera follow-up user ini! 🚀`;
                         <button
                           className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50"
                           onClick={() => setShowDeleteConfirm(ambassador.id)}
-                          title="Delete Ambassador"
+                          title="Hapus Ambassador"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -909,11 +909,11 @@ Segera follow-up user ini! 🚀`;
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-xl p-6 max-w-md w-full mx-4">
               <h3 className="text-lg font-semibold text-slate-900 mb-2">
-                Confirm Delete
+                Konfirmasi Hapus
               </h3>
               <p className="text-slate-600 mb-6">
-                Are you sure you want to delete this ambassador? This action
-                cannot be undone.
+                Apakah Anda yakin ingin menghapus ambassador ini? Tindakan ini
+                tidak dapat dibatalkan.
               </p>
               <div className="flex space-x-3">
                 <Button
@@ -921,14 +921,14 @@ Segera follow-up user ini! 🚀`;
                   onClick={() => setShowDeleteConfirm(null)}
                   className="flex-1"
                 >
-                  Cancel
+                  Batal
                 </Button>
                 <Button
                   variant="danger"
                   onClick={() => handleDeleteAmbassador(showDeleteConfirm)}
                   className="flex-1"
                 >
-                  Delete
+                  Hapus
                 </Button>
               </div>
             </div>
@@ -1093,7 +1093,7 @@ Segera follow-up user ini! 🚀`;
                           : "border-transparent text-slate-600 hover:text-slate-900 hover:border-slate-300"
                       }`}
                     >
-                      Deleted History ({deletedLeads.length})
+                      Riwayat Terhapus ({deletedLeads.length})
                     </button>
                   </div>
                 </div>
@@ -1229,7 +1229,7 @@ Segera follow-up user ini! 🚀`;
                                           handleDeleteLead(lead.id)
                                         }
                                         className="text-red-600 hover:text-red-700"
-                                        title="Delete Lead"
+                                        title="Hapus Lead"
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </button>
@@ -1339,7 +1339,7 @@ Segera follow-up user ini! 🚀`;
                                           handleDeleteLead(lead.id)
                                         }
                                         className="text-red-600 hover:text-red-700"
-                                        title="Delete Lead"
+                                        title="Hapus Lead"
                                       >
                                         <Trash2 className="h-4 w-4" />
                                       </button>
@@ -1376,16 +1376,16 @@ Segera follow-up user ini! 🚀`;
                                   Program
                                 </th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                                  Deleted At
+                                  Dihapus Pada
                                 </th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                                  Days Until Purge
+                                  Hari Sebelum Dihapus Permanen
                                 </th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                                  Deleted By
+                                  Dihapus Oleh
                                 </th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
-                                  Actions
+                                  Aksi
                                 </th>
                               </tr>
                             </thead>

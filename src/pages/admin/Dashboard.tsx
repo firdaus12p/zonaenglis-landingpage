@@ -63,8 +63,26 @@ const Dashboard = ({
     },
   ]);
 
+  // Additional stats for revenue, students, completion
+  const [totalRevenue, setTotalRevenue] = useState("0");
+  const [activeStudents, setActiveStudents] = useState("0");
+  const [completionRate, setCompletionRate] = useState("0");
+
+  // Recent activities from database
+  const [recentActivities, setRecentActivities] = useState<
+    Array<{
+      id: number;
+      type: string;
+      message: string;
+      time: string;
+      icon: any;
+    }>
+  >([]);
+
   useEffect(() => {
     fetchDashboardStats();
+    fetchAdditionalStats();
+    fetchRecentActivities();
   }, []);
 
   const fetchDashboardStats = async () => {
@@ -152,36 +170,165 @@ const Dashboard = ({
     }
   };
 
-  const recentActivities = [
-    {
-      id: 1,
-      type: "ambassador",
-      message: 'New ambassador "Sari Dewi" registered from Makassar',
-      time: "2 hours ago",
-      icon: Users,
-    },
-    {
-      id: 2,
-      type: "promo",
-      message: 'Promo code "EARLY50" was used 15 times today',
-      time: "4 hours ago",
-      icon: Tag,
-    },
-    {
-      id: 3,
-      type: "article",
-      message: 'Article "Tips Belajar Grammar" was published',
-      time: "1 day ago",
-      icon: FileText,
-    },
-    {
-      id: 4,
-      type: "batch",
-      message: "Countdown for Batch A updated to 03 Nov 2025",
-      time: "2 days ago",
-      icon: Clock,
-    },
-  ];
+  const fetchAdditionalStats = async () => {
+    try {
+      // Fetch countdown stats for active students
+      const countdownStatsRes = await fetch(`${API_BASE}/countdown/stats`);
+      const countdownStats = await countdownStatsRes.json();
+
+      if (countdownStats.success && countdownStats.data) {
+        const students = countdownStats.data.total_students || 0;
+        setActiveStudents(students.toString());
+      }
+
+      // Calculate total revenue from ambassadors
+      const ambassadorsRes = await fetch(`${API_BASE}/ambassadors`);
+      const ambassadors = await ambassadorsRes.json();
+
+      if (Array.isArray(ambassadors)) {
+        const revenue = ambassadors.reduce((sum: number, amb: any) => {
+          return sum + (parseFloat(amb.total_earnings) || 0);
+        }, 0);
+
+        // Format as Indonesian Rupiah
+        const revenueInMillions = (revenue / 1000000).toFixed(1);
+        setTotalRevenue(`Rp ${revenueInMillions}M`);
+      }
+
+      // Fetch completion rate from affiliate stats
+      const affiliateStatsRes = await fetch(
+        `${API_BASE}/affiliate/stats/all`
+      ).catch(() => null);
+
+      if (affiliateStatsRes && affiliateStatsRes.ok) {
+        const affiliateStats = await affiliateStatsRes.json();
+
+        if (affiliateStats.success && affiliateStats.stats) {
+          const total = affiliateStats.stats.total_uses || 0;
+          const converted = affiliateStats.stats.conversions || 0;
+
+          if (total > 0) {
+            const rate = ((converted / total) * 100).toFixed(1);
+            setCompletionRate(`${rate}%`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error fetching additional stats:", error);
+    }
+  };
+
+  const fetchRecentActivities = async () => {
+    try {
+      const activities = [];
+
+      // Get recent ambassadors (limit 1)
+      const ambassadorsRes = await fetch(`${API_BASE}/ambassadors`);
+      const ambassadors = await ambassadorsRes.json();
+
+      if (Array.isArray(ambassadors) && ambassadors.length > 0) {
+        const latest = ambassadors[0];
+        activities.push({
+          id: 1,
+          type: "ambassador",
+          message: `New ambassador "${latest.name}" from ${latest.location}`,
+          time: getTimeAgo(latest.created_at),
+          icon: Users,
+        });
+      }
+
+      // Get recent articles
+      const articlesRes = await fetch(`${API_BASE}/articles/admin/all`);
+      const articlesData = await articlesRes.json();
+
+      if (articlesData.success && Array.isArray(articlesData.data)) {
+        const publishedArticles = articlesData.data
+          .filter((a: any) => a.status === "Published")
+          .sort(
+            (a: any, b: any) =>
+              new Date(b.published_at || b.created_at).getTime() -
+              new Date(a.published_at || a.created_at).getTime()
+          );
+
+        if (publishedArticles.length > 0) {
+          const latest = publishedArticles[0];
+          activities.push({
+            id: 2,
+            type: "article",
+            message: `Article "${latest.title}" was published`,
+            time: getTimeAgo(latest.published_at || latest.created_at),
+            icon: FileText,
+          });
+        }
+      }
+
+      // Get recent countdown batch
+      const countdownRes = await fetch(`${API_BASE}/countdown/active`);
+      const countdown = await countdownRes.json();
+
+      if (countdown.success && countdown.data) {
+        activities.push({
+          id: 3,
+          type: "batch",
+          message: `Countdown batch "${countdown.data.name}" is active`,
+          time: getTimeAgo(
+            countdown.data.updated_at || countdown.data.created_at
+          ),
+          icon: Clock,
+        });
+      }
+
+      // Get recent promo codes (limit 1)
+      const promosRes = await fetch(`${API_BASE}/promos/admin/all`);
+      const promos = await promosRes.json();
+
+      if (Array.isArray(promos) && promos.length > 0) {
+        const latest = promos[0];
+        activities.push({
+          id: 4,
+          type: "promo",
+          message: `Promo code "${latest.code}" was created`,
+          time: getTimeAgo(latest.created_at),
+          icon: Tag,
+        });
+      }
+
+      setRecentActivities(activities.slice(0, 4));
+    } catch (error) {
+      console.error("Error fetching recent activities:", error);
+      // Set fallback activities
+      setRecentActivities([
+        {
+          id: 1,
+          type: "info",
+          message: "Dashboard loaded successfully",
+          time: "just now",
+          icon: Activity,
+        },
+      ]);
+    }
+  };
+
+  // Helper function to calculate time ago
+  const getTimeAgo = (dateString: string) => {
+    if (!dateString) return "recently";
+
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60)
+      return `${diffMins} minute${diffMins > 1 ? "s" : ""} ago`;
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffDays < 30) return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
+
+    return date.toLocaleDateString();
+  };
 
   const quickActions = [
     {
@@ -362,21 +509,44 @@ const Dashboard = ({
                 <Calendar className="h-5 w-5 text-slate-400" />
               </div>
               <div className="space-y-4">
-                {recentActivities.map((activity) => (
-                  <div key={activity.id} className="flex items-start space-x-3">
-                    <div className="p-1.5 bg-slate-100 rounded-lg">
-                      <activity.icon className="h-4 w-4 text-slate-600" />
+                {loading ? (
+                  // Loading skeleton for activities
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <div
+                      key={index}
+                      className="flex items-start space-x-3 animate-pulse"
+                    >
+                      <div className="w-7 h-7 bg-slate-200 rounded-lg"></div>
+                      <div className="flex-1">
+                        <div className="h-4 bg-slate-200 rounded w-full mb-2"></div>
+                        <div className="h-3 bg-slate-200 rounded w-1/3"></div>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-slate-900 font-medium">
-                        {activity.message}
-                      </p>
-                      <p className="text-xs text-slate-500 mt-1">
-                        {activity.time}
-                      </p>
+                  ))
+                ) : recentActivities.length > 0 ? (
+                  recentActivities.map((activity) => (
+                    <div
+                      key={activity.id}
+                      className="flex items-start space-x-3"
+                    >
+                      <div className="p-1.5 bg-slate-100 rounded-lg">
+                        <activity.icon className="h-4 w-4 text-slate-600" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm text-slate-900 font-medium">
+                          {activity.message}
+                        </p>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {activity.time}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-slate-500 text-center py-4">
+                    No recent activities
+                  </p>
+                )}
               </div>
               <div className="mt-6 pt-4 border-t border-slate-200">
                 <a
@@ -399,10 +569,14 @@ const Dashboard = ({
                   Total Revenue
                 </p>
                 <p className="text-2xl font-bold text-slate-900 mt-1">
-                  Rp 45.2M
+                  {loading ? (
+                    <span className="inline-block h-8 w-24 bg-slate-200 rounded animate-pulse"></span>
+                  ) : (
+                    totalRevenue
+                  )}
                 </p>
                 <p className="text-sm text-emerald-600 mt-1">
-                  +12% from last month
+                  From ambassador earnings
                 </p>
               </div>
               <div className="p-3 bg-emerald-100 rounded-xl">
@@ -417,8 +591,14 @@ const Dashboard = ({
                 <p className="text-sm font-medium text-slate-600">
                   Active Students
                 </p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">1,247</p>
-                <p className="text-sm text-blue-600 mt-1">+8% this week</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">
+                  {loading ? (
+                    <span className="inline-block h-8 w-20 bg-slate-200 rounded animate-pulse"></span>
+                  ) : (
+                    activeStudents
+                  )}
+                </p>
+                <p className="text-sm text-blue-600 mt-1">Currently enrolled</p>
               </div>
               <div className="p-3 bg-blue-100 rounded-xl">
                 <Users className="h-6 w-6 text-blue-600" />
@@ -432,9 +612,15 @@ const Dashboard = ({
                 <p className="text-sm font-medium text-slate-600">
                   Completion Rate
                 </p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">94.5%</p>
+                <p className="text-2xl font-bold text-slate-900 mt-1">
+                  {loading ? (
+                    <span className="inline-block h-8 w-16 bg-slate-200 rounded animate-pulse"></span>
+                  ) : (
+                    completionRate
+                  )}
+                </p>
                 <p className="text-sm text-purple-600 mt-1">
-                  +2.1% improvement
+                  Lead conversion rate
                 </p>
               </div>
               <div className="p-3 bg-purple-100 rounded-xl">
