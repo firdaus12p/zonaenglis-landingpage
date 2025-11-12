@@ -134,6 +134,36 @@ export default function PromoClaims() {
     }
   };
 
+  const handleNotifyUser = (claim: PromoClaim) => {
+    const urgencyText =
+      claim.urgency === "urgent"
+        ? "🔥 URGENT"
+        : claim.urgency === "this_month"
+        ? "📅 Bulan Ini"
+        : "👀 Browsing";
+
+    const message = `✨ FOLLOW UP PROGRAM ZONA ENGLISH
+
+👤 Halo ${claim.user_name}!
+
+Terima kasih sudah tertarik dengan program kami:
+📚 Program: ${claim.program_name}
+${claim.program_branch ? `🏢 Cabang: ${claim.program_branch}` : ""}
+${claim.program_type ? `🏷️ Tipe: ${claim.program_type}` : ""}
+⏰ ${urgencyText}
+
+${
+  claim.follow_up_notes ? `📝 Catatan: ${claim.follow_up_notes}\n\n` : ""
+}Apakah ada yang bisa kami bantu untuk melanjutkan pendaftaran? 😊
+
+Tim Zona English siap membantu! 🚀`;
+
+    const whatsappUrl = `https://wa.me/${
+      claim.user_phone
+    }?text=${encodeURIComponent(message)}`;
+    window.open(whatsappUrl, "_blank");
+  };
+
   const handleDeleteClick = (claimId: number) => {
     setClaimToDelete(claimId);
     setShowDeleteModal(true);
@@ -535,6 +565,15 @@ export default function PromoClaims() {
                           <option value="converted">Converted</option>
                           <option value="lost">Lost</option>
                         </select>
+
+                        {/* Notify Button */}
+                        <button
+                          onClick={() => handleNotifyUser(claim)}
+                          className="rounded bg-emerald-100 px-3 py-1 text-xs text-emerald-700 hover:bg-emerald-200 flex items-center justify-center gap-1"
+                        >
+                          <Phone className="h-3 w-3" />
+                          Notify
+                        </button>
 
                         {/* Delete Button */}
                         <button

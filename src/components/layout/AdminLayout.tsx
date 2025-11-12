@@ -146,7 +146,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       {/* Sidebar */}
       <aside
         className={`
-        fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
+        flex flex-col fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-lg transform transition-transform duration-300 ease-in-out
         lg:translate-x-0 lg:static lg:inset-0
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}
       `}
@@ -170,7 +170,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-2">
+        <nav className="flex-1 p-4 space-y-2 overflow-y-auto">
           {navigation.map((item) => (
             <button
               key={item.name}

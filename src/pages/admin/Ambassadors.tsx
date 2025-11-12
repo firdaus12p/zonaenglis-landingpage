@@ -18,6 +18,7 @@ import {
   MessageCircle,
   UserCheck,
   AlertCircle,
+  X,
 } from "lucide-react";
 
 interface Ambassador {
@@ -47,6 +48,7 @@ interface AffiliateLead {
   ambassador_phone?: string;
   program_name: string;
   discount_applied: number;
+  urgency?: "urgent" | "this_month" | "just_browsing";
   first_used_at: string;
   follow_up_status: "pending" | "contacted" | "converted" | "lost";
   follow_up_notes?: string;
@@ -121,6 +123,10 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const [ambassadorUsageCounts, setAmbassadorUsageCounts] = useState<
     Record<number, number>
   >({});
+
+  // Notes editing states
+  const [editingNotes, setEditingNotes] = useState<number | null>(null);
+  const [noteText, setNoteText] = useState("");
 
   // Function to load ambassadors from API
   const loadAmbassadors = async () => {
@@ -433,38 +439,62 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   };
 
   const handleNotifyAmbassador = (lead: AffiliateLead) => {
-    // Format dates if available
-    const formatDate = (dateStr?: string) => {
-      if (!dateStr) return "-";
-      const date = new Date(dateStr);
-      return date.toLocaleDateString("id-ID", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
-    };
+    const urgencyText =
+      lead.urgency === "urgent"
+        ? "🔥 URGENT"
+        : lead.urgency === "this_month"
+        ? "📅 Bulan Ini"
+        : "👀 Browsing";
 
-    const message = `🎉 ADA YANG PAKAI KODE ANDA!
+    const message = `✨ FOLLOW UP PROGRAM ZONA ENGLISH
 
-📝 Kode: ${lead.affiliate_code}
-👤 Nama: ${lead.user_name}
-📞 WhatsApp: ${lead.user_phone}
-📧 Email: ${lead.user_email || "Tidak ada"}
+👤 Halo ${lead.user_name}!
+
+Terima kasih sudah menggunakan kode ${lead.affiliate_code} untuk program kami:
+� Program: ${lead.program_name}
 ${lead.branch ? `🏢 Cabang: ${lead.branch}` : ""}
-${lead.promo_category ? `🏷️ Kategori Promo: ${lead.promo_category}` : ""}
-📚 Program: ${lead.program_name || "-"}
+${lead.promo_category ? `🏷️ Kategori: ${lead.promo_category}` : ""}
 ${lead.program_package ? `📦 Paket: ${lead.program_package}` : ""}
-${lead.start_date ? `📅 Mulai: ${formatDate(lead.start_date)}` : ""}
-${lead.end_date ? `📅 Berakhir: ${formatDate(lead.end_date)}` : ""}
 💰 Diskon: Rp ${lead.discount_applied.toLocaleString("id-ID")}
-🕒 ${lead.days_ago} hari yang lalu
+⏰ ${urgencyText}
 
-Segera follow-up user ini! 🚀`;
+${
+  lead.follow_up_notes ? `� Catatan: ${lead.follow_up_notes}\n\n` : ""
+}Apakah ada yang bisa kami bantu untuk melanjutkan pendaftaran? 😊
+
+Tim Zona English siap membantu! 🚀`;
 
     const whatsappUrl = `https://wa.me/${
-      lead.ambassador_phone
+      lead.user_phone
     }?text=${encodeURIComponent(message)}`;
     window.open(whatsappUrl, "_blank");
+  };
+
+  const updateLeadNotes = async (leadId: number, notes: string) => {
+    try {
+      const response = await fetch(
+        `http://localhost:3001/api/affiliate/update-status/${leadId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            follow_up_notes: notes,
+          }),
+        }
+      );
+
+      if (response.ok && selectedAmbassador) {
+        // Refresh leads to show updated notes
+        fetchAffiliateLeads(selectedAmbassador);
+        fetchLostLeads(selectedAmbassador);
+        setEditingNotes(null);
+        setNoteText("");
+      }
+    } catch (error) {
+      console.error("Error updating notes:", error);
+    }
   };
 
   const handleDeleteLead = async (leadId: number) => {
@@ -1135,6 +1165,9 @@ Segera follow-up user ini! 🚀`;
                                   Status
                                 </th>
                                 <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
+                                  Notes
+                                </th>
+                                <th className="px-4 py-3 text-left text-sm font-medium text-slate-700">
                                   Actions
                                 </th>
                               </tr>
@@ -1192,6 +1225,64 @@ Segera follow-up user ini! 🚀`;
                                         ? "Conversion"
                                         : "Lost"}
                                     </Badge>
+                                  </td>
+                                  <td className="px-4 py-3">
+                                    {editingNotes === lead.id ? (
+                                      <div className="flex items-center space-x-2">
+                                        <textarea
+                                          value={noteText}
+                                          onChange={(e) =>
+                                            setNoteText(e.target.value)
+                                          }
+                                          placeholder="Add notes..."
+                                          className="w-48 px-2 py-1 text-sm border border-slate-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                                          rows={2}
+                                        />
+                                        <button
+                                          onClick={() =>
+                                            updateLeadNotes(lead.id, noteText)
+                                          }
+                                          className="p-1 text-green-600 hover:text-green-700"
+                                          title="Save"
+                                        >
+                                          <CheckCircle className="h-4 w-4" />
+                                        </button>
+                                        <button
+                                          onClick={() => {
+                                            setEditingNotes(null);
+                                            setNoteText("");
+                                          }}
+                                          className="p-1 text-red-600 hover:text-red-700"
+                                          title="Cancel"
+                                        >
+                                          <X className="h-4 w-4" />
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center space-x-2">
+                                        {lead.follow_up_notes ? (
+                                          <p className="text-sm text-slate-600 max-w-xs truncate">
+                                            {lead.follow_up_notes}
+                                          </p>
+                                        ) : (
+                                          <p className="text-sm text-slate-400 italic">
+                                            No notes
+                                          </p>
+                                        )}
+                                        <button
+                                          onClick={() => {
+                                            setEditingNotes(lead.id);
+                                            setNoteText(
+                                              lead.follow_up_notes || ""
+                                            );
+                                          }}
+                                          className="p-1 text-slate-400 hover:text-blue-600"
+                                          title="Edit Notes"
+                                        >
+                                          <Edit3 className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    )}
                                   </td>
                                   <td className="px-4 py-3">
                                     <div className="flex items-center space-x-2">
