@@ -27,6 +27,8 @@ import {
 } from "./components/admin";
 import CountdownBatchForm from "./pages/admin/CountdownBatchForm";
 import Gallery from "./pages/admin/Gallery";
+import HomepageVideo from "./pages/admin/HomepageVideo";
+import PromoClaims from "./pages/admin/PromoClaims";
 
 function App() {
   const navigate = useNavigate();
@@ -36,13 +38,19 @@ function App() {
   // Determine if we're on home page for floating buttons
   const isHomePage = currentPath === "/";
 
+  // Hide navbar on admin pages
+  const isAdminPage =
+    currentPath.startsWith("/admin") || currentPath === "/ze-admin-portal-2025";
+
   return (
     <div className="relative">
-      {/* Global Navbar */}
-      <Navbar
-        currentPage={currentPath}
-        setCurrentPage={(page) => navigate(page)}
-      />
+      {/* Global Navbar - Hidden on admin pages */}
+      {!isAdminPage && (
+        <Navbar
+          currentPage={currentPath}
+          setCurrentPage={(page) => navigate(page)}
+        />
+      )}
 
       {/* Page Content with Routes */}
       <div>
@@ -239,6 +247,22 @@ function App() {
             element={
               <ProtectedRoute requireAdmin>
                 <Gallery />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/homepage-video"
+            element={
+              <ProtectedRoute requireAdmin>
+                <HomepageVideo />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/promo-claims"
+            element={
+              <ProtectedRoute requireAdmin>
+                <PromoClaims />
               </ProtectedRoute>
             }
           />

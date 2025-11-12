@@ -6,13 +6,10 @@ import {
   Gift,
   Users,
   MessageCircle,
-  LogOut,
   BookOpen,
 } from "lucide-react";
 import { Button } from "./components";
 import { WHATSAPP_LINKS } from "./constants/cta";
-import { useAuth } from "./contexts/AuthContext";
-import { useNavigate } from "react-router-dom";
 
 interface NavbarProps {
   currentPage: string;
@@ -23,14 +20,6 @@ export default function Navbar({ currentPage, setCurrentPage }: NavbarProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  const { isAuthenticated, user, logout } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = () => {
-    logout();
-    navigate("/login");
-    setIsOpen(false);
-  };
 
   // Handle scroll behavior
   useEffect(() => {
@@ -156,33 +145,17 @@ export default function Navbar({ currentPage, setCurrentPage }: NavbarProps) {
 
             {/* CTA Button & Mobile Menu Toggle */}
             <div className="flex items-center gap-3">
-              {/* Show logout button for authenticated users */}
-              {isAuthenticated ? (
-                <div className="hidden md:flex items-center gap-3">
-                  <div className="text-sm text-slate-600">
-                    <span className="font-semibold text-slate-900">
-                      {user?.name}
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-slate-600 hover:bg-red-50 hover:text-red-600 border border-slate-200 hover:border-red-200 transition-all"
-                  >
-                    <LogOut className="h-4 w-4" />
-                    Logout
-                  </button>
-                </div>
-              ) : (
-                <Button
-                  href={WHATSAPP_LINKS.MAIN}
-                  variant="whatsapp"
-                  size="sm"
-                  className="hidden sm:inline-flex"
-                >
-                  <MessageCircle className="h-4 w-4" />
-                  Chat Admin
-                </Button>
-              )}
+              {/* Chat Admin Button - Always visible for users */}
+              <Button
+                href={WHATSAPP_LINKS.MAIN}
+                variant="whatsapp"
+                size="sm"
+                className="hidden sm:inline-flex"
+                icon={<MessageCircle className="h-4 w-4" />}
+                iconPosition="left"
+              >
+                Chat Admin
+              </Button>
 
               {/* Mobile Menu Button */}
               <button
@@ -262,41 +235,24 @@ export default function Navbar({ currentPage, setCurrentPage }: NavbarProps) {
 
           {/* Mobile Menu Footer */}
           <div className="p-4 border-t border-slate-200 space-y-3">
-            {isAuthenticated ? (
-              <>
-                <div className="bg-blue-50 rounded-lg p-3 mb-3">
-                  <p className="text-xs text-slate-500 mb-1">Logged in as:</p>
-                  <p className="font-semibold text-slate-900">{user?.name}</p>
-                  <p className="text-sm text-slate-600">{user?.email}</p>
-                </div>
-                <button
-                  onClick={handleLogout}
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-white bg-red-600 hover:bg-red-700 transition-colors"
-                >
-                  <LogOut className="h-5 w-5" />
-                  Logout
-                </button>
-              </>
-            ) : (
-              <>
-                <Button
-                  href={WHATSAPP_LINKS.MAIN}
-                  variant="whatsapp"
-                  size="md"
-                  className="w-full"
-                >
-                  <MessageCircle className="h-5 w-5" />
-                  Chat Admin WhatsApp
-                </Button>
+            {/* Mobile Menu CTA - Always show Chat Admin */}
+            <Button
+              href={WHATSAPP_LINKS.MAIN}
+              variant="whatsapp"
+              size="md"
+              className="w-full"
+              icon={<MessageCircle className="h-5 w-5" />}
+              iconPosition="left"
+            >
+              Chat Admin WhatsApp
+            </Button>
 
-                <div className="text-center">
-                  <div className="text-xs text-slate-500">Follow us:</div>
-                  <div className="text-sm font-semibold text-slate-700">
-                    @zonaenglish.id
-                  </div>
-                </div>
-              </>
-            )}
+            <div className="text-center">
+              <div className="text-xs text-slate-500">Follow us:</div>
+              <div className="text-sm font-semibold text-slate-700">
+                @zonaenglish.id
+              </div>
+            </div>
           </div>
         </div>
       </div>

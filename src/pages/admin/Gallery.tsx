@@ -11,12 +11,15 @@ import {
   Upload,
   X,
   Eye,
+  Video,
 } from "lucide-react";
 
 interface GalleryItem {
   id: number;
   title: string;
-  image_url: string;
+  image_url: string | null;
+  media_type: "image" | "video";
+  youtube_url: string | null;
   category: "Kids" | "Teens" | "Intensive";
   description?: string;
   order_index: number;
@@ -47,6 +50,8 @@ const Gallery: React.FC = () => {
     category: "Kids" as "Kids" | "Teens" | "Intensive",
     description: "",
     order_index: 0,
+    media_type: "image" as "image" | "video",
+    youtube_url: "",
   });
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
@@ -81,6 +86,8 @@ const Gallery: React.FC = () => {
       category: "Kids",
       description: "",
       order_index: 0,
+      media_type: "image",
+      youtube_url: "",
     });
     setImageFile(null);
     setImagePreview("");
@@ -96,9 +103,15 @@ const Gallery: React.FC = () => {
       category: item.category,
       description: item.description || "",
       order_index: item.order_index,
+      media_type: item.media_type,
+      youtube_url: item.youtube_url || "",
     });
     setImageFile(null);
-    setImagePreview(`${API_BASE.replace("/api", "")}${item.image_url}`);
+    setImagePreview(
+      item.media_type === "image" && item.image_url
+        ? `${API_BASE.replace("/api", "")}${item.image_url}`
+        : ""
+    );
     setErrors({});
     setShowModal(true);
   };
@@ -137,8 +150,19 @@ const Gallery: React.FC = () => {
       newErrors.title = "Judul wajib diisi";
     }
 
-    if (modalMode === "create" && !imageFile) {
-      newErrors.image = "Gambar wajib diupload";
+    if (formData.media_type === "image") {
+      if (modalMode === "create" && !imageFile) {
+        newErrors.image = "Gambar wajib diupload";
+      }
+    } else if (formData.media_type === "video") {
+      if (!formData.youtube_url.trim()) {
+        newErrors.youtube_url = "URL YouTube wajib diisi";
+      } else if (
+        !formData.youtube_url.includes("youtube.com") &&
+        !formData.youtube_url.includes("youtu.be")
+      ) {
+        newErrors.youtube_url = "URL harus dari YouTube";
+      }
     }
 
     setErrors(newErrors);
@@ -157,8 +181,11 @@ const Gallery: React.FC = () => {
     formDataToSend.append("category", formData.category);
     formDataToSend.append("description", formData.description);
     formDataToSend.append("order_index", formData.order_index.toString());
+    formDataToSend.append("media_type", formData.media_type);
 
-    if (imageFile) {
+    if (formData.media_type === "video") {
+      formDataToSend.append("youtube_url", formData.youtube_url);
+    } else if (imageFile) {
       formDataToSend.append("image", imageFile);
     }
 
@@ -231,6 +258,21 @@ const Gallery: React.FC = () => {
       default:
         return "default";
     }
+  };
+
+  // Helper function to extract YouTube video ID from URL
+  const getYouTubeVideoId = (url: string): string | null => {
+    if (!url) return null;
+    const regExp =
+      /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+    return match && match[2].length === 11 ? match[2] : null;
+  };
+
+  // Helper function to get YouTube thumbnail URL
+  const getYouTubeThumbnail = (url: string): string => {
+    const videoId = getYouTubeVideoId(url);
+    return videoId ? `https://img.youtube.com/vi/${videoId}/hqdefault.jpg` : "";
   };
 
   return (
@@ -358,22 +400,54 @@ const Gallery: React.FC = () => {
             {filteredItems.map((item) => (
               <Card key={item.id} className="overflow-hidden">
                 <div className="relative group">
-                  <img
-                    src={`${API_BASE.replace("/api", "")}${item.image_url}`}
-                    alt={item.title}
-                    className="w-full h-48 object-cover"
-                  />
+                  {item.media_type === "video" && item.youtube_url ? (
+                    <>
+                      <img
+                        src={getYouTubeThumbnail(item.youtube_url)}
+                        alt={item.title}
+                        className="w-full h-48 object-cover"
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="bg-red-600 rounded-full p-3">
+                          <Video className="h-8 w-8 text-white" />
+                        </div>
+                      </div>
+                    </>
+                  ) : item.image_url ? (
+                    <img
+                      src={`${API_BASE.replace("/api", "")}${item.image_url}`}
+                      alt={item.title}
+                      className="w-full h-48 object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-48 bg-slate-100 flex items-center justify-center">
+                      <ImageIcon className="h-12 w-12 text-slate-300" />
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                    <button
-                      onClick={() =>
-                        setShowImagePreview(
-                          `${API_BASE.replace("/api", "")}${item.image_url}`
-                        )
-                      }
-                      className="p-2 bg-white rounded-lg hover:bg-slate-100 transition-colors"
-                    >
-                      <Eye className="h-5 w-5 text-slate-700" />
-                    </button>
+                    {item.media_type === "video" && item.youtube_url ? (
+                      <a
+                        href={item.youtube_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 bg-white rounded-lg hover:bg-slate-100 transition-colors"
+                      >
+                        <Eye className="h-5 w-5 text-slate-700" />
+                      </a>
+                    ) : (
+                      item.image_url && (
+                        <button
+                          onClick={() =>
+                            setShowImagePreview(
+                              `${API_BASE.replace("/api", "")}${item.image_url}`
+                            )
+                          }
+                          className="p-2 bg-white rounded-lg hover:bg-slate-100 transition-colors"
+                        >
+                          <Eye className="h-5 w-5 text-slate-700" />
+                        </button>
+                      )
+                    )}
                     <button
                       onClick={() => handleOpenEditModal(item)}
                       className="p-2 bg-white rounded-lg hover:bg-slate-100 transition-colors"
@@ -390,9 +464,17 @@ const Gallery: React.FC = () => {
                 </div>
                 <div className="p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <Badge variant={getCategoryBadgeVariant(item.category)}>
-                      {item.category}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={getCategoryBadgeVariant(item.category)}>
+                        {item.category}
+                      </Badge>
+                      {item.media_type === "video" && (
+                        <Badge variant="intensive">
+                          <Video className="h-3 w-3 mr-1" />
+                          Video
+                        </Badge>
+                      )}
+                    </div>
                     <span className="text-xs text-slate-500">
                       Order: {item.order_index}
                     </span>
@@ -431,59 +513,141 @@ const Gallery: React.FC = () => {
               </div>
 
               <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                {/* Image Upload */}
+                {/* Media Type Selection */}
                 <div>
                   <label className="block text-sm font-semibold text-slate-700 mb-2">
-                    Gambar <span className="text-red-500">*</span>
+                    Tipe Media <span className="text-red-500">*</span>
                   </label>
-                  <div className="border-2 border-dashed border-slate-300 rounded-xl p-4">
-                    {imagePreview ? (
-                      <div className="relative">
-                        <img
-                          src={imagePreview}
-                          alt="Preview"
-                          className="w-full h-64 object-cover rounded-lg"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setImageFile(null);
-                            setImagePreview("");
-                          }}
-                          className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8">
-                        <Upload className="h-12 w-12 text-slate-400 mx-auto mb-3" />
-                        <p className="text-sm text-slate-600 mb-2">
-                          Klik untuk upload gambar
-                        </p>
-                        <p className="text-xs text-slate-400">
-                          PNG, JPG, GIF, WEBP (Max 5MB)
-                        </p>
-                      </div>
-                    )}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="hidden"
-                      id="image-upload"
-                    />
-                    <label
-                      htmlFor="image-upload"
-                      className="mt-3 block w-full text-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 cursor-pointer transition-colors"
-                    >
-                      {imagePreview ? "Ganti Gambar" : "Pilih Gambar"}
+                  <div className="flex gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        value="image"
+                        checked={formData.media_type === "image"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            media_type: e.target.value as "image" | "video",
+                            youtube_url: "",
+                          })
+                        }
+                        className="text-blue-600"
+                      />
+                      <ImageIcon className="h-4 w-4 text-slate-600" />
+                      <span className="text-sm text-slate-700">Gambar</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        value="video"
+                        checked={formData.media_type === "video"}
+                        onChange={(e) =>
+                          setFormData({
+                            ...formData,
+                            media_type: e.target.value as "image" | "video",
+                          })
+                        }
+                        className="text-blue-600"
+                      />
+                      <Video className="h-4 w-4 text-slate-600" />
+                      <span className="text-sm text-slate-700">
+                        Video YouTube
+                      </span>
                     </label>
                   </div>
-                  {errors.image && (
-                    <p className="text-sm text-red-600 mt-1">{errors.image}</p>
-                  )}
                 </div>
+
+                {/* Conditional: Image Upload */}
+                {formData.media_type === "image" && (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      Gambar <span className="text-red-500">*</span>
+                    </label>
+                    <div className="border-2 border-dashed border-slate-300 rounded-xl p-4">
+                      {imagePreview ? (
+                        <div className="relative">
+                          <img
+                            src={imagePreview}
+                            alt="Preview"
+                            className="w-full h-64 object-cover rounded-lg"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setImageFile(null);
+                              setImagePreview("");
+                            }}
+                            className="absolute top-2 right-2 p-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8">
+                          <Upload className="h-12 w-12 text-slate-400 mx-auto mb-3" />
+                          <p className="text-sm text-slate-600 mb-2">
+                            Klik untuk upload gambar
+                          </p>
+                          <p className="text-xs text-slate-400">
+                            PNG, JPG, GIF, WEBP (Max 5MB)
+                          </p>
+                        </div>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleImageChange}
+                        className="hidden"
+                        id="image-upload"
+                      />
+                      <label
+                        htmlFor="image-upload"
+                        className="mt-3 block w-full text-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 cursor-pointer transition-colors"
+                      >
+                        {imagePreview ? "Ganti Gambar" : "Pilih Gambar"}
+                      </label>
+                    </div>
+                    {errors.image && (
+                      <p className="text-sm text-red-600 mt-1">
+                        {errors.image}
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* Conditional: YouTube URL Input */}
+                {formData.media_type === "video" && (
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-2">
+                      URL YouTube <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={formData.youtube_url}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          youtube_url: e.target.value,
+                        })
+                      }
+                      placeholder="https://www.youtube.com/watch?v=xxxxx atau https://youtu.be/xxxxx"
+                      className={`w-full px-4 py-2 border rounded-xl focus:outline-none focus:ring-2 ${
+                        errors.youtube_url
+                          ? "border-red-300 focus:ring-red-500"
+                          : "border-slate-200 focus:ring-blue-500"
+                      }`}
+                    />
+                    {errors.youtube_url && (
+                      <p className="text-sm text-red-600 mt-1">
+                        {errors.youtube_url}
+                      </p>
+                    )}
+                    <p className="text-xs text-slate-500 mt-1">
+                      Paste link YouTube di sini. Video akan ditampilkan dengan
+                      thumbnail preview.
+                    </p>
+                  </div>
+                )}
 
                 {/* Title */}
                 <div>

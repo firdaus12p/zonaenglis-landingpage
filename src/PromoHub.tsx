@@ -779,6 +779,67 @@ const PromoCard = ({
     }
   };
 
+  const handleDirectClaim = () => {
+    // Check if user data exists, if not show modal
+    if (!userData) {
+      setIsModalOpen(true);
+      return;
+    }
+
+    // If user data exists, submit claim directly
+    submitDirectClaim(userData);
+  };
+
+  const submitDirectClaim = async (claimData: {
+    name: string;
+    phone: string;
+    email?: string;
+  }) => {
+    try {
+      console.log("📝 Submitting direct promo claim...");
+
+      const response = await fetch(
+        "http://localhost:3001/api/promo-claims/claim",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            user_name: claimData.name,
+            user_phone: claimData.phone,
+            user_email: claimData.email || "",
+            program_id: promo.id,
+            program_name: promo.title,
+            program_branch: promo.branch,
+            program_type: promo.type,
+            urgency: "browsing", // Default urgency
+          }),
+        }
+      );
+
+      const result = await response.json();
+
+      if (!response.ok || !result.success) {
+        setErrorMessage(result.error || "Gagal mengajukan klaim promo");
+        setShowErrorModal(true);
+        return;
+      }
+
+      // Show success modal
+      setShowSuccessModal(true);
+
+      // Auto close after 3 seconds
+      setTimeout(() => {
+        setShowSuccessModal(false);
+      }, 3000);
+    } catch (error) {
+      console.error("Error submitting claim:", error);
+      setErrorMessage("Terjadi kesalahan saat mengirim data");
+      setShowErrorModal(true);
+    }
+  };
+
   const handleUserDataSubmit = (data: {
     name: string;
     phone: string;
@@ -794,23 +855,33 @@ const PromoCard = ({
     // Close user data modal first
     setIsModalOpen(false);
 
-    // Wait for form modal to close, then show success modal
-    setTimeout(() => {
-      setShowSuccessModal(true);
-
-      // Auto close success modal after 2 seconds and trigger validation
+    // Check if this is for direct claim (no code input) or code validation
+    if (!codeInput.trim()) {
+      // This is a direct claim
       setTimeout(() => {
-        setShowSuccessModal(false);
+        submitDirectClaim(data);
+        isProcessingRef.current = false;
+      }, 100);
+    } else {
+      // This is a code validation
+      // Wait for form modal to close, then show success modal
+      setTimeout(() => {
+        setShowSuccessModal(true);
 
+        // Auto close success modal after 2 seconds and trigger validation
         setTimeout(() => {
-          // Reset processing flag so handleApply can run
-          isProcessingRef.current = false;
+          setShowSuccessModal(false);
 
-          // Pass the user data directly to avoid race condition with state update
-          handleApply(data);
-        }, 100);
-      }, 2000);
-    }, 100);
+          setTimeout(() => {
+            // Reset processing flag so handleApply can run
+            isProcessingRef.current = false;
+
+            // Pass the user data directly to avoid race condition with state update
+            handleApply(data);
+          }, 100);
+        }, 2000);
+      }, 100);
+    }
   };
 
   return (
@@ -979,14 +1050,12 @@ const PromoCard = ({
 
       {/* CTA */}
       <div className="mt-4 flex items-center justify-between">
-        <a
+        <button
           className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 transition-colors"
-          href={promo.wa}
-          target="_blank"
-          rel="noopener noreferrer"
+          onClick={handleDirectClaim}
         >
           Ambil Promo
-        </a>
+        </button>
         <a
           className="text-sm font-semibold text-blue-700 hover:underline"
           href={`https://wa.me/6282188080688?text=Halo%20ZE%2C%20saya%20mau%20tanya%20tentang%20${encodeURIComponent(
@@ -1514,8 +1583,10 @@ export default function PromoHub() {
           Temukan Ambassador & Affiliate Terdekat
         </h2>
         <p className="mb-5 text-slate-600">
-          Pilih sekolah, kampus, atau tempat kerja untuk melihat siapa yang bisa
-          kamu hubungi dan dapatkan kode unik mereka.
+          Kamu bisa langsung chat Ambassador untuk tanya program, promo, panduan
+          daftar, atau sekadar ngobrol tentang pengalaman mereka belajar di Zona
+          English. Mereka siap bantu kamu memilih kelas yang tepat, memberi kode
+          diskon unik, dan mengajakmu ikut event seru Zona English di daerahmu!
         </p>
 
         <div className="mb-4 flex gap-2">

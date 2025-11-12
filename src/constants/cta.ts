@@ -26,9 +26,9 @@ export const WHATSAPP_LINKS = {
 } as const;
 
 // Registration & Navigation Links
-export const CTA_REGISTER = "#daftar"; // TODO: ganti ke form pendaftaran/landing utama
+export const CTA_REGISTER = "/promo-hub"; // Menuju ke halaman Promo Hub untuk pendaftaran
 export const CTA_SCHEDULE = "#jadwal"; // TODO: ganti ke halaman jadwal & program
-export const CTA_TRYFREE = "#trial"; // TODO: ganti ke form trial/class demo
+export const CTA_TRYFREE = "/promo-hub"; // Menuju ke halaman Promo Hub untuk trial
 export const CTA_AFFILIATE = "#daftar-affiliate";
 export const CTA_AMBASSADOR = "#daftar-ambassador";
 

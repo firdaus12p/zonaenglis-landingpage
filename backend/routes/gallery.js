@@ -52,7 +52,7 @@ const upload = multer({
 router.get("/", async (req, res) => {
   try {
     const { category } = req.query;
-    let query = `SELECT id, title, category, description, image_url, order_index, created_at, updated_at 
+    let query = `SELECT id, title, category, description, image_url, media_type, youtube_url, order_index, created_at, updated_at 
                  FROM gallery`;
     const params = [];
 
@@ -75,7 +75,7 @@ router.get("/", async (req, res) => {
 router.get("/:id", async (req, res) => {
   try {
     const [rows] = await db.query(
-      `SELECT id, title, category, description, image_url, order_index, created_at, updated_at 
+      `SELECT id, title, category, description, image_url, media_type, youtube_url, order_index, created_at, updated_at 
        FROM gallery WHERE id = ?`,
       [req.params.id]
     );
@@ -91,10 +91,17 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /api/gallery - Create new gallery item with image upload
+// POST /api/gallery - Create new gallery item with image upload or video URL
 router.post("/", upload.single("image"), async (req, res) => {
   try {
-    const { title, category, description, order_index } = req.body;
+    const {
+      title,
+      category,
+      description,
+      order_index,
+      media_type,
+      youtube_url,
+    } = req.body;
 
     // Validation
     if (!title || !category) {
@@ -105,20 +112,45 @@ router.post("/", upload.single("image"), async (req, res) => {
       return res.status(400).json({ error: "Invalid category" });
     }
 
-    if (!req.file) {
-      return res.status(400).json({ error: "Image file is required" });
+    const mediaType = media_type || "image";
+    if (!["image", "video"].includes(mediaType)) {
+      return res.status(400).json({ error: "Invalid media type" });
     }
 
-    // Store relative path from uploads directory
-    const imageUrl = `/uploads/gallery/${req.file.filename}`;
+    let imageUrl = null;
+    let youtubeUrl = null;
+
+    if (mediaType === "video") {
+      if (!youtube_url) {
+        return res
+          .status(400)
+          .json({ error: "YouTube URL is required for video media type" });
+      }
+      youtubeUrl = youtube_url;
+    } else {
+      if (!req.file) {
+        return res
+          .status(400)
+          .json({ error: "Image file is required for image media type" });
+      }
+      imageUrl = `/uploads/gallery/${req.file.filename}`;
+    }
 
     const [result] = await db.query(
-      "INSERT INTO gallery (title, image_url, category, description, order_index) VALUES (?, ?, ?, ?, ?)",
-      [title, imageUrl, category, description || null, order_index || 0]
+      "INSERT INTO gallery (title, image_url, media_type, youtube_url, category, description, order_index) VALUES (?, ?, ?, ?, ?, ?, ?)",
+      [
+        title,
+        imageUrl,
+        mediaType,
+        youtubeUrl,
+        category,
+        description || null,
+        order_index || 0,
+      ]
     );
 
     const [newItem] = await db.query(
-      `SELECT id, title, category, description, image_url, order_index, created_at, updated_at 
+      `SELECT id, title, category, description, image_url, media_type, youtube_url, order_index, created_at, updated_at 
        FROM gallery WHERE id = ?`,
       [result.insertId]
     );
@@ -141,11 +173,18 @@ router.post("/", upload.single("image"), async (req, res) => {
 // PUT /api/gallery/:id - Update gallery item
 router.put("/:id", upload.single("image"), async (req, res) => {
   try {
-    const { title, category, description, order_index } = req.body;
+    const {
+      title,
+      category,
+      description,
+      order_index,
+      media_type,
+      youtube_url,
+    } = req.body;
 
     // Check if item exists
     const [existing] = await db.query(
-      `SELECT id, image_url FROM gallery WHERE id = ?`,
+      `SELECT id, image_url, media_type FROM gallery WHERE id = ?`,
       [req.params.id]
     );
 
@@ -162,6 +201,13 @@ router.put("/:id", upload.single("image"), async (req, res) => {
         fs.unlinkSync(req.file.path);
       }
       return res.status(400).json({ error: "Invalid category" });
+    }
+
+    if (media_type && !["image", "video"].includes(media_type)) {
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(400).json({ error: "Invalid media type" });
     }
 
     // Build update query dynamically
@@ -185,6 +231,43 @@ router.put("/:id", upload.single("image"), async (req, res) => {
       values.push(order_index);
     }
 
+    // Handle media type changes
+    if (media_type !== undefined) {
+      updates.push("media_type = ?");
+      values.push(media_type);
+
+      if (media_type === "video") {
+        // Switching to video or updating video URL
+        updates.push("youtube_url = ?");
+        values.push(youtube_url || null);
+        updates.push("image_url = ?");
+        values.push(null);
+
+        // Delete old image file if exists
+        if (existing[0].image_url) {
+          const oldImagePath = path.join(
+            __dirname,
+            "..",
+            existing[0].image_url
+          );
+          if (fs.existsSync(oldImagePath)) {
+            fs.unlinkSync(oldImagePath);
+          }
+        }
+      } else if (media_type === "image") {
+        // Switching to image
+        updates.push("youtube_url = ?");
+        values.push(null);
+      }
+    } else if (
+      youtube_url !== undefined &&
+      existing[0].media_type === "video"
+    ) {
+      // Update youtube_url for existing video
+      updates.push("youtube_url = ?");
+      values.push(youtube_url);
+    }
+
     // If new image uploaded, update image_url and delete old image
     if (req.file) {
       const imageUrl = `/uploads/gallery/${req.file.filename}`;
@@ -192,9 +275,11 @@ router.put("/:id", upload.single("image"), async (req, res) => {
       values.push(imageUrl);
 
       // Delete old image file
-      const oldImagePath = path.join(__dirname, "..", existing[0].image_url);
-      if (fs.existsSync(oldImagePath)) {
-        fs.unlinkSync(oldImagePath);
+      if (existing[0].image_url) {
+        const oldImagePath = path.join(__dirname, "..", existing[0].image_url);
+        if (fs.existsSync(oldImagePath)) {
+          fs.unlinkSync(oldImagePath);
+        }
       }
     }
 
@@ -210,7 +295,7 @@ router.put("/:id", upload.single("image"), async (req, res) => {
     );
 
     const [updated] = await db.query(
-      `SELECT id, title, category, description, image_url, order_index, created_at, updated_at 
+      `SELECT id, title, category, description, image_url, media_type, youtube_url, order_index, created_at, updated_at 
        FROM gallery WHERE id = ?`,
       [req.params.id]
     );

@@ -14,6 +14,7 @@ import {
   ChevronDown,
   Gift,
   Image,
+  Video,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -101,6 +102,20 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       page: "/admin/gallery",
       icon: Image,
       current: currentPage.startsWith("/admin/gallery"),
+    },
+    {
+      name: "Homepage Video",
+      page: "/admin/homepage-video",
+      icon: Video,
+      current:
+        currentPage.startsWith("/admin/homepage-video") ||
+        currentPage === "Homepage Video",
+    },
+    {
+      name: "Promo Claims",
+      page: "/admin/promo-claims",
+      icon: FileText,
+      current: currentPage.startsWith("/admin/promo-claims"),
     },
     {
       name: "Settings",

@@ -22,3 +22,5 @@ export {
   PADDING_VARIANTS,
 } from "./Card";
 export { default as Toast } from "./ui/Toast";
+export { default as YouTubePlayer } from "./YouTubePlayer";
+export { default as AutoplayYouTube } from "./AutoplayYouTube";

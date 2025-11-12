@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import {
   ArrowRight,
   CheckCircle2,
@@ -15,7 +16,7 @@ import {
 } from "lucide-react";
 
 // Import komponen universal dan konstanta
-import { Badge, Button, FloatingButton } from "./components";
+import { Badge, Button, FloatingButton, AutoplayYouTube } from "./components";
 import {
   CTA_WHATSAPP,
   CTA_REGISTER,
@@ -58,28 +59,40 @@ const Feature = ({
 );
 
 const ProgramCard = ({
-  age,
+  emoji,
   title,
-  bullets,
+  age,
+  description1,
+  description2,
+  targetIcon,
+  targetText,
 }: {
-  age: string;
+  emoji: string;
   title: string;
-  bullets: string[];
+  age: string;
+  description1: string;
+  description2: string;
+  targetIcon: string;
+  targetText: string;
 }) => (
-  <div className="flex h-full flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <div>
-      <div className="mb-1 text-xs font-semibold uppercase tracking-wider text-blue-700">
-        {age}
+  <div className="flex h-full flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:shadow-md">
+    <div className="mb-4 flex items-center gap-3">
+      <span className="text-3xl">{emoji}</span>
+      <div>
+        <h3 className="text-xl font-bold text-slate-900">{title}</h3>
+        <p className="text-sm text-blue-700 font-semibold">{age}</p>
       </div>
-      <h3 className="mb-3 text-lg font-bold text-slate-900">{title}</h3>
-      <ul className="mb-4 space-y-2 text-sm text-slate-600">
-        {bullets.map((b, i) => (
-          <li key={i} className="flex items-start gap-2">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 text-blue-700" />
-            <span>{b}</span>
-          </li>
-        ))}
-      </ul>
+    </div>
+    <div className="mb-4 flex-grow space-y-3">
+      <p className="text-sm leading-relaxed text-slate-700">{description1}</p>
+      <p className="text-sm leading-relaxed text-slate-700">{description2}</p>
+    </div>
+    <div className="mt-4 rounded-xl bg-blue-50 p-4">
+      <p className="mb-2 text-sm font-semibold text-blue-900">
+        <span className="mr-2">{targetIcon}</span>
+        Cocok untuk:
+      </p>
+      <p className="text-sm leading-relaxed text-slate-700">{targetText}</p>
     </div>
     <Button
       href={CTA_REGISTER}
@@ -87,6 +100,7 @@ const ProgramCard = ({
       size="md"
       icon={<ArrowRight className="h-4 w-4" />}
       iconPosition="right"
+      className="mt-4"
     >
       Lihat Detail & Daftar
     </Button>
@@ -116,7 +130,45 @@ const Testimonial = ({
   </div>
 );
 
+const API_BASE = "http://localhost:3001/api";
+
+// Helper function to extract YouTube video ID
+const getYouTubeVideoId = (url: string): string | null => {
+  if (!url) return null;
+  const patterns = [
+    /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/,
+    /^([a-zA-Z0-9_-]{11})$/,
+  ];
+
+  for (const pattern of patterns) {
+    const match = url.match(pattern);
+    if (match) return match[1];
+  }
+  return null;
+};
+
 export default function LearnMoreZE() {
+  const [homepageVideoId, setHomepageVideoId] = useState<string | null>(null);
+
+  // Fetch homepage video URL
+  useEffect(() => {
+    const fetchHomepageVideo = async () => {
+      try {
+        const response = await fetch(`${API_BASE}/settings/homepage_video_url`);
+        const data = await response.json();
+
+        if (data.success && data.data?.setting_value) {
+          const videoId = getYouTubeVideoId(data.data.setting_value);
+          setHomepageVideoId(videoId);
+        }
+      } catch (error) {
+        console.error("Error fetching homepage video:", error);
+      }
+    };
+
+    fetchHomepageVideo();
+  }, []);
+
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-white text-slate-900">
       {/* HERO */}
@@ -176,14 +228,17 @@ export default function LearnMoreZE() {
               </div>
             </div>
             <div className="relative">
-              <div className="aspect-[4/3] w-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg">
-                {/* Placeholder visual */}
-                <div className="flex h-full items-center justify-center bg-gradient-to-br from-blue-600/10 to-blue-300/10">
-                  <Video className="h-12 w-12 text-blue-700" />
-                  <span className="ml-3 text-slate-600">
-                    Preview: Inside Zona English
-                  </span>
-                </div>
+              <div className="aspect-video w-full overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg">
+                {homepageVideoId ? (
+                  <AutoplayYouTube videoId={homepageVideoId} />
+                ) : (
+                  <div className="flex h-full items-center justify-center bg-gradient-to-br from-blue-600/10 to-blue-300/10">
+                    <Video className="h-12 w-12 text-blue-700" />
+                    <span className="ml-3 text-slate-600">
+                      Preview: Inside Zona English
+                    </span>
+                  </div>
+                )}
               </div>
               <div className="absolute -bottom-5 -right-5 hidden w-40 rotate-3 rounded-xl border border-blue-100 bg-white p-3 shadow md:block">
                 <div className="text-xs font-semibold text-blue-700">
@@ -237,11 +292,11 @@ export default function LearnMoreZE() {
             <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
               <Gift className="h-4 w-4" /> Promo Bulan Ini
             </div>
-            <h3 className="text-xl font-bold">Promo Gajian — Hemat s.d. 90%</h3>
+            <h3 className="text-xl font-bold">Zona English — Promo Hub</h3>
             <ul className="mt-3 space-y-2 text-sm text-slate-700">
               <li className="flex items-start gap-2">
-                <CheckCircle2 className="mt-0.5 h-4 w-4 text-blue-700" /> 90%
-                OFF biaya pendaftaran
+                <CheckCircle2 className="mt-0.5 h-4 w-4 text-blue-700" /> Semua
+                promo aktif
               </li>
               <li className="flex items-start gap-2">
                 <CheckCircle2 className="mt-0.5 h-4 w-4 text-blue-700" /> Diskon
@@ -285,40 +340,40 @@ export default function LearnMoreZE() {
         </div>
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <ProgramCard
-            age="3–6 Tahun"
-            title="Kid Class"
-            bullets={[
-              "Belajar sambil bermain & bernyanyi",
-              "Phonics & basic vocabulary",
-              "Mini project mingguan",
-            ]}
+            emoji="✨"
+            title="Bright Stars"
+            age="Usia 3–6 tahun"
+            description1="Belajar bahasa Inggris lewat lagu, permainan, dan cerita menyenangkan."
+            description2="Anak tumbuh percaya diri, aktif berbicara, dan berakhlak baik sejak dini."
+            targetIcon="🧩"
+            targetText="Anak yang baru mulai belajar dan orang tua yang ingin anaknya tumbuh bahagia sambil belajar."
           />
           <ProgramCard
-            age="7–11 Tahun"
-            title="Junior Class"
-            bullets={[
-              "Speaking & Grammar dasar",
-              "Listening dengan visual",
-              "Project presentasi",
-            ]}
+            emoji="🚀"
+            title="Smart Path"
+            age="Usia 7–12 tahun"
+            description1="Kelas interaktif untuk membangun kemampuan membaca, menulis, mendengar, dan berbicara."
+            description2="Anak belajar berpikir kritis lewat project dan kegiatan nyata yang seru."
+            targetIcon="🧠"
+            targetText="Siswa SD yang ingin meningkatkan kemampuan bahasa dan percaya diri berbicara."
           />
           <ProgramCard
-            age="12–17 Tahun"
-            title="Teen Class"
-            bullets={[
-              "Public speaking & debate lite",
-              "Academic skills & exam prep",
-              "Portfolio & leadership",
-            ]}
+            emoji="🔥"
+            title="The Quest"
+            age="Usia 13–17 tahun"
+            description1="Remaja belajar berbicara lancar, berdiskusi, dan menulis ide dengan percaya diri."
+            description2="Didesain agar siap menghadapi sekolah, lomba, dan dunia global."
+            targetIcon="💬"
+            targetText="Remaja yang ingin menguasai bahasa Inggris untuk prestasi dan masa depan."
           />
           <ProgramCard
-            age="18–25 Tahun"
-            title="Adult Class"
-            bullets={[
-              "Speaking for career",
-              "IELTS/TOEFL starter",
-              "Writing & interview",
-            ]}
+            emoji="🎯"
+            title="The Elevate"
+            age="Usia 18 tahun ke atas"
+            description1="Bahasa Inggris profesional untuk kuliah, kerja, dan karier global."
+            description2="Latihan presentasi, wawancara, dan komunikasi dengan percaya diri."
+            targetIcon="💼"
+            targetText="Mahasiswa & profesional yang ingin naik level akademik dan karier."
           />
         </div>
       </section>

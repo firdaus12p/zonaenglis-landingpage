@@ -9,7 +9,13 @@ import {
 } from "lucide-react";
 
 // Import komponen universal dan konstanta
-import { Badge, Button, FloatingButton, BADGE_VARIANTS } from "./components";
+import {
+  Badge,
+  Button,
+  FloatingButton,
+  YouTubePlayer,
+  BADGE_VARIANTS,
+} from "./components";
 import { WHATSAPP_LINKS, CTA_REGISTER } from "./constants/cta";
 
 // Konstanta CTA untuk backward compatibility
@@ -399,7 +405,12 @@ const GallerySection = () => {
     Array<{
       title: string;
       badge: { text: string; variant: keyof typeof BADGE_VARIANTS };
-      media: Array<{ type: "image"; src: string; alt: string }>;
+      media: Array<{
+        type: "image" | "video";
+        src: string;
+        alt: string;
+        youtube_url?: string;
+      }>;
     }>
   >([]);
   const [loading, setLoading] = useState(true);
@@ -415,9 +426,10 @@ const GallerySection = () => {
         // Group by category
         const grouped: {
           [key: string]: Array<{
-            type: "image";
+            type: "image" | "video";
             src: string;
             alt: string;
+            youtube_url?: string;
           }>;
         } = {
           Kids: [],
@@ -427,11 +439,20 @@ const GallerySection = () => {
 
         data.forEach((item: any) => {
           if (grouped[item.category]) {
-            grouped[item.category].push({
-              type: "image",
-              src: `${API_BASE.replace("/api", "")}${item.image_url}`,
-              alt: item.title,
-            });
+            if (item.media_type === "video" && item.youtube_url) {
+              grouped[item.category].push({
+                type: "video",
+                src: "",
+                alt: item.title,
+                youtube_url: item.youtube_url,
+              });
+            } else if (item.image_url) {
+              grouped[item.category].push({
+                type: "image",
+                src: `${API_BASE.replace("/api", "")}${item.image_url}`,
+                alt: item.title,
+              });
+            }
           }
         });
 
@@ -513,14 +534,23 @@ const GallerySection = () => {
             <Badge variant={program.badge.variant}>{program.badge.text}</Badge>
           </div>
           <div className="grid gap-3 md:grid-cols-3">
-            {program.media.map((item, mediaIndex) => (
-              <img
-                key={mediaIndex}
-                className="rounded-xl border border-slate-200 w-full h-48 object-cover"
-                src={item.src}
-                alt={item.alt}
-              />
-            ))}
+            {program.media.map((item, mediaIndex) =>
+              item.type === "video" && item.youtube_url ? (
+                <YouTubePlayer
+                  key={mediaIndex}
+                  url={item.youtube_url}
+                  title={item.alt}
+                  className="rounded-xl border border-slate-200 w-full h-48 overflow-hidden"
+                />
+              ) : (
+                <img
+                  key={mediaIndex}
+                  className="rounded-xl border border-slate-200 w-full h-48 object-cover"
+                  src={item.src}
+                  alt={item.alt}
+                />
+              )
+            )}
           </div>
         </div>
       ))}
