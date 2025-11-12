@@ -16,8 +16,7 @@ import {
   Upload,
   Loader2,
 } from "lucide-react";
-
-const API_BASE = "http://localhost:3001/api";
+import { API_BASE } from "../../config/api";
 
 interface Article {
   id: number;

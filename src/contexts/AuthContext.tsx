@@ -22,9 +22,10 @@ interface AuthContextType {
   isLoading: boolean;
 }
 
+import { API_BASE } from "../config/api";
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const API_BASE = "http://localhost:3001/api";
 const TOKEN_KEY = "zona_english_auth_token";
 const USER_KEY = "zona_english_user";
 

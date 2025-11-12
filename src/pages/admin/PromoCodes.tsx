@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, Badge, Toast } from "../../components";
@@ -24,8 +24,7 @@ import {
   XCircle,
   CheckCircle2,
 } from "lucide-react";
-
-const API_BASE = "http://localhost:3001/api";
+import { API_BASE } from "../../config/api";
 
 interface PromoCode {
   id: number;
@@ -563,7 +562,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const handleDeletePromoLead = async (leadId: number) => {
     setConfirmModal({
       isOpen: true,
-      title: "Soft Delete Lead",
+      title: "Hapus Lead (Soft Delete)",
       message:
         "Data akan disimpan selama 3 hari sebelum dihapus permanen. Anda bisa restore lead ini dalam 3 hari.",
       confirmText: "Hapus (Soft Delete)",

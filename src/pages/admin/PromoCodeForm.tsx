@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout";
+import { SuccessModal } from "../../components";
 import {
   ArrowLeft,
   Calendar,
@@ -12,8 +13,7 @@ import {
   CheckCircle,
   Hash,
 } from "lucide-react";
-
-const API_BASE = "http://localhost:3001/api";
+import { API_BASE } from "../../config/api";
 
 const PromoCodeForm = () => {
   const navigate = useNavigate();
@@ -37,6 +37,8 @@ const PromoCodeForm = () => {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Modal State
   const [modal, setModal] = useState<{
@@ -91,19 +93,6 @@ const PromoCodeForm = () => {
       setError("Failed to load promo code data");
       console.error(err);
     }
-  };
-
-  const showAlert = (
-    title: string,
-    message: string,
-    type: "alert" | "error" | "success" = "alert"
-  ) => {
-    setModal({
-      show: true,
-      type,
-      title,
-      message,
-    });
   };
 
   const closeModal = () => {
@@ -166,14 +155,13 @@ const PromoCodeForm = () => {
       const data = await res.json();
 
       if (res.ok) {
-        showAlert(
-          "Berhasil",
-          `Kode promo berhasil ${isEdit ? "diupdate" : "ditambahkan"}!`,
-          "success"
+        setSuccessMessage(
+          `Kode promo berhasil ${isEdit ? "diperbarui" : "ditambahkan"}!`
         );
+        setShowSuccessModal(true);
         setTimeout(() => {
           navigate("/admin/promos");
-        }, 1500);
+        }, 2000);
       } else {
         setError(data.error || "Gagal menyimpan promo code");
       }
@@ -539,6 +527,16 @@ const PromoCodeForm = () => {
           </div>
         </div>
       )}
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Berhasil!"
+        message={successMessage}
+        autoClose={true}
+        autoCloseDuration={2000}
+      />
     </AdminLayout>
   );
 };

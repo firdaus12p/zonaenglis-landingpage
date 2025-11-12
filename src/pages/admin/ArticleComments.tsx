@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, Badge } from "../../components";
 import {
@@ -13,8 +13,7 @@ import {
   Mail,
   Calendar,
 } from "lucide-react";
-
-const API_BASE = "http://localhost:3001/api";
+import { API_BASE } from "../../config/api";
 
 interface Comment {
   id: number;

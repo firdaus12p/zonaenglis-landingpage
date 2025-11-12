@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
-import { Card } from "../../components";
+import { Card, ConfirmModal, SuccessModal } from "../../components";
 import {
   Clock,
   Phone,
@@ -11,6 +11,7 @@ import {
   XCircle,
   Trash2,
 } from "lucide-react";
+import { API_BASE } from "../../config/api";
 
 interface PromoClaim {
   id: number;
@@ -46,8 +47,9 @@ export default function PromoClaims() {
   const [filterStatus, setFilterStatus] = useState<string>("all");
   const [editingNotes, setEditingNotes] = useState<number | null>(null);
   const [noteText, setNoteText] = useState("");
-
-  const API_BASE = "http://localhost:3001/api";
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [claimToDelete, setClaimToDelete] = useState<number | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
     fetchClaims();
@@ -132,21 +134,30 @@ export default function PromoClaims() {
     }
   };
 
-  const deleteClaim = async (claimId: number) => {
-    if (!confirm("Yakin ingin menghapus claim ini?")) return;
+  const handleDeleteClick = (claimId: number) => {
+    setClaimToDelete(claimId);
+    setShowDeleteModal(true);
+  };
+
+  const deleteClaim = async () => {
+    if (!claimToDelete) return;
 
     try {
-      const response = await fetch(`${API_BASE}/promo-claims/${claimId}`, {
-        method: "DELETE",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          deleted_by: "admin",
-        }),
-      });
+      const response = await fetch(
+        `${API_BASE}/promo-claims/${claimToDelete}`,
+        {
+          method: "DELETE",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            deleted_by: "admin",
+          }),
+        }
+      );
 
       if (response.ok) {
+        setShowSuccessModal(true);
         fetchClaims();
         fetchStats();
       }
@@ -527,7 +538,7 @@ export default function PromoClaims() {
 
                         {/* Delete Button */}
                         <button
-                          onClick={() => deleteClaim(claim.id)}
+                          onClick={() => handleDeleteClick(claim.id)}
                           className="rounded bg-slate-200 px-3 py-1 text-xs text-slate-700 hover:bg-slate-300 flex items-center justify-center gap-1"
                         >
                           <Trash2 className="h-3 w-3" />
@@ -542,6 +553,30 @@ export default function PromoClaims() {
           </table>
         </div>
       </Card>
+
+      {/* Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setClaimToDelete(null);
+        }}
+        onConfirm={deleteClaim}
+        title="Hapus Claim?"
+        message="Apakah Anda yakin ingin menghapus claim ini? Tindakan ini tidak dapat dibatalkan."
+        confirmText="Hapus"
+        cancelText="Batal"
+        variant="danger"
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Berhasil Dihapus!"
+        message="Claim berhasil dihapus dari sistem."
+        autoClose={true}
+      />
     </AdminLayout>
   );
 }

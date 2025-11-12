@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
-import { Card, Button, Badge } from "../../components";
+import {
+  Card,
+  Button,
+  Badge,
+  ConfirmModal,
+  SuccessModal,
+} from "../../components";
 import {
   Plus,
   Clock,
@@ -14,6 +20,7 @@ import {
   Target,
   AlertCircle,
 } from "lucide-react";
+import { API_BASE } from "../../config/api";
 
 interface CountdownBatch {
   id: number;
@@ -50,8 +57,13 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     totalStudents: 0,
     upcomingBatches: 0,
   });
-
-  const API_BASE = "http://localhost:3001/api";
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [batchToDelete, setBatchToDelete] = useState<{
+    id: number;
+    name: string;
+  } | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Fetch batches from API
   const fetchBatches = async () => {
@@ -229,30 +241,39 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     }
   };
 
-  const handleDeleteBatch = async (id: number, name: string) => {
-    if (!confirm(`Are you sure you want to delete "${name}"?`)) {
-      return;
-    }
+  const handleDeleteClick = (id: number, name: string) => {
+    setBatchToDelete({ id, name });
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteBatch = async () => {
+    if (!batchToDelete) return;
 
     try {
-      const response = await fetch(`${API_BASE}/countdown/${id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `${API_BASE}/countdown/${batchToDelete.id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       const data = await response.json();
 
       if (data.success) {
         // Remove from local state
-        setBatches((prev) => prev.filter((batch) => batch.id !== id));
+        setBatches((prev) =>
+          prev.filter((batch) => batch.id !== batchToDelete.id)
+        );
         // Refresh stats
         fetchStats();
-        alert(data.message);
+        setSuccessMessage(data.message || "Batch berhasil dihapus");
+        setShowSuccessModal(true);
       } else {
-        alert(data.message || "Failed to delete batch");
+        setSuccessMessage(data.message || "Gagal menghapus batch");
       }
     } catch (err: any) {
       console.error("Error deleting batch:", err);
-      alert("Failed to delete batch");
+      setSuccessMessage("Gagal menghapus batch");
     }
   };
 
@@ -578,9 +599,9 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                         <Edit className="h-4 w-4" />
                       </button>
                       <button
-                        onClick={() => handleDeleteBatch(batch.id, batch.name)}
+                        onClick={() => handleDeleteClick(batch.id, batch.name)}
                         className="p-2 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50"
-                        title="Delete batch"
+                        title="Hapus batch"
                       >
                         <Trash2 className="h-4 w-4" />
                       </button>
@@ -668,6 +689,30 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
           </div>
         )}
       </div>
+
+      {/* Confirm Delete Modal */}
+      <ConfirmModal
+        isOpen={showDeleteModal}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setBatchToDelete(null);
+        }}
+        onConfirm={handleDeleteBatch}
+        title="Hapus Batch?"
+        message={`Apakah Anda yakin ingin menghapus batch "${batchToDelete?.name}"? Tindakan ini tidak dapat dibatalkan.`}
+        confirmText="Hapus"
+        cancelText="Batal"
+        variant="danger"
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Berhasil!"
+        message={successMessage}
+        autoClose={true}
+      />
     </AdminLayout>
   );
 };

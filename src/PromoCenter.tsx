@@ -17,6 +17,7 @@ import {
   BADGE_VARIANTS,
 } from "./components";
 import { WHATSAPP_LINKS, CTA_REGISTER } from "./constants/cta";
+import { API_BASE } from "./config/api";
 
 // Konstanta CTA untuk backward compatibility
 const CTA_WHATSAPP = WHATSAPP_LINKS.PROMO_CENTER;
@@ -414,8 +415,6 @@ const GallerySection = () => {
     }>
   >([]);
   const [loading, setLoading] = useState(true);
-
-  const API_BASE = "http://localhost:3001/api";
 
   useEffect(() => {
     const fetchGallery = async () => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, Badge } from "../../components";
 import {
@@ -13,6 +13,7 @@ import {
   Eye,
   Video,
 } from "lucide-react";
+import { API_BASE } from "../../config/api";
 
 interface GalleryItem {
   id: number;
@@ -56,8 +57,6 @@ const Gallery: React.FC = () => {
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
-
-  const API_BASE = "http://localhost:3001/api";
 
   // Fetch gallery items
   useEffect(() => {

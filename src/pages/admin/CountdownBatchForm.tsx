@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout";
-import { Card, Button } from "../../components";
+import { Card, Button, ConfirmModal, SuccessModal } from "../../components";
 import {
   ArrowLeft,
   Calendar,
@@ -13,6 +13,7 @@ import {
   CheckCircle,
   FileText,
 } from "lucide-react";
+import { API_BASE } from "../../config/api";
 
 interface CountdownBatchFormData {
   name: string;
@@ -67,6 +68,9 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
   const [errors, setErrors] = useState<Partial<CountdownBatchFormData>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Modal State
   const [modal, setModal] = useState<{
@@ -80,8 +84,6 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
     title: "",
     message: "",
   });
-
-  const API_BASE = "http://localhost:3001/api";
 
   // Load batch data if editing
   useEffect(() => {
@@ -253,18 +255,17 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
       const data = await response.json();
 
       if (data.success) {
-        showAlert(
-          "Success",
+        setSuccessMessage(
           mode === "create"
-            ? "Countdown batch created successfully!"
-            : "Countdown batch updated successfully!",
-          "success"
+            ? "Countdown batch berhasil dibuat!"
+            : "Countdown batch berhasil diperbarui!"
         );
+        setShowSuccessModal(true);
 
-        // Redirect after 1.5 seconds
+        // Redirect after modal
         setTimeout(() => {
           setCurrentPage("/admin/countdown");
-        }, 1500);
+        }, 2000);
       } else {
         showAlert("Error", data.message || "Failed to save batch", "error");
       }
@@ -277,10 +278,12 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
   };
 
   // Handle Cancel
-  const handleCancel = () => {
-    if (confirm("Are you sure you want to cancel? All changes will be lost.")) {
-      setCurrentPage("/admin/countdown");
-    }
+  const handleCancelClick = () => {
+    setShowCancelModal(true);
+  };
+
+  const handleCancelConfirm = () => {
+    setCurrentPage("/admin/countdown");
   };
 
   return (
@@ -696,7 +699,7 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
                 <Button
                   type="button"
                   variant="secondary"
-                  onClick={handleCancel}
+                  onClick={handleCancelClick}
                   disabled={isSubmitting}
                 >
                   <X className="h-4 w-4 mr-2" />
@@ -726,6 +729,28 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
           </form>
         )}
       </div>
+
+      {/* Confirm Cancel Modal */}
+      <ConfirmModal
+        isOpen={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={handleCancelConfirm}
+        title="Batalkan Perubahan?"
+        message="Apakah Anda yakin ingin membatalkan? Semua perubahan akan hilang."
+        confirmText="Ya, Batalkan"
+        cancelText="Tidak"
+        variant="warning"
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        title="Berhasil!"
+        message={successMessage}
+        autoClose={true}
+        autoCloseDuration={2000}
+      />
     </AdminLayout>
   );
 };

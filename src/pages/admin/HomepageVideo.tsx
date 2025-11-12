@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { Video, Save, AlertCircle, CheckCircle2 } from "lucide-react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, YouTubePlayer } from "../../components";
-
-const API_BASE = "http://localhost:3001/api";
+import { API_BASE } from "../../config/api";
 
 // Helper function to extract YouTube video ID
 const getYouTubeVideoId = (url: string): string | null => {
