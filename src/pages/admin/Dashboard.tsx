@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card } from "../../components";
 import {
@@ -10,47 +11,146 @@ import {
   Calendar,
   Activity,
 } from "lucide-react";
+import { API_BASE } from "../../config/api";
 
 const Dashboard = ({
   setCurrentPage,
 }: {
   setCurrentPage: (page: string) => void;
 }) => {
-  // Mock data - akan diganti dengan data real dari API
-  const stats = [
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState<
+    Array<{
+      name: string;
+      value: string;
+      change: string;
+      changeType: "increase" | "decrease" | "neutral";
+      icon: any;
+      color: string;
+    }>
+  >([
     {
       name: "Total Ambassadors",
-      value: "24",
-      change: "+2 this month",
-      changeType: "increase" as const,
+      value: "0",
+      change: "Loading...",
+      changeType: "neutral",
       icon: Users,
       color: "blue",
     },
     {
       name: "Active Promo Codes",
-      value: "8",
-      change: "3 expiring soon",
-      changeType: "neutral" as const,
+      value: "0",
+      change: "Loading...",
+      changeType: "neutral",
       icon: Tag,
       color: "emerald",
     },
     {
       name: "Current Batch",
-      value: "Batch A",
-      change: "3 days remaining",
-      changeType: "decrease" as const,
+      value: "-",
+      change: "Loading...",
+      changeType: "neutral",
       icon: Clock,
       color: "amber",
     },
     {
       name: "Published Articles",
-      value: "12",
-      change: "+3 this week",
-      changeType: "increase" as const,
+      value: "0",
+      change: "Loading...",
+      changeType: "neutral",
       icon: FileText,
       color: "purple",
     },
-  ];
+  ]);
+
+  useEffect(() => {
+    fetchDashboardStats();
+  }, []);
+
+  const fetchDashboardStats = async () => {
+    try {
+      setLoading(true);
+
+      // Fetch all data in parallel
+      const [ambassadorsRes, promosRes, countdownRes, articlesRes] =
+        await Promise.all([
+          fetch(`${API_BASE}/ambassadors`),
+          fetch(`${API_BASE}/promos`),
+          fetch(`${API_BASE}/countdown/active`),
+          fetch(`${API_BASE}/articles/admin/all`),
+        ]);
+
+      const ambassadors = await ambassadorsRes.json();
+      const promos = await promosRes.json();
+      const countdown = await countdownRes.json();
+      const articlesData = await articlesRes.json();
+
+      // Count ambassadors (active only)
+      const ambassadorCount = Array.isArray(ambassadors)
+        ? ambassadors.length
+        : 0;
+
+      // Count active promo codes
+      const promoCount = Array.isArray(promos) ? promos.length : 0;
+
+      // Get current batch name
+      const currentBatchName =
+        countdown.success && countdown.data
+          ? countdown.data.name
+          : "No active batch";
+
+      // Count published articles
+      const publishedArticles =
+        articlesData.success && Array.isArray(articlesData.data)
+          ? articlesData.data.filter(
+              (article: any) => article.status === "Published"
+            ).length
+          : 0;
+
+      // Update stats with real data
+      setStats([
+        {
+          name: "Total Ambassadors",
+          value: ambassadorCount.toString(),
+          change: `${ambassadorCount} active`,
+          changeType: "neutral",
+          icon: Users,
+          color: "blue",
+        },
+        {
+          name: "Active Promo Codes",
+          value: promoCount.toString(),
+          change: `${promoCount} currently active`,
+          changeType: "neutral",
+          icon: Tag,
+          color: "emerald",
+        },
+        {
+          name: "Current Batch",
+          value: currentBatchName,
+          change:
+            countdown.success && countdown.data ? "Active now" : "Not set",
+          changeType:
+            countdown.success && countdown.data ? "increase" : "neutral",
+          icon: Clock,
+          color: "amber",
+        },
+        {
+          name: "Published Articles",
+          value: publishedArticles.toString(),
+          change: `${publishedArticles} published`,
+          changeType: "neutral",
+          icon: FileText,
+          color: "purple",
+        },
+      ]);
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+      setLoading(false);
+    }
+  };
 
   const recentActivities = [
     {
@@ -141,54 +241,68 @@ const Dashboard = ({
 
         {/* Stats Grid */}
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <Card key={stat.name} className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600">
-                    {stat.name}
-                  </p>
-                  <p className="text-2xl font-bold text-slate-900 mt-1">
-                    {stat.value}
-                  </p>
-                  <p
-                    className={`text-sm mt-1 ${
-                      stat.changeType === "increase"
-                        ? "text-emerald-600"
-                        : stat.changeType === "decrease"
-                        ? "text-amber-600"
-                        : "text-slate-500"
-                    }`}
-                  >
-                    {stat.change}
-                  </p>
-                </div>
-                <div
-                  className={`p-3 rounded-xl ${
-                    stat.color === "blue"
-                      ? "bg-blue-100"
-                      : stat.color === "emerald"
-                      ? "bg-emerald-100"
-                      : stat.color === "amber"
-                      ? "bg-amber-100"
-                      : "bg-purple-100"
-                  }`}
-                >
-                  <stat.icon
-                    className={`h-6 w-6 ${
-                      stat.color === "blue"
-                        ? "text-blue-600"
-                        : stat.color === "emerald"
-                        ? "text-emerald-600"
-                        : stat.color === "amber"
-                        ? "text-amber-600"
-                        : "text-purple-600"
-                    }`}
-                  />
-                </div>
-              </div>
-            </Card>
-          ))}
+          {loading
+            ? // Loading skeleton
+              Array.from({ length: 4 }).map((_, index) => (
+                <Card key={index} className="p-6 animate-pulse">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="h-4 bg-slate-200 rounded w-2/3 mb-2"></div>
+                      <div className="h-8 bg-slate-200 rounded w-1/2 mb-2"></div>
+                      <div className="h-3 bg-slate-200 rounded w-3/4"></div>
+                    </div>
+                    <div className="w-12 h-12 bg-slate-200 rounded-xl"></div>
+                  </div>
+                </Card>
+              ))
+            : stats.map((stat) => (
+                <Card key={stat.name} className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium text-slate-600">
+                        {stat.name}
+                      </p>
+                      <p className="text-2xl font-bold text-slate-900 mt-1">
+                        {stat.value}
+                      </p>
+                      <p
+                        className={`text-sm mt-1 ${
+                          stat.changeType === "increase"
+                            ? "text-emerald-600"
+                            : stat.changeType === "decrease"
+                            ? "text-amber-600"
+                            : "text-slate-500"
+                        }`}
+                      >
+                        {stat.change}
+                      </p>
+                    </div>
+                    <div
+                      className={`p-3 rounded-xl ${
+                        stat.color === "blue"
+                          ? "bg-blue-100"
+                          : stat.color === "emerald"
+                          ? "bg-emerald-100"
+                          : stat.color === "amber"
+                          ? "bg-amber-100"
+                          : "bg-purple-100"
+                      }`}
+                    >
+                      <stat.icon
+                        className={`h-6 w-6 ${
+                          stat.color === "blue"
+                            ? "text-blue-600"
+                            : stat.color === "emerald"
+                            ? "text-emerald-600"
+                            : stat.color === "amber"
+                            ? "text-amber-600"
+                            : "text-purple-600"
+                        }`}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              ))}
         </div>
 
         {/* Main Content Grid */}
