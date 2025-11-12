@@ -17,6 +17,25 @@ import {
 } from "lucide-react";
 import { API_BASE } from "../config/api";
 
+// Helper function to generate full image URL
+const getImageUrl = (imagePath: string | null): string => {
+  if (!imagePath) return "";
+
+  // If already a full URL, return as is
+  if (imagePath.startsWith("http")) {
+    return imagePath;
+  }
+
+  // If starts with /uploads/, prepend backend URL
+  if (imagePath.startsWith("/uploads/")) {
+    const backendUrl = API_BASE.replace("/api", "");
+    return `${backendUrl}${imagePath}`;
+  }
+
+  // Fallback for any other relative path
+  return `${API_BASE.replace("/api", "")}${imagePath}`;
+};
+
 interface Article {
   id: number;
   title: string;
@@ -175,7 +194,7 @@ const ArticleCard = ({ article }: { article: Article }) => {
       {article.featured_image && (
         <div className="aspect-video w-full overflow-hidden bg-slate-100">
           <img
-            src={article.featured_image}
+            src={getImageUrl(article.featured_image)}
             alt={article.title}
             className="h-full w-full object-cover transition-transform group-hover:scale-105"
           />
@@ -618,7 +637,7 @@ const ArticleDetail = () => {
           {article.featured_image && (
             <div className="mb-8 overflow-hidden rounded-2xl">
               <img
-                src={article.featured_image}
+                src={getImageUrl(article.featured_image)}
                 alt={article.title}
                 className="h-auto w-full"
               />
@@ -639,7 +658,7 @@ const ArticleDetail = () => {
                 .map((img) => (
                   <div key={img.id} className="overflow-hidden rounded-2xl">
                     <img
-                      src={img.image_url}
+                      src={getImageUrl(img.image_url)}
                       alt={img.caption || ""}
                       className="h-auto w-full"
                     />
