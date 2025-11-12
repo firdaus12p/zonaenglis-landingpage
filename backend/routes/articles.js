@@ -205,7 +205,7 @@ router.get("/public/:slug", async (req, res) => {
     // Get approved comments
     const [comments] = await db.query(
       `
-      SELECT id, author_name as user_name, content as comment, created_at
+      SELECT id, user_name, comment, created_at
       FROM article_comments
       WHERE article_id = ? AND status = 'Approved'
       ORDER BY created_at DESC
@@ -384,7 +384,7 @@ router.post("/:id/comment", async (req, res) => {
     // Insert comment with 'Pending' status
     const [result] = await db.query(
       `
-      INSERT INTO article_comments (article_id, author_name, author_email, content, status, user_ip, user_agent)
+      INSERT INTO article_comments (article_id, user_name, user_email, comment, status, ip_address, user_agent)
       VALUES (?, ?, ?, ?, 'Pending', ?, ?)
     `,
       [
@@ -641,20 +641,36 @@ router.post("/", upload.single("featuredImage"), async (req, res) => {
     } = req.body;
 
     // Generate slug
-    const slug = generateSlug(title);
+    let slug = generateSlug(title);
 
-    // Check if slug exists
+    // Check if slug exists and generate unique slug
     const [existingSlugs] = await connection.query(
-      "SELECT id FROM articles WHERE slug = ?",
-      [slug]
+      "SELECT slug FROM articles WHERE slug LIKE ?",
+      [`${slug}%`]
     );
 
     if (existingSlugs.length > 0) {
-      await connection.rollback();
-      return res.status(400).json({
-        success: false,
-        message: "Article with similar title already exists",
-      });
+      // Find the highest number suffix
+      const slugNumbers = existingSlugs
+        .map((row) => {
+          const match = row.slug.match(new RegExp(`^${slug}-(\\d+)$`));
+          return match ? parseInt(match[1]) : 0;
+        })
+        .filter((num) => num > 0);
+
+      const maxNumber = slugNumbers.length > 0 ? Math.max(...slugNumbers) : 0;
+
+      // Check if base slug exists
+      const baseSlugExists = existingSlugs.some((row) => row.slug === slug);
+
+      if (baseSlugExists) {
+        slug = `${slug}-${maxNumber + 1}`;
+        console.log(
+          `Slug already exists, using: ${slug} (original: ${generateSlug(
+            title
+          )})`
+        );
+      }
     }
 
     // Handle featured image
@@ -754,7 +770,7 @@ router.put("/:id", upload.single("featuredImage"), async (req, res) => {
 
     // Get existing article
     const [existing] = await connection.query(
-      `SELECT id, slug, title, featured_image, status, author_id 
+      `SELECT id, slug, title, featured_image, status 
        FROM articles WHERE id = ? AND deleted_at IS NULL`,
       [id]
     );

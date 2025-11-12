@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
-import { Card, Button, Badge } from "../../components";
+import { Card, Button, Badge, RichTextEditor } from "../../components";
 import {
   Plus,
   Search,
@@ -17,6 +17,25 @@ import {
   Loader2,
 } from "lucide-react";
 import { API_BASE } from "../../config/api";
+
+// Helper function to get full image URL
+const getImageUrl = (imagePath: string | null): string => {
+  if (!imagePath) return "";
+  // If it's already a full URL (http/https), return as is
+  if (imagePath.startsWith("http")) return imagePath;
+  // If it's a local upload, prepend backend URL (remove /api from API_BASE)
+  if (imagePath.startsWith("/uploads/")) {
+    const backendUrl = API_BASE.replace("/api", "");
+    const fullUrl = `${backendUrl}${imagePath}`;
+    console.log("Image URL:", { original: imagePath, full: fullUrl });
+    return fullUrl;
+  }
+  // Fallback: prepend backend URL for any relative path
+  const backendUrl = API_BASE.replace("/api", "");
+  const fullUrl = `${backendUrl}${imagePath}`;
+  console.log("Image URL (fallback):", { original: imagePath, full: fullUrl });
+  return fullUrl;
+};
 
 interface Article {
   id: number;
@@ -138,7 +157,10 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       seo_description: article.seo_description || "",
       hashtags: "",
     });
-    setImagePreview(article.featured_image || "");
+    // Reset featured image file object (no new upload yet)
+    setFeaturedImage(null);
+    // Set image preview with full backend URL
+    setImagePreview(getImageUrl(article.featured_image));
     setShowModal(true);
 
     // Fetch hashtags for this article
@@ -219,7 +241,7 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
       // Add image if selected
       if (featuredImage) {
-        submitData.append("featured_image", featuredImage);
+        submitData.append("featuredImage", featuredImage);
       }
 
       const url = editingArticle
@@ -249,6 +271,9 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         3000
       );
       setShowModal(false);
+      // Reset image states after successful submit
+      setFeaturedImage(null);
+      setImagePreview("");
       fetchArticles();
     } catch (error: any) {
       console.error("Error saving article:", error);
@@ -501,9 +526,12 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                         <div className="flex items-start gap-3">
                           {article.featured_image && (
                             <img
-                              src={article.featured_image}
+                              src={getImageUrl(article.featured_image)}
                               alt={article.title}
-                              className="h-12 w-12 rounded-lg object-cover"
+                              className="h-12 w-12 rounded-lg object-cover border border-slate-200"
+                              onError={(e) => {
+                                e.currentTarget.style.display = "none";
+                              }}
                             />
                           )}
                           <div>
@@ -607,11 +635,18 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                   </label>
                   <div className="flex items-center gap-4">
                     {imagePreview && (
-                      <img
-                        src={imagePreview}
-                        alt="Preview"
-                        className="h-32 w-32 rounded-lg object-cover"
-                      />
+                      <div className="relative w-48">
+                        <img
+                          src={imagePreview}
+                          alt="Preview"
+                          className="w-full rounded-lg border border-slate-200"
+                          onError={(e) => {
+                            console.error("Image load error:", imagePreview);
+                            e.currentTarget.src =
+                              "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23ddd' width='100' height='100'/%3E%3Ctext x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' fill='%23999'%3ENo Image%3C/text%3E%3C/svg%3E";
+                          }}
+                        />
+                      </div>
                     )}
                     <label className="cursor-pointer rounded-lg border-2 border-dashed border-slate-300 px-6 py-4 text-center hover:border-blue-500">
                       <Upload className="mx-auto h-8 w-8 text-slate-400" />
@@ -702,22 +737,18 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                 {/* Content */}
                 <div>
                   <label className="mb-2 block text-sm font-medium text-slate-700">
-                    Content * (HTML supported)
+                    Konten Artikel *
                   </label>
-                  <textarea
+                  <RichTextEditor
                     value={formData.content}
-                    onChange={(e) =>
-                      setFormData({ ...formData, content: e.target.value })
+                    onChange={(value: string) =>
+                      setFormData({ ...formData, content: value })
                     }
-                    required
-                    rows={12}
-                    className="w-full rounded-lg border border-slate-300 px-4 py-2 font-mono text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                    placeholder="<h2>Heading</h2><p>Your content here...</p>"
+                    placeholder="Tulis konten artikel Anda di sini..."
                   />
                   <p className="mt-1 text-xs text-slate-500">
-                    You can use HTML tags: &lt;h2&gt;, &lt;h3&gt;, &lt;p&gt;,
-                    &lt;strong&gt;, &lt;em&gt;, &lt;ul&gt;, &lt;ol&gt;,
-                    &lt;li&gt;
+                    Gunakan toolbar di atas untuk memformat teks, menambahkan
+                    heading, list, link, dan gambar.
                   </p>
                 </div>
 

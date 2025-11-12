@@ -15,6 +15,7 @@ import {
   Gift,
   Image,
   Video,
+  MessageCircle,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -87,8 +88,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       page: "/admin/articles",
       icon: FileText,
       current:
-        currentPage === "admin-articles" ||
-        currentPage.startsWith("/admin/articles"),
+        currentPage === "admin-articles" || currentPage === "/admin/articles",
+    },
+    {
+      name: "Article Comments",
+      page: "/admin/articles/comments",
+      icon: MessageCircle,
+      current: currentPage.startsWith("/admin/articles/comments"),
     },
     {
       name: "Users",
