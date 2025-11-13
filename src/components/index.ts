@@ -26,4 +26,4 @@ export { default as YouTubePlayer } from "./YouTubePlayer";
 export { default as AutoplayYouTube } from "./AutoplayYouTube";
 export { ConfirmModal } from "./ConfirmModal";
 export { SuccessModal } from "./SuccessModal";
-export { default as RichTextEditor } from "./RichTextEditor.tsx";
+export { default as RichTextEditor } from "./RichTextEditor";

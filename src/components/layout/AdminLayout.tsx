@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import {
@@ -16,19 +16,20 @@ import {
   Image,
   Video,
   MessageCircle,
+  FolderOpen,
 } from "lucide-react";
 
 interface AdminLayoutProps {
-  children: React.ReactNode;
+  children: ReactNode;
   currentPage?: string;
-  setCurrentPage?: (page: string) => void; // Optional for backward compatibility
+  setCurrentPage?: (page: string) => void;
 }
 
-const AdminLayout: React.FC<AdminLayoutProps> = ({
+const AdminLayout = ({
   children,
   currentPage = "dashboard",
   setCurrentPage,
-}) => {
+}: AdminLayoutProps) => {
   const navigate = useNavigate();
   const { logout, user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -95,6 +96,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({
       page: "/admin/articles/comments",
       icon: MessageCircle,
       current: currentPage.startsWith("/admin/articles/comments"),
+    },
+    {
+      name: "Article Categories",
+      page: "/admin/articles/categories",
+      icon: FolderOpen,
+      current: currentPage.startsWith("/admin/articles/categories"),
     },
     {
       name: "Users",

@@ -997,4 +997,212 @@ router.get("/hashtags", async (req, res) => {
   }
 });
 
+// ==========================================
+// CATEGORY MANAGEMENT ROUTES (ADMIN)
+// ==========================================
+
+/**
+ * GET /api/articles/categories/admin/all
+ * Get all categories for admin panel (including deleted)
+ */
+router.get("/categories/admin/all", async (req, res) => {
+  try {
+    const [categories] = await db.query(
+      `SELECT 
+        id, name, slug, description, created_at, updated_at, deleted_at,
+        (SELECT COUNT(*) FROM articles WHERE category = article_categories.name AND deleted_at IS NULL) as article_count
+       FROM article_categories
+       WHERE deleted_at IS NULL
+       ORDER BY name ASC`
+    );
+
+    res.json({ success: true, data: categories });
+  } catch (error) {
+    console.error("Error fetching categories:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * POST /api/articles/categories
+ * Create new category
+ */
+router.post("/categories", async (req, res) => {
+  try {
+    const { name, description } = req.body;
+
+    if (!name || name.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Category name is required",
+      });
+    }
+
+    // Generate slug from name
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .trim();
+
+    // Check if category already exists
+    const [existing] = await db.query(
+      "SELECT id FROM article_categories WHERE slug = ? AND deleted_at IS NULL",
+      [slug]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Category already exists",
+      });
+    }
+
+    // Insert new category
+    const [result] = await db.query(
+      "INSERT INTO article_categories (name, slug, description) VALUES (?, ?, ?)",
+      [name.trim(), slug, description || null]
+    );
+
+    res.json({
+      success: true,
+      message: "Category created successfully",
+      data: {
+        id: result.insertId,
+        name: name.trim(),
+        slug,
+        description: description || null,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating category:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * PUT /api/articles/categories/:id
+ * Update category
+ */
+router.put("/categories/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+
+    if (!name || name.trim() === "") {
+      return res.status(400).json({
+        success: false,
+        message: "Category name is required",
+      });
+    }
+
+    // Check if category exists
+    const [existing] = await db.query(
+      "SELECT id FROM article_categories WHERE id = ? AND deleted_at IS NULL",
+      [id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    // Generate new slug
+    const slug = name
+      .toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .trim();
+
+    // Check if new slug conflicts with another category
+    const [conflict] = await db.query(
+      "SELECT id FROM article_categories WHERE slug = ? AND id != ? AND deleted_at IS NULL",
+      [slug, id]
+    );
+
+    if (conflict.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Category name already exists",
+      });
+    }
+
+    // Update category
+    await db.query(
+      "UPDATE article_categories SET name = ?, slug = ?, description = ? WHERE id = ?",
+      [name.trim(), slug, description || null, id]
+    );
+
+    res.json({
+      success: true,
+      message: "Category updated successfully",
+      data: {
+        id: parseInt(id),
+        name: name.trim(),
+        slug,
+        description: description || null,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating category:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
+/**
+ * DELETE /api/articles/categories/:id
+ * Soft delete category
+ */
+router.delete("/categories/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if category exists
+    const [existing] = await db.query(
+      "SELECT name FROM article_categories WHERE id = ? AND deleted_at IS NULL",
+      [id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Category not found",
+      });
+    }
+
+    const categoryName = existing[0].name;
+
+    // Check if any articles are using this category
+    const [articles] = await db.query(
+      "SELECT COUNT(*) as count FROM articles WHERE category = ? AND deleted_at IS NULL",
+      [categoryName]
+    );
+
+    if (articles[0].count > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete category. ${articles[0].count} article(s) are using this category.`,
+      });
+    }
+
+    // Soft delete category
+    await db.query(
+      "UPDATE article_categories SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [id]
+    );
+
+    res.json({
+      success: true,
+      message: "Category deleted successfully",
+    });
+  } catch (error) {
+    console.error("Error deleting category:", error);
+    res.status(500).json({ success: false, message: "Server error" });
+  }
+});
+
 export default router;

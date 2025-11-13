@@ -89,19 +89,36 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const [featuredImage, setFeaturedImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
-
-  const categories = [
-    "Grammar",
-    "Vocabulary",
-    "Speaking",
-    "Listening",
-    "Tips",
-    "News",
-  ];
+  const [categories, setCategories] = useState<string[]>([]);
 
   useEffect(() => {
     fetchArticles();
+    fetchCategories();
   }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/articles/categories/admin/all`);
+      if (!response.ok) throw new Error("Failed to fetch categories");
+      const result = await response.json();
+      // Extract category names from the result
+      const categoryNames = result.data.map(
+        (cat: { name: string }) => cat.name
+      );
+      setCategories(categoryNames);
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      // Fallback to default categories if fetch fails
+      setCategories([
+        "Grammar",
+        "Vocabulary",
+        "Speaking",
+        "Listening",
+        "Tips",
+        "News",
+      ]);
+    }
+  };
 
   const fetchArticles = async () => {
     try {
@@ -133,7 +150,7 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       excerpt: "",
       content: "",
       author: "Admin Zona English",
-      category: "Grammar",
+      category: categories[0] || "Grammar",
       status: "Draft",
       seo_title: "",
       seo_description: "",

@@ -29,6 +29,7 @@ import CountdownBatchForm from "./pages/admin/CountdownBatchForm";
 import Gallery from "./pages/admin/Gallery";
 import HomepageVideo from "./pages/admin/HomepageVideo";
 import PromoClaims from "./pages/admin/PromoClaims";
+import ArticleCategories from "./pages/admin/ArticleCategories";
 
 function App() {
   const navigate = useNavigate();
@@ -215,6 +216,14 @@ function App() {
             element={
               <ProtectedRoute requireAdmin>
                 <ArticleComments setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/articles/categories"
+            element={
+              <ProtectedRoute requireAdmin>
+                <ArticleCategories />
               </ProtectedRoute>
             }
           />
