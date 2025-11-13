@@ -249,7 +249,7 @@ Tim Zona English siap membantu! 🚀`;
 
   if (loading) {
     return (
-      <AdminLayout>
+      <AdminLayout currentPage="/admin/promo-claims">
         <div className="flex h-64 items-center justify-center">
           <div className="text-center">
             <div className="mb-4 inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
@@ -261,7 +261,7 @@ Tim Zona English siap membantu! 🚀`;
   }
 
   return (
-    <AdminLayout>
+    <AdminLayout currentPage="/admin/promo-claims">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-slate-900">Promo Claims</h1>
         <p className="mt-1 text-sm text-slate-600">

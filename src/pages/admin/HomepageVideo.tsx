@@ -104,7 +104,7 @@ export default function HomepageVideo() {
 
   if (loading) {
     return (
-      <AdminLayout currentPage="Homepage Video">
+      <AdminLayout currentPage="/admin/homepage-video">
         <div className="flex items-center justify-center py-12">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
         </div>
@@ -113,7 +113,7 @@ export default function HomepageVideo() {
   }
 
   return (
-    <AdminLayout currentPage="Homepage Video">
+    <AdminLayout currentPage="/admin/homepage-video">
       <div className="space-y-6">
         {/* Alert Messages */}
         {message && (

@@ -789,9 +789,9 @@ router.patch("/update-status/:usage_id", async (req, res) => {
 
     await db.query(
       `UPDATE promo_usage 
-       SET follow_up_status = ?, registered = ?, registered_at = IF(? = 1, NOW(), NULL)
+       SET follow_up_status = ?, registered = ?
        WHERE id = ?`,
-      [follow_up_status, registered ? 1 : 0, registered ? 1 : 0, usage_id]
+      [follow_up_status, registered ? 1 : 0, usage_id]
     );
 
     res.json({ success: true, message: "Status updated successfully" });

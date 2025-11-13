@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
-import { Card, Button, Badge } from "../../components";
+import { Card, Button, Badge, SuccessModal } from "../../components";
 import {
   Search,
   Filter,
@@ -44,6 +44,8 @@ const Gallery: React.FC = () => {
     null
   );
   const [showImagePreview, setShowImagePreview] = useState<string | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
 
   // Form states
   const [formData, setFormData] = useState({
@@ -204,11 +206,12 @@ const Gallery: React.FC = () => {
         throw new Error(errorData.error || "Gagal menyimpan galeri");
       }
 
-      alert(
+      setSuccessMessage(
         modalMode === "create"
           ? "Galeri berhasil ditambahkan"
           : "Galeri berhasil diupdate"
       );
+      setShowSuccessModal(true);
       setShowModal(false);
       fetchGallery();
     } catch (error) {
@@ -227,7 +230,8 @@ const Gallery: React.FC = () => {
         throw new Error("Gagal menghapus galeri");
       }
 
-      alert("Galeri berhasil dihapus");
+      setSuccessMessage("Galeri berhasil dihapus");
+      setShowSuccessModal(true);
       setShowDeleteConfirm(null);
       fetchGallery();
     } catch (error) {
@@ -275,7 +279,7 @@ const Gallery: React.FC = () => {
   };
 
   return (
-    <AdminLayout>
+    <AdminLayout currentPage="/admin/gallery">
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -803,6 +807,14 @@ const Gallery: React.FC = () => {
             </div>
           </div>
         )}
+
+        {/* Success Modal */}
+        <SuccessModal
+          isOpen={showSuccessModal}
+          onClose={() => setShowSuccessModal(false)}
+          title="Berhasil!"
+          message={successMessage}
+        />
       </div>
     </AdminLayout>
   );

@@ -107,8 +107,7 @@ const AdminLayout = ({
       name: "Users",
       page: "/admin/users",
       icon: Users,
-      current:
-        currentPage === "Users" || currentPage.startsWith("/admin/users"),
+      current: currentPage.startsWith("/admin/users"),
     },
     {
       name: "Galeri Kegiatan",
@@ -120,9 +119,7 @@ const AdminLayout = ({
       name: "Homepage Video",
       page: "/admin/homepage-video",
       icon: Video,
-      current:
-        currentPage.startsWith("/admin/homepage-video") ||
-        currentPage === "Homepage Video",
+      current: currentPage.startsWith("/admin/homepage-video"),
     },
     {
       name: "Promo Claims",

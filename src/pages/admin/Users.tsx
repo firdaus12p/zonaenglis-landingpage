@@ -301,7 +301,7 @@ const Users = ({
 
   if (loading) {
     return (
-      <AdminLayout setCurrentPage={setCurrentPage}>
+      <AdminLayout currentPage="/admin/users" setCurrentPage={setCurrentPage}>
         <div className="flex h-96 items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-blue-700" />
         </div>
@@ -311,7 +311,7 @@ const Users = ({
 
   if (error) {
     return (
-      <AdminLayout setCurrentPage={setCurrentPage}>
+      <AdminLayout currentPage="/admin/users" setCurrentPage={setCurrentPage}>
         <div className="flex h-96 flex-col items-center justify-center gap-4">
           <AlertCircle className="h-16 w-16 text-red-500" />
           <div className="text-center">
@@ -329,7 +329,7 @@ const Users = ({
   }
 
   return (
-    <AdminLayout setCurrentPage={setCurrentPage}>
+    <AdminLayout currentPage="/admin/users" setCurrentPage={setCurrentPage}>
       <div className="space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">

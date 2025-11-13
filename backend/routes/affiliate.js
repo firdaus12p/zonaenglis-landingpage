@@ -500,10 +500,6 @@ router.patch("/update-status/:usage_id", async (req, res) => {
     if (registered !== undefined) {
       updates.push("registered = ?");
       values.push(registered);
-
-      if (registered) {
-        updates.push("registered_at = NOW()");
-      }
     }
 
     if (updates.length === 0) {

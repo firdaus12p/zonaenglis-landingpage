@@ -374,6 +374,51 @@ const ErrorModal = ({
   );
 };
 
+// Direct Claim Success Modal Component
+const DirectClaimSuccessModal = ({ isOpen }: { isOpen: boolean }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-xl animate-fade-in">
+        <div className="flex flex-col items-center text-center">
+          {/* Success Icon */}
+          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-100">
+            <CheckCircle2 className="h-12 w-12 text-emerald-600" />
+          </div>
+
+          {/* Success Message */}
+          <h3 className="mb-3 text-2xl font-bold text-slate-900">
+            Promo Berhasil Diklaim!
+          </h3>
+          <p className="text-base text-slate-700 mb-2 font-medium">
+            Data Anda berhasil dikirim
+          </p>
+          <p className="text-sm text-slate-600 mb-6">
+            Admin kami akan segera menghubungi Anda untuk proses selanjutnya.
+            Terima kasih telah memilih Zona English!
+          </p>
+
+          {/* Additional Info */}
+          <div className="w-full bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+            <div className="flex items-start gap-3">
+              <MessageCircle className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div className="text-left">
+                <p className="text-sm font-semibold text-blue-900 mb-1">
+                  Harap periksa WhatsApp Anda
+                </p>
+                <p className="text-xs text-blue-700">
+                  Admin akan menghubungi via WhatsApp dalam 1x24 jam
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Promo Status Modal Component (untuk inactive, expired, quota full)
 const PromoStatusModal = ({
   isOpen,
@@ -523,6 +568,8 @@ const PromoCard = ({
   const [isValidating, setIsValidating] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showDirectClaimSuccessModal, setShowDirectClaimSuccessModal] =
+    useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [showPromoStatusModal, setShowPromoStatusModal] = useState(false);
@@ -826,13 +873,13 @@ const PromoCard = ({
         return;
       }
 
-      // Show success modal
-      setShowSuccessModal(true);
+      // Show direct claim success modal
+      setShowDirectClaimSuccessModal(true);
 
-      // Auto close after 3 seconds
+      // Auto close after 5 seconds
       setTimeout(() => {
-        setShowSuccessModal(false);
-      }, 3000);
+        setShowDirectClaimSuccessModal(false);
+      }, 5000);
     } catch (error) {
       console.error("Error submitting claim:", error);
       setErrorMessage("Terjadi kesalahan saat mengirim data");
@@ -1000,6 +1047,7 @@ const PromoCard = ({
               !codeInput.trim() ||
               isModalOpen ||
               showSuccessModal ||
+              showDirectClaimSuccessModal ||
               isProcessingRef.current
             }
             className="rounded-xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1051,8 +1099,13 @@ const PromoCard = ({
       {/* CTA */}
       <div className="mt-4 flex items-center justify-between">
         <button
-          className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 transition-colors"
+          className="rounded-xl bg-blue-700 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleDirectClaim}
+          disabled={
+            isModalOpen ||
+            showDirectClaimSuccessModal ||
+            isProcessingRef.current
+          }
         >
           Ambil Promo
         </button>
@@ -1077,6 +1130,9 @@ const PromoCard = ({
 
       {/* Success Modal */}
       <SuccessModal isOpen={showSuccessModal} />
+
+      {/* Direct Claim Success Modal */}
+      <DirectClaimSuccessModal isOpen={showDirectClaimSuccessModal} />
 
       {/* Error Modal */}
       <ErrorModal

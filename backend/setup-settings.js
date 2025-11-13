@@ -110,15 +110,6 @@ try {
       0,
     ],
     [
-      "article_auto_approve_comments",
-      "false",
-      "boolean",
-      "content",
-      "Auto Approve Comments",
-      "Automatically approve article comments without moderation",
-      0,
-    ],
-    [
       "article_comments_enabled",
       "true",
       "boolean",
