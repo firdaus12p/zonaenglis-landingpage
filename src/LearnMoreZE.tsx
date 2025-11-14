@@ -4,7 +4,6 @@ import {
   CheckCircle2,
   Star,
   MessageCircle,
-  MapPin,
   Phone,
   ShieldCheck,
   Rocket,
@@ -131,6 +130,7 @@ const Testimonial = ({
 );
 
 import { API_BASE } from "./config/api";
+import Footer from "./components/layout/Footer";
 
 // Helper function to extract YouTube video ID
 const getYouTubeVideoId = (url: string): string | null => {
@@ -493,42 +493,7 @@ export default function LearnMoreZE() {
       </section>
 
       {/* FOOTER */}
-      <footer className="mx-auto max-w-6xl px-4 pb-16">
-        <div className="grid gap-8 md:grid-cols-3">
-          <div>
-            <h4 className="text-lg font-bold">Zona English</h4>
-            <p className="mt-2 text-sm text-slate-600">
-              Belajar Inggris yang seru & terukur. Online & offline, untuk semua
-              usia.
-            </p>
-          </div>
-          <div>
-            <h4 className="text-lg font-bold">Kontak</h4>
-            <ul className="mt-2 space-y-1 text-sm text-slate-600">
-              <li className="flex items-center gap-2">
-                <Phone className="h-4 w-4" /> Admin:{" "}
-                <a
-                  className="text-blue-700 hover:underline"
-                  href={CTA_WHATSAPP}
-                >
-                  WhatsApp
-                </a>
-              </li>
-              <li className="flex items-center gap-2">
-                <MapPin className="h-4 w-4" /> Kolaka • Makassar • Kendari (dan
-                online)
-              </li>
-            </ul>
-          </div>
-          <div>
-            <h4 className="text-lg font-bold">Ikuti Kami</h4>
-            <ul className="mt-2 space-y-1 text-sm text-slate-600">
-              <li>@zonaenglish.id</li>
-              <li>Reels: Testimoni • Project Class • Tips</li>
-            </ul>
-          </div>
-        </div>
-      </footer>
+      <Footer />
 
       {/* FLOATING WA BUTTON */}
       <FloatingButton

@@ -18,6 +18,7 @@ import {
 } from "./components";
 import { WHATSAPP_LINKS, CTA_REGISTER } from "./constants/cta";
 import { API_BASE } from "./config/api";
+import Footer from "./components/layout/Footer";
 
 // Konstanta CTA untuk backward compatibility
 const CTA_WHATSAPP = WHATSAPP_LINKS.PROMO_CENTER;
@@ -784,7 +785,7 @@ export default function PromoCenter() {
       {/* GALLERY */}
       <GallerySection />
 
-      {/* TERMS & FOOTER */}
+      {/* TERMS & CONDITIONS */}
       <section className="mx-auto max-w-6xl px-4 pb-16">
         <div className="grid gap-6 md:grid-cols-2">
           <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -838,9 +839,8 @@ export default function PromoCenter() {
         </div>
       </section>
 
-      <footer className="mx-auto max-w-6xl px-4 pb-24 text-sm text-slate-500">
-        © Zona English. All rights reserved.
-      </footer>
+      {/* FOOTER */}
+      <Footer />
 
       {/* FLOATING WA BUTTON */}
       <FloatingButton href={CTA_WHATSAPP}>

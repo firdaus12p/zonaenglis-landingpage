@@ -4,6 +4,7 @@ import { CheckCircle2, MessageCircle, XCircle } from "lucide-react";
 // Import komponen universal dan konstanta
 import { FloatingButton } from "./components";
 import { WHATSAPP_LINKS } from "./constants/cta";
+import Footer from "./components/layout/Footer";
 
 // Konstanta CTA
 const CTA_WHATSAPP = WHATSAPP_LINKS.PROMO_HUB;
@@ -1698,10 +1699,8 @@ export default function PromoHub() {
         )}
       </section>
 
-      <footer className="mx-auto max-w-7xl px-4 pb-24 text-sm text-slate-500">
-        © Zona English. All rights reserved. • IG: @zonaenglish.id • WA: +62
-        821-8808-0688
-      </footer>
+      {/* FOOTER */}
+      <Footer />
 
       <FloatingButton href={CTA_WHATSAPP}>
         <MessageCircle className="h-5 w-5" /> Tanya Admin
