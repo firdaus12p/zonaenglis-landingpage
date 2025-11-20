@@ -244,11 +244,51 @@ Password: ___________________________
 
 ## 🆘 Troubleshooting Guide
 
-### Issue: Page shows 404 on refresh
+### Issue: Routes return 404 (Page Not Found) ⚠️ MOST COMMON
 
-**Solution**: Check `.htaccess` file exists in `public_html/`
+**Symptoms**:
 
-- Must include `RewriteRule . /index.html [L]`
+- Homepage works: `https://promo.zonaenglish.id/` ✅
+- Admin login 404: `https://promo.zonaenglish.id/ze-admin-portal-2025` ❌
+- Other routes 404: `/promo-center`, `/articles` ❌
+
+**Root Cause**:
+This is a **Single Page Application (SPA)** with React Router. Server needs `.htaccess` to redirect all requests to `index.html` for client-side routing.
+
+**Solution**:
+
+1. **Upload `.htaccess` file**
+
+   - Source: `c:\Projek\zonaenglis-landingpage\.htaccess`
+   - Destination: `public_html/.htaccess`
+   - Enable "Show Hidden Files" in cPanel File Manager
+
+2. **Verify `.htaccess` contains**:
+
+   ```apache
+   <IfModule mod_rewrite.c>
+     RewriteEngine On
+     RewriteBase /
+     RewriteRule ^index\.html$ - [L]
+     RewriteCond %{REQUEST_FILENAME} !-f
+     RewriteCond %{REQUEST_FILENAME} !-d
+     RewriteRule . /index.html [L]
+   </IfModule>
+   ```
+
+3. **If still 404**, use alternative:
+
+   - File: `.htaccess.alternative`
+   - Or add: `ErrorDocument 404 /index.html`
+
+4. **Contact Exabytes support**:
+
+   - WhatsApp: +62 21 3000 0830
+   - Request: Enable `mod_rewrite` & `AllowOverride All`
+
+5. **Test**: Clear cache (Ctrl+F5), access admin URL
+
+**📖 Complete Guide**: `TROUBLESHOOTING-404-ADMIN.md`
 
 ### Issue: API returns CORS error
 

@@ -4,13 +4,25 @@
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### For Production Deployment
+
+**If you're deploying to https://promo.zonaenglish.id**:
+
+1. **Deploy Backend**: Follow [QUICK-DEPLOY-BACKEND.md](QUICK-DEPLOY-BACKEND.md) (25 mins)
+2. **Upload Frontend**: Build and upload `dist/` folder to cPanel
+3. **Troubleshooting**: See [TROUBLESHOOTING-LOGIN-FAILED.md](TROUBLESHOOTING-LOGIN-FAILED.md)
+
+---
+
+### For Local Development
+
+#### Prerequisites
 
 - Node.js 18+ installed
 - MySQL database (XAMPP recommended)
 - Git
 
-### Installation
+#### Installation
 
 1. **Clone repository**:
 

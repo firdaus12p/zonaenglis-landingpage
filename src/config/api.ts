@@ -1,8 +1,15 @@
 /**
  * API Configuration
  * Centralized API base URL to avoid duplication across components
+ *
+ * Automatically detects environment:
+ * - Production: https://promo.zonaenglish.id/api
+ * - Development: http://localhost:3001/api
  */
-export const API_BASE = "http://localhost:3001/api";
+export const API_BASE =
+  import.meta.env.MODE === "production"
+    ? "https://promo.zonaenglish.id/api" // Production API
+    : "http://localhost:3001/api"; // Development API
 
 /**
  * API Endpoints
