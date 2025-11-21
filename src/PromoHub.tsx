@@ -1460,10 +1460,9 @@ export default function PromoHub() {
                   <span className="text-blue-700">Promo Hub</span>
                 </h1>
                 <p className="mt-2 max-w-2xl text-slate-600">
-                  Semua promo aktif + jaringan <b>Ambassador & Affiliate</b> di
-                  sekolah/kampus/kantor. <em>Masukkan kode unik mereka</em>{" "}
-                  untuk potongan tambahan & ngobrol langsung soal pengalaman
-                  belajar.
+                  Dapatkan promo untuk semua program + tambahan potongan harga
+                  promo dengan Masukan kode unik dari <b>Ambassador</b> dan{" "}
+                  <b>affiliate</b> yang kamu miliki.
                 </p>
               </div>
               <div className="flex flex-wrap gap-3">

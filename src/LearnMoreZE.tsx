@@ -188,7 +188,7 @@ export default function LearnMoreZE() {
                 <span className="text-blue-700">Percaya Diri</span>!
               </h1>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-600">
-                Untuk usia 3 tahun hingga dewasa. Online & Offline. Dengan AI
+                Beragam program sesuai usia 3 tahun hingga dewasa. Online & Offline. Dengan AI
                 Coach, project class, dan feedback harian agar progres nyata
                 terasa tiap minggu.
               </p>
@@ -223,7 +223,7 @@ export default function LearnMoreZE() {
               </div>
               <div className="mt-8 grid grid-cols-3 gap-5 rounded-2xl border border-blue-100 bg-white/70 p-4 backdrop-blur">
                 <Stat value="200+" label="Siswa Aktif" />
-                <Stat value="90%" label="Orang Tua Puas" />
+                <Stat value="97%" label="Orang Tua Puas" />
                 <Stat value="10+" label="Project Class/Bulan" />
               </div>
             </div>
