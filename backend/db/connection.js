@@ -5,11 +5,11 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const pool = mysql.createPool({
-  host: process.env.DB_HOST || "127.0.0.1",
-  port: parseInt(process.env.DB_PORT || "3307"),
+  host: process.env.DB_HOST || "localhost",
+  port: parseInt(process.env.DB_PORT || "3306"),
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASS || "",
-  database: process.env.DB_NAME || "zona_english_admin",
+  database: process.env.DB_NAME || "dbpromoze",
   waitForConnections: true,
   connectionLimit: 10,
   queueLimit: 0,
@@ -20,8 +20,8 @@ pool
   .getConnection()
   .then((connection) => {
     console.log("✅ MySQL Database connected successfully");
-    console.log(`📊 Database: ${process.env.DB_NAME || "zona_english_admin"}`);
-    console.log(`🔌 Port: ${process.env.DB_PORT || "3307"}`);
+    console.log(`📊 Database: ${process.env.DB_NAME || "dbpromoze"}`);
+    console.log(`🔌 Port: ${process.env.DB_PORT || "3306"}`);
     connection.release();
   })
   .catch((err) => {

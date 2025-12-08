@@ -10,24 +10,38 @@
 
 ## 📦 Step 1: Prepare Backend Files (Local)
 
-### Option A: Compress via PowerShell
+**⚠️ PENTING**: Jangan upload `node_modules/` (terlalu besar & akan dibuat di server)
+
+### Option A: Compress via PowerShell (RECOMMENDED)
 
 ```powershell
 # Open PowerShell di folder project
-cd c:\Projek\zonaenglis-landingpage
+cd c:\Projek\zonaenglis-landingpage\backend
 
-# Compress backend folder
-Compress-Archive -Path backend\* -DestinationPath backend-production.zip -Force
+# Compress semua KECUALI node_modules
+Get-ChildItem -Exclude node_modules | Compress-Archive -DestinationPath ..\backend-production.zip -Force
 
-# File created: backend-production.zip
+# File created: backend-production.zip (di parent folder)
 ```
 
 ### Option B: Compress Manually
 
 1. Buka folder: `c:\Projek\zonaenglis-landingpage\backend`
-2. Select semua file dan folder
+2. Select semua file dan folder **KECUALI**:
+   - ❌ `node_modules/` (terlalu besar, akan dibuat di server)
 3. Right-click → Send to → Compressed (zipped) folder
 4. Rename: `backend-production.zip`
+5. Move zip file ke parent folder: `c:\Projek\zonaenglis-landingpage\`
+
+**Yang di-compress**:
+
+- ✅ `server.js`, `package.json`, `package-lock.json`
+- ✅ Folders: `db/`, `routes/`, `middleware/`, `services/`, `uploads/`
+- ✅ File `.env.example` dan `.env.production` (sebagai referensi)
+
+**Yang TIDAK di-compress**:
+
+- ❌ `node_modules/` - akan dibuat otomatis via `npm install`
 
 ---
 
@@ -70,11 +84,22 @@ public_html/
     ├── server.js          ✅
     ├── package.json       ✅
     ├── package-lock.json  ✅
+    ├── .env               ✅ (akan dibuat di Step 3)
+    ├── .env.example       ✅
+    ├── .env.production    ✅
     ├── db/                ✅
     ├── routes/            ✅
     ├── middleware/        ✅
-    └── services/          ✅
+    ├── services/          ✅
+    ├── uploads/           ✅ (untuk file upload)
+    └── node_modules/      ✅ (setelah npm install)
 ```
+
+**Note**:
+
+- Folder `node_modules/` akan dibuat otomatis saat run `npm install`
+- Folder `uploads/` digunakan untuk menyimpan file yang di-upload (gambar program, dll)
+- File `.env` adalah file konfigurasi production yang akan kita buat
 
 ---
 
@@ -89,8 +114,14 @@ public_html/
 
 ### 3.2 Edit .env Content
 
-1. Right-click `.env` → **Edit**
-2. Copy-paste this content:
+**Cara Cepat**: Copy dari `.env.production` yang sudah ada
+
+1. Right-click `.env.production` → **View**
+2. Copy semua content
+3. Right-click `.env` (yang baru dibuat) → **Edit**
+4. Paste content
+
+**Atau**, copy-paste manual content ini:
 
 ```env
 # Database Configuration
@@ -304,14 +335,21 @@ Structure should be:
 
 ```
 public_html/
-├── assets/              ✅ New files
+├── assets/              ✅ New files (frontend)
 │   ├── index-abc123.js
 │   └── index-xyz789.css
-├── index.html           ✅ New file
-├── .htaccess            ✅ Keep existing
-└── api/                 ✅ Keep existing
-    └── server.js
-    └── ...
+├── index.html           ✅ New file (frontend)
+├── .htaccess            ✅ Keep existing (frontend routing)
+└── api/                 ✅ Keep existing (backend)
+    ├── server.js
+    ├── package.json
+    ├── .env             ✅ Production config
+    ├── db/
+    ├── routes/
+    ├── middleware/
+    ├── services/
+    ├── uploads/         ✅ File uploads
+    └── node_modules/    ✅ Dependencies
 ```
 
 ---
