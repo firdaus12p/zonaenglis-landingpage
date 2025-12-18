@@ -81,7 +81,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      // Read response as text first (use clone to preserve original body stream)
+      // then try to parse JSON. This avoids "body stream already read" errors.
+      const text = await response.clone().text();
+      let data: any;
+      try {
+        data = JSON.parse(text);
+      } catch (err) {
+        throw new Error(
+          `Server returned non-JSON response (status ${response.status}). See console for details.`
+        );
+      }
 
       if (!response.ok) {
         throw new Error(data.message || "Login gagal");

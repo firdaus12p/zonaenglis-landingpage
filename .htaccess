@@ -10,11 +10,9 @@
   RewriteRule ^(.*)$ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
   
   # Handle React Router - Redirect all non-file/non-directory requests to index.html
-  RewriteRule ^index\.html$ - [L]
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{REQUEST_FILENAME} !-l
-  RewriteRule . /index.html [L]
+  RewriteRule ^([a-zA-Z0-9\-_/]*)$ /index.html [L]
 </IfModule>
 
 # Gzip Compression

@@ -143,8 +143,25 @@ app.get("/api/health", (req, res) => {
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
-    database: "zona_english_admin",
+    database: "dbpromoze",
     port: PORT,
+  });
+});
+
+// Provide a friendly index for /api and /api/ to avoid 404 at the API root
+app.get(["/api", "/api/"], (req, res) => {
+  res.json({
+    message: "Zona English Backend API",
+    version: "1.0.0",
+    status: "running",
+    endpoints: {
+      ambassadors: "/api/ambassadors",
+      programs: "/api/programs",
+      promos: "/api/promos",
+      validate: "/api/validate",
+      affiliate: "/api/affiliate",
+    },
+    note: "Use /api/health for status checks",
   });
 });
 

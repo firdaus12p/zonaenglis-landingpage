@@ -1,0 +1,17 @@
+# SPA rewrite: serve index.html for routes that are not real files or directories
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+
+  # Allow direct access to existing files and directories
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Rewrite all other requests to index.html
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Optional: deny access to environment files
+<FilesMatch "^\.env(.*)$">
+  Require all denied
+</FilesMatch>
