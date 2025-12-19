@@ -84,21 +84,35 @@ Thumbs.db
 Desktop.ini
 
 # =========================
-# Uploads Directory
+# Uploads Directory (User uploaded files)
 # =========================
-# Keep folder structure but ignore uploaded files
-backend/uploads/*
+backend/uploads/*.jpg
+backend/uploads/*.jpeg
+backend/uploads/*.png
+backend/uploads/*.gif
+backend/uploads/*.webp
+backend/uploads/articles/*
+backend/uploads/gallery/*
 !backend/uploads/.gitkeep
+!backend/uploads/articles/.gitkeep
 
 # =========================
 # Database Files (CRITICAL - NEVER COMMIT!)
 # =========================
-# ALL SQL files must be ignored - database is managed separately
 *.sql
 dbimport/
 database/
 *.sqlite
 *.sqlite3
+
+# =========================
+# Backend Development Scripts (Not needed in production)
+# =========================
+backend/db/check-*.js
+backend/db/create-*.js
+backend/db/setup-*.js
+backend/db/run-migration.js
+backend/db/update-admin-password.js
 
 # =========================
 # Temporary & Cache Files
@@ -110,6 +124,7 @@ database/
 *.bak
 *.backup
 ~$*
+*.txt
 
 # =========================
 # Test & Debug Files
@@ -129,14 +144,16 @@ generate_*.ps1
 *.ps1
 
 # =========================
-# Documentation (Non-essential)
+# Documentation (Not needed for deployment)
 # =========================
-# Ignore ALL markdown files except README.md
 *.md
-!README.md
-
-# Ignore docs folder entirely
 docs/
+
+# =========================
+# Alternative Config Files
+# =========================
+.htaccess.alternative
+.htaccess.production
 
 # =========================
 # Deployment Instructions (Keep local only)
@@ -162,6 +179,7 @@ credentials/
 .serena/
 .agent/
 .gemini/
+.github/
 
 # =========================
 # Misc
