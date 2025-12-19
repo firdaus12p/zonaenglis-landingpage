@@ -3,13 +3,22 @@
  * Centralized API base URL to avoid duplication across components
  *
  * Automatically detects environment:
- * - Production: https://promo.zonaenglish.id/api
+ * - Production: https://zonaenglish.com/api
  * - Development: http://localhost:3001/api
  */
 export const API_BASE =
   import.meta.env.MODE === "production"
-    ? "https://promo.zonaenglish.id/api" // Production API
+    ? "https://zonaenglish.com/api" // Production API
     : "http://localhost:3001/api"; // Development API
+
+/**
+ * Server URL (without /api suffix)
+ * Used for image URLs and static assets
+ */
+export const SERVER_URL =
+  import.meta.env.MODE === "production"
+    ? "https://zonaenglish.com" // Production Server
+    : "http://localhost:3001"; // Development Server
 
 /**
  * API Endpoints
@@ -44,4 +53,6 @@ export const API_ENDPOINTS = {
   upload: `${API_BASE}/upload`,
   // Affiliate
   affiliate: `${API_BASE}/affiliate`,
+  // Validate
+  validate: `${API_BASE}/validate`,
 } as const;

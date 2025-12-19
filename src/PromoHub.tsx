@@ -5,6 +5,7 @@ import { CheckCircle2, MessageCircle, XCircle } from "lucide-react";
 import { FloatingButton } from "./components";
 import { WHATSAPP_LINKS } from "./constants/cta";
 import Footer from "./components/layout/Footer";
+import { API_BASE, SERVER_URL } from "./config/api";
 
 // Konstanta CTA
 const CTA_WHATSAPP = WHATSAPP_LINKS.PROMO_HUB;
@@ -622,7 +623,7 @@ const PromoCard = ({
 
     setIsValidating(true);
     try {
-      const response = await fetch("http://localhost:3001/api/validate/code", {
+      const response = await fetch(`${API_BASE}/validate/code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -716,7 +717,7 @@ const PromoCard = ({
           };
 
           const trackResponse = await fetch(
-            "http://localhost:3001/api/affiliate/track",
+            `${API_BASE}/affiliate/track`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -796,7 +797,7 @@ const PromoCard = ({
           };
 
           const trackResponse = await fetch(
-            "http://localhost:3001/api/promos/track",
+            `${API_BASE}/promos/track`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -847,7 +848,7 @@ const PromoCard = ({
       console.log("📝 Submitting direct promo claim...");
 
       const response = await fetch(
-        "http://localhost:3001/api/promo-claims/claim",
+        `${API_BASE}/promo-claims/claim`,
         {
           method: "POST",
           headers: {
@@ -1193,7 +1194,7 @@ export default function PromoHub() {
       try {
         // Fetch ambassadors
         const ambassadorsResponse = await fetch(
-          "http://localhost:3001/api/ambassadors"
+          `${API_BASE}/ambassadors`
         );
         const ambassadorsData = await ambassadorsResponse.json();
 
@@ -1237,7 +1238,7 @@ export default function PromoHub() {
 
         // Fetch programs
         const programsResponse = await fetch(
-          "http://localhost:3001/api/programs"
+          `${API_BASE}/programs`
         );
         const programsData = await programsResponse.json();
 
@@ -1262,7 +1263,7 @@ export default function PromoHub() {
                 kind: "img" as const,
                 src:
                   (program.image_url?.startsWith("/uploads/")
-                    ? `http://localhost:3001${program.image_url}`
+                    ? `${SERVER_URL}${program.image_url}`
                     : program.image_url) ||
                   "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=1471",
               },
@@ -1313,7 +1314,7 @@ export default function PromoHub() {
       const fetchData = async () => {
         try {
           const ambassadorsResponse = await fetch(
-            "http://localhost:3001/api/ambassadors"
+            `${API_BASE}/ambassadors`
           );
           const ambassadorsData = await ambassadorsResponse.json();
 
@@ -1377,7 +1378,7 @@ export default function PromoHub() {
     }
 
     try {
-      const response = await fetch("http://localhost:3001/api/validate/code", {
+      const response = await fetch(`${API_BASE}/validate/code`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

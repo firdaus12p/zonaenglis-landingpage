@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, Badge } from "../../components";
+import { API_BASE } from "../../config/api";
 import {
   Search,
   Filter,
@@ -132,7 +133,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const loadAmbassadors = async () => {
     try {
       console.log("🔄 Fetching ambassadors from API...");
-      const response = await fetch("http://localhost:3001/api/ambassadors");
+      const response = await fetch(`${API_BASE}/ambassadors`);
 
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
@@ -192,7 +193,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
       try {
         const response = await fetch(
-          "http://localhost:3001/api/affiliate/unread-counts"
+          `${API_BASE}/affiliate/unread-counts`
         );
         const data = await response.json();
 
@@ -262,7 +263,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     try {
       // Call API to delete from database
       const response = await fetch(
-        `http://localhost:3001/api/ambassadors/${id}`,
+        `${API_BASE}/ambassadors/${id}`,
         {
           method: "DELETE",
           headers: {
@@ -321,7 +322,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const fetchAffiliateStats = async (ambassadorId: number) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/api/affiliate/stats/${ambassadorId}`
+        `${API_BASE}/affiliate/stats/${ambassadorId}`
       );
       const data = await response.json();
       if (data.success && data.stats) {
@@ -336,7 +337,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     try {
       setLoadingAffiliate(true);
       const response = await fetch(
-        `http://localhost:3001/api/affiliate/leads/${ambassadorId}`
+        `${API_BASE}/affiliate/leads/${ambassadorId}`
       );
       const data = await response.json();
       if (data.success && data.leads) {
@@ -352,7 +353,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const fetchLostLeads = async (ambassadorId: number) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/api/affiliate/lost-leads/${ambassadorId}`
+        `${API_BASE}/affiliate/lost-leads/${ambassadorId}`
       );
       const data = await response.json();
       if (data.success && data.leads) {
@@ -366,7 +367,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const fetchDeletedLeads = async (ambassadorId: number) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/api/affiliate/deleted-leads/${ambassadorId}`
+        `${API_BASE}/affiliate/deleted-leads/${ambassadorId}`
       );
       const data = await response.json();
       if (data.success && data.leads) {
@@ -380,7 +381,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const markAmbassadorAsViewed = async (ambassadorId: number) => {
     try {
       await fetch(
-        `http://localhost:3001/api/affiliate/mark-viewed/${ambassadorId}`,
+        `${API_BASE}/affiliate/mark-viewed/${ambassadorId}`,
         {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -405,7 +406,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   ) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/api/affiliate/update-status/${leadId}`,
+        `${API_BASE}/affiliate/update-status/${leadId}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -473,7 +474,7 @@ Tim Zona English siap membantu! 🚀`;
   const updateLeadNotes = async (leadId: number, notes: string) => {
     try {
       const response = await fetch(
-        `http://localhost:3001/api/affiliate/update-status/${leadId}`,
+        `${API_BASE}/affiliate/update-status/${leadId}`,
         {
           method: "PATCH",
           headers: {
@@ -504,7 +505,7 @@ Tim Zona English siap membantu! 🚀`;
       async () => {
         try {
           const response = await fetch(
-            `http://localhost:3001/api/affiliate/lead/${leadId}`,
+            `${API_BASE}/affiliate/lead/${leadId}`,
             {
               method: "DELETE",
               headers: { "Content-Type": "application/json" },
@@ -555,7 +556,7 @@ Tim Zona English siap membantu! 🚀`;
       async () => {
         try {
           const response = await fetch(
-            `http://localhost:3001/api/affiliate/restore/${leadId}`,
+            `${API_BASE}/affiliate/restore/${leadId}`,
             {
               method: "PUT",
               headers: { "Content-Type": "application/json" },
@@ -611,7 +612,7 @@ Tim Zona English siap membantu! 🚀`;
           async () => {
             try {
               const response = await fetch(
-                `http://localhost:3001/api/affiliate/permanent-delete/${leadId}`,
+                `${API_BASE}/affiliate/permanent-delete/${leadId}`,
                 {
                   method: "DELETE",
                   headers: { "Content-Type": "application/json" },

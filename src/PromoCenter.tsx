@@ -58,7 +58,7 @@ const ActiveBatchDisplay = () => {
     const fetchActiveBatch = async () => {
       try {
         const response = await fetch(
-          "http://localhost:3001/api/countdown/active"
+          `${API_BASE}/countdown/active`
         );
         const data = await response.json();
 

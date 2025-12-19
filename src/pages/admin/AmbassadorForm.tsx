@@ -1,6 +1,7 @@
 import { useState } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button } from "../../components";
+import { API_BASE } from "../../config/api";
 import {
   ArrowLeft,
   Upload,
@@ -180,8 +181,8 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
       // Call API
       const url =
         mode === "create"
-          ? "http://localhost:3001/api/ambassadors"
-          : `http://localhost:3001/api/ambassadors/${existingAmbassadorData?.id}`;
+          ? `${API_BASE}/ambassadors`
+          : `${API_BASE}/ambassadors/${existingAmbassadorData?.id}`;
 
       const response = await fetch(url, {
         method: mode === "create" ? "POST" : "PUT",
