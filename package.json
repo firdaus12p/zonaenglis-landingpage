@@ -18,8 +18,8 @@
     "@lexical/utils": "^0.38.2",
     "lexical": "^0.38.2",
     "lucide-react": "^0.546.0",
-    "react": "^19.1.1",
-    "react-dom": "^19.1.1",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
     "react-router-dom": "^7.9.4"
   },
   "devDependencies": {
