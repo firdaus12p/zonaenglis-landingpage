@@ -75,6 +75,14 @@ function getUserIdentifier(req) {
   );
 }
 
+// Convert ISO datetime string to MySQL datetime format
+function toMySQLDateTime(isoString) {
+  if (!isoString) return null;
+  const date = new Date(isoString);
+  if (isNaN(date.getTime())) return null;
+  return date.toISOString().slice(0, 19).replace('T', ' ');
+}
+
 // =====================================================
 // PUBLIC ROUTES (No authentication required)
 // =====================================================
@@ -697,7 +705,7 @@ router.post("/", upload.single("featuredImage"), async (req, res) => {
         seo_title || title,
         seo_description || excerpt,
         featuredImage,
-        status === "Published" ? published_at || new Date() : null,
+        status === "Published" ? toMySQLDateTime(published_at) || toMySQLDateTime(new Date().toISOString()) : null,
       ]
     );
 
@@ -833,7 +841,7 @@ router.put("/:id", upload.single("featuredImage"), async (req, res) => {
         seo_description,
         featuredImage,
         status,
-        published_at,
+        toMySQLDateTime(published_at),
         id,
       ]
     );
