@@ -4,8 +4,9 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import path from "path";
+import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import path from "path";
 import { fileURLToPath } from "url";
 
 // ====== ENV ======
@@ -22,10 +23,16 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 app.set("trust proxy", 1);
 
 // ====== ENV VALIDATION (WAJIB di production) ======
-const requiredEnvVars = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"];
+const requiredEnvVars = [
+  "DB_HOST",
+  "DB_USER",
+  "DB_PASSWORD",
+  "DB_NAME",
+];
 
 if (NODE_ENV === "production") {
   const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
+
   if (missingVars.length > 0) {
     console.error("❌ Missing required environment variables:");
     missingVars.forEach((v) => console.error(`   - ${v}`));
@@ -40,32 +47,36 @@ const allowedOrigins = process.env.CORS_ORIGIN
 
 app.use(
   cors({
-    origin: allowedOrigins,
+    origin(origin, callback) {
+      // allow no-origin (Postman, curl, mobile apps)
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("CORS not allowed from this origin"));
+    },
     credentials: true,
   })
 );
 
-// ====== GLOBAL RATE LIMITER (WAJIB) ======
+// ====== SECURITY HEADERS (Helmet) ======
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false, // allow images/uploads
+  })
+);
+
+// ====== GLOBAL RATE LIMITER ======
 const globalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 menit
-  max: 300, // 300 request / IP
+  max: 300, // 300 request / IP / 15 menit
   standardHeaders: true,
   legacyHeaders: false,
   message: {
-    error: "Terlalu banyak request. Coba lagi nanti.",
+    error: "Terlalu banyak request, silakan coba lagi nanti.",
   },
 });
 
 app.use(globalLimiter);
-
-// ====== RATE LIMITER KHUSUS AUTH (ANTI BRUTE FORCE) ======
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20, // login attempts
-  message: {
-    error: "Terlalu banyak percobaan login. Tunggu 15 menit.",
-  },
-});
 
 // ====== Middleware ======
 app.use(express.json({ limit: "10mb" }));
@@ -107,7 +118,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// ====== Endpoint Dokumentasi ======
+// ====== API Docs (aman di production) ======
 app.get("/api/docs", (req, res) => {
   res.json({
     auth: [
@@ -129,7 +140,7 @@ app.get("/api/docs", (req, res) => {
 });
 
 // ====== API Routes ======
-app.use("/api/auth", authLimiter, authRoutes);
+app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/ambassadors", ambassadorsRoutes);
 app.use("/api/programs", programsRoutes);
@@ -154,7 +165,7 @@ app.use((req, res) => {
 
 // ====== Error Handler ======
 app.use((err, req, res, next) => {
-  console.error("❌ Server Error:", err);
+  console.error("❌ Server Error:", err.message);
   res.status(err.status || 500).json({
     error: "Terjadi kesalahan pada server",
     ...(NODE_ENV !== "production" && { detail: err.message }),
@@ -168,14 +179,13 @@ const server = app.listen(PORT, "127.0.0.1", () => {
   console.log(`🌍 Environment : ${NODE_ENV}`);
   console.log(`📡 Port        : ${PORT} (localhost only)`);
   console.log(`🔐 CORS        : ${allowedOrigins.join(", ")}`);
-  console.log("🛡️  Rate limit aktif (global + auth)");
   console.log("✅ Backend aktif via Nginx reverse proxy");
   console.log("");
 });
 
 export default app;
 
-// ====== Graceful Shutdown (PM2 / VPS SAFE) ======
+// ====== Graceful Shutdown (PM2 / VPS Safe) ======
 const shutdown = (signal) => {
   console.log(`🛑 ${signal} received. Shutting down gracefully...`);
 
