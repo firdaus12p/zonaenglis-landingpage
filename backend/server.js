@@ -1,241 +1,181 @@
-// Express.js Backend API for Zona English Landing Page
+// Express.js Backend API for Zona English
+// Production-ready, aman, dan terkontrol (Nginx + PM2)
+
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
 
+// ====== ENV ======
+dotenv.config();
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Import routes
-import ambassadorsRoutes from "./routes/ambassadors.js";
-import promosRoutes from "./routes/promos.js";
-import programsRoutes from "./routes/programs.js";
-import validateRoutes from "./routes/validate.js";
-import uploadRoutes from "./routes/upload.js";
-import affiliateRoutes from "./routes/affiliate.js";
-import promoClaimsRoutes from "./routes/promo-claims.js";
-import authRoutes from "./routes/auth.js";
-import usersRoutes from "./routes/users.js";
-import countdownRoutes from "./routes/countdown.js";
-import articlesRoutes from "./routes/articles.js";
-import settingsRoutes from "./routes/settings.js";
-import galleryRoutes from "./routes/gallery.js";
+const app = express();
+const PORT = process.env.PORT || 3002;
+const NODE_ENV = process.env.NODE_ENV || "development";
 
-// Import database connection for cleanup tasks
-import db from "./db/connection.js";
+// ====== WAJIB: karena pakai Nginx reverse proxy ======
+app.set("trust proxy", 1);
 
-// Auto-purge function: Delete records that have been soft-deleted for 3+ days
-async function purgeOldDeletedRecords() {
-  try {
-    // Purge affiliate_usage (existing functionality)
-    const [affiliateResult] = await db.query(
-      `DELETE FROM affiliate_usage 
-       WHERE deleted_at IS NOT NULL 
-       AND DATEDIFF(NOW(), deleted_at) >= 3`
-    );
+// ====== ENV VALIDATION (WAJIB di production) ======
+const requiredEnvVars = [
+  "DB_HOST",
+  "DB_USER",
+  "DB_PASSWORD",
+  "DB_NAME",
+];
 
-    if (affiliateResult.affectedRows > 0) {
-      console.log(
-        `🗑️  Auto-purge: Permanently deleted ${affiliateResult.affectedRows} affiliate records (>3 days old)`
-      );
-    }
+if (NODE_ENV === "production") {
+  const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
 
-    // Purge promo_usage with used_count decrement
-    // Get records to be purged first (to decrement counters)
-    const [promoRecords] = await db.query(
-      `SELECT id, promo_code_id FROM promo_usage
-       WHERE deleted_at IS NOT NULL 
-       AND DATEDIFF(NOW(), deleted_at) >= 3`
-    );
-
-    if (promoRecords.length > 0) {
-      const connection = await db.getConnection();
-      await connection.beginTransaction();
-
-      try {
-        // Delete the records
-        await connection.query(
-          `DELETE FROM promo_usage 
-           WHERE deleted_at IS NOT NULL 
-           AND DATEDIFF(NOW(), deleted_at) >= 3`
-        );
-
-        // Decrement used_count for each affected promo code
-        const promoIds = [...new Set(promoRecords.map((r) => r.promo_code_id))];
-        for (const promoId of promoIds) {
-          const countToDecrement = promoRecords.filter(
-            (r) => r.promo_code_id === promoId
-          ).length;
-          await connection.query(
-            `UPDATE promo_codes 
-             SET used_count = GREATEST(used_count - ?, 0) 
-             WHERE id = ?`,
-            [countToDecrement, promoId]
-          );
-        }
-
-        await connection.commit();
-        connection.release();
-
-        console.log(
-          `🗑️  Auto-purge: Permanently deleted ${promoRecords.length} promo usage records (>3 days old) and decremented counters`
-        );
-      } catch (transactionError) {
-        await connection.rollback();
-        connection.release();
-        throw transactionError;
-      }
-    }
-  } catch (error) {
-    console.error("❌ Auto-purge error:", error.message);
+  if (missingVars.length > 0) {
+    console.error("❌ Missing required environment variables:");
+    missingVars.forEach((v) => console.error(`   - ${v}`));
+    process.exit(1);
   }
 }
 
-// Load environment variables
-dotenv.config();
-
-const app = express();
-const PORT = process.env.PORT || 3001;
-
-// Parse CORS_ORIGIN - support comma-separated origins
+// ====== CORS ======
 const allowedOrigins = process.env.CORS_ORIGIN
-  ? process.env.CORS_ORIGIN.split(",").map((origin) => origin.trim())
+  ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())
   : ["http://localhost:5173"];
 
-// Middleware
 app.use(
   cors({
     origin: allowedOrigins,
     credentials: true,
   })
 );
-app.use(express.json());
+
+// ====== Middleware ======
+app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files (uploaded images)
+// Static uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Request logging
-app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-  next();
-});
-
-// Health check endpoint
-app.get("/", (req, res) => {
-  res.json({
-    message: "Zona English Backend API",
-    version: "1.0.0",
-    status: "running",
-    endpoints: {
-      ambassadors: "/api/ambassadors",
-      programs: "/api/programs",
-      promos: "/api/promos",
-      validate: "/api/validate",
-      affiliate: "/api/affiliate",
-    },
+// Logging ringan (hindari noisy log di production)
+if (NODE_ENV !== "production") {
+  app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+    next();
   });
-});
+}
 
+// ====== Import routes ======
+import authRoutes from "./routes/auth.js";
+import usersRoutes from "./routes/users.js";
+import ambassadorsRoutes from "./routes/ambassadors.js";
+import programsRoutes from "./routes/programs.js";
+import promosRoutes from "./routes/promos.js";
+import validateRoutes from "./routes/validate.js";
+import affiliateRoutes from "./routes/affiliate.js";
+import promoClaimsRoutes from "./routes/promo-claims.js";
+import uploadRoutes from "./routes/upload.js";
+import countdownRoutes from "./routes/countdown.js";
+import articlesRoutes from "./routes/articles.js";
+import settingsRoutes from "./routes/settings.js";
+import galleryRoutes from "./routes/gallery.js";
+
+// ====== Health Check ======
 app.get("/api/health", (req, res) => {
   res.json({
     status: "healthy",
-    timestamp: new Date().toISOString(),
-    database: "zona_english_admin",
+    environment: NODE_ENV,
     port: PORT,
+    timestamp: new Date().toISOString(),
   });
 });
 
-// API Routes
+// ====== Endpoint Dokumentasi (AMAN di production) ======
+app.get("/api/docs", (req, res) => {
+  res.json({
+    auth: [
+      "POST /api/auth/login",
+      "GET /api/auth/verify",
+      "POST /api/auth/logout",
+    ],
+    users: "/api/users",
+    ambassadors: "/api/ambassadors",
+    programs: "/api/programs",
+    promos: "/api/promos",
+    validate: "/api/validate",
+    affiliate: "/api/affiliate",
+    upload: "/api/upload",
+    articles: "/api/articles",
+    settings: "/api/settings",
+    gallery: "/api/gallery",
+  });
+});
+
+// ====== API Routes ======
 app.use("/api/auth", authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/ambassadors", ambassadorsRoutes);
 app.use("/api/programs", programsRoutes);
 app.use("/api/promos", promosRoutes);
 app.use("/api/validate", validateRoutes);
-app.use("/api/upload", uploadRoutes);
 app.use("/api/affiliate", affiliateRoutes);
 app.use("/api/promo-claims", promoClaimsRoutes);
+app.use("/api/upload", uploadRoutes);
 app.use("/api/countdown", countdownRoutes);
 app.use("/api/articles", articlesRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/gallery", galleryRoutes);
 
-// 404 handler
+// ====== 404 Handler ======
 app.use((req, res) => {
   res.status(404).json({
-    error: "Endpoint not found",
+    error: "Endpoint tidak ditemukan",
     path: req.path,
     method: req.method,
   });
 });
 
-// Error handler
+// ====== Error Handler ======
 app.use((err, req, res, next) => {
-  console.error("Server Error:", err);
+  console.error("❌ Server Error:", err);
   res.status(err.status || 500).json({
-    error: err.message || "Internal server error",
-    ...(process.env.NODE_ENV === "development" && { stack: err.stack }),
+    error: "Terjadi kesalahan pada server",
+    ...(NODE_ENV !== "production" && { detail: err.message }),
   });
 });
 
-// Start server
-app.listen(PORT, async () => {
+// ====== START SERVER (AMAN) ======
+const server = app.listen(PORT, "127.0.0.1", () => {
   console.log("");
-  console.log("🚀 ========================================");
-  console.log("   Zona English Backend API Server");
-  console.log("   ========================================");
-  console.log(`   📡 Server running on: http://localhost:${PORT}`);
-  console.log(`   🌍 Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`   🔌 CORS enabled for: ${allowedOrigins.join(", ")}`);
-  console.log("   ========================================");
-  console.log("");
-  console.log("   Available Endpoints:");
-  console.log("   GET    /api/health");
-  console.log("   POST   /api/auth/login");
-  console.log("   GET    /api/auth/verify");
-  console.log("   POST   /api/auth/logout");
-  console.log("   GET    /api/ambassadors");
-  console.log("   GET    /api/ambassadors/:id");
-  console.log("   GET    /api/ambassadors/code/:affiliateCode");
-  console.log("   POST   /api/ambassadors");
-  console.log("   PUT    /api/ambassadors/:id");
-  console.log("   DELETE /api/ambassadors/:id");
-  console.log("   GET    /api/programs");
-  console.log("   GET    /api/programs/:id");
-  console.log("   POST   /api/programs");
-  console.log("   PUT    /api/programs/:id");
-  console.log("   DELETE /api/programs/:id");
-  console.log("   GET    /api/promos");
-  console.log("   GET    /api/promos/:code");
-  console.log("   POST   /api/promos/validate");
-  console.log("   POST   /api/promos/use");
-  console.log("   POST   /api/validate/code");
-  console.log("   POST   /api/validate/affiliate-code");
-  console.log("   POST   /api/affiliate/track");
-  console.log("   GET    /api/affiliate/stats/:ambassador_id");
-  console.log("   GET    /api/affiliate/leads/:ambassador_id");
-  console.log("   GET    /api/affiliate/lost-leads/:ambassador_id");
-  console.log("   GET    /api/affiliate/deleted-leads/:ambassador_id");
-  console.log("   PATCH  /api/affiliate/update-status/:usage_id");
-  console.log("   DELETE /api/affiliate/lead/:usage_id (soft delete)");
-  console.log("   PUT    /api/affiliate/restore/:usage_id (restore deleted)");
-  console.log("   POST   /api/upload");
-  console.log("   POST   /api/upload/multiple");
-  console.log("   ========================================");
-  console.log("");
-
-  // TEMPORARILY DISABLED: Run auto-purge on startup
-  // console.log("🔄 Running initial auto-purge of old deleted records...");
-  // await purgeOldDeletedRecords();
-
-  // TEMPORARILY DISABLED: Schedule daily auto-purge at midnight
-  // const PURGE_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-  // setInterval(purgeOldDeletedRecords, PURGE_INTERVAL);
-  console.log("⏰ Auto-purge temporarily disabled for testing");
+  console.log("🚀 Zona English Backend API");
+  console.log(`🌍 Environment : ${NODE_ENV}`);
+  console.log(`📡 Port        : ${PORT} (localhost only)`);
+  console.log(`🔐 CORS        : ${allowedOrigins.join(", ")}`);
+  console.log("✅ Backend aktif via Nginx reverse proxy");
   console.log("");
 });
 
 export default app;
+
+// ====== Graceful Shutdown (PM2 / Docker / VPS Safe) ======
+const shutdown = (signal) => {
+  console.log(`🛑 ${signal} received. Shutting down gracefully...`);
+
+  server.close(() => {
+    console.log("✅ HTTP server closed");
+
+    // Jika nanti mau tutup DB pool, bisa ditambahkan di sini
+    // await db.end();
+
+    process.exit(0);
+  });
+
+  // Paksa mati jika lebih dari 10 detik (anti hang)
+  setTimeout(() => {
+    console.error("⏰ Force shutdown after 10s");
+    process.exit(1);
+  }, 10000);
+};
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
