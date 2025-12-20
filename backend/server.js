@@ -5,6 +5,7 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import path from "path";
+import rateLimit from "express-rate-limit";
 import { fileURLToPath } from "url";
 
 // ====== ENV ======
@@ -21,16 +22,10 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 app.set("trust proxy", 1);
 
 // ====== ENV VALIDATION (WAJIB di production) ======
-const requiredEnvVars = [
-  "DB_HOST",
-  "DB_USER",
-  "DB_PASSWORD",
-  "DB_NAME",
-];
+const requiredEnvVars = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"];
 
 if (NODE_ENV === "production") {
   const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
-
   if (missingVars.length > 0) {
     console.error("❌ Missing required environment variables:");
     missingVars.forEach((v) => console.error(`   - ${v}`));
@@ -49,6 +44,28 @@ app.use(
     credentials: true,
   })
 );
+
+// ====== GLOBAL RATE LIMITER (WAJIB) ======
+const globalLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 menit
+  max: 300, // 300 request / IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    error: "Terlalu banyak request. Coba lagi nanti.",
+  },
+});
+
+app.use(globalLimiter);
+
+// ====== RATE LIMITER KHUSUS AUTH (ANTI BRUTE FORCE) ======
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20, // login attempts
+  message: {
+    error: "Terlalu banyak percobaan login. Tunggu 15 menit.",
+  },
+});
 
 // ====== Middleware ======
 app.use(express.json({ limit: "10mb" }));
@@ -90,7 +107,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// ====== Endpoint Dokumentasi (AMAN di production) ======
+// ====== Endpoint Dokumentasi ======
 app.get("/api/docs", (req, res) => {
   res.json({
     auth: [
@@ -112,7 +129,7 @@ app.get("/api/docs", (req, res) => {
 });
 
 // ====== API Routes ======
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
 app.use("/api/users", usersRoutes);
 app.use("/api/ambassadors", ambassadorsRoutes);
 app.use("/api/programs", programsRoutes);
@@ -151,26 +168,22 @@ const server = app.listen(PORT, "127.0.0.1", () => {
   console.log(`🌍 Environment : ${NODE_ENV}`);
   console.log(`📡 Port        : ${PORT} (localhost only)`);
   console.log(`🔐 CORS        : ${allowedOrigins.join(", ")}`);
+  console.log("🛡️  Rate limit aktif (global + auth)");
   console.log("✅ Backend aktif via Nginx reverse proxy");
   console.log("");
 });
 
 export default app;
 
-// ====== Graceful Shutdown (PM2 / Docker / VPS Safe) ======
+// ====== Graceful Shutdown (PM2 / VPS SAFE) ======
 const shutdown = (signal) => {
   console.log(`🛑 ${signal} received. Shutting down gracefully...`);
 
   server.close(() => {
     console.log("✅ HTTP server closed");
-
-    // Jika nanti mau tutup DB pool, bisa ditambahkan di sini
-    // await db.end();
-
     process.exit(0);
   });
 
-  // Paksa mati jika lebih dari 10 detik (anti hang)
   setTimeout(() => {
     console.error("⏰ Force shutdown after 10s");
     process.exit(1);
