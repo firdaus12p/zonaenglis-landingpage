@@ -12,6 +12,9 @@ import { fileURLToPath } from "url";
 // ====== ENV ======
 dotenv.config();
 
+// ====== AUTO MIGRATION ======
+import runAutoMigration from "./db/auto-migrate.js";
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -23,12 +26,7 @@ const NODE_ENV = process.env.NODE_ENV || "development";
 app.set("trust proxy", 1);
 
 // ====== ENV VALIDATION (WAJIB di production) ======
-const requiredEnvVars = [
-  "DB_HOST",
-  "DB_USER",
-  "DB_PASSWORD",
-  "DB_NAME",
-];
+const requiredEnvVars = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"];
 
 if (NODE_ENV === "production") {
   const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
@@ -173,32 +171,46 @@ app.use((err, req, res, next) => {
 });
 
 // ====== START SERVER (AMAN) ======
-const server = app.listen(PORT, "127.0.0.1", () => {
-  console.log("");
-  console.log("🚀 Zona English Backend API");
-  console.log(`🌍 Environment : ${NODE_ENV}`);
-  console.log(`📡 Port        : ${PORT} (localhost only)`);
-  console.log(`🔐 CORS        : ${allowedOrigins.join(", ")}`);
-  console.log("✅ Backend aktif via Nginx reverse proxy");
-  console.log("");
-});
+// Run auto-migration before starting server
+const startServer = async () => {
+  try {
+    // Run auto-migration (creates missing tables)
+    await runAutoMigration();
 
-export default app;
+    // Start HTTP server
+    const server = app.listen(PORT, "127.0.0.1", () => {
+      console.log("");
+      console.log("🚀 Zona English Backend API");
+      console.log(`🌍 Environment : ${NODE_ENV}`);
+      console.log(`📡 Port        : ${PORT} (localhost only)`);
+      console.log(`🔐 CORS        : ${allowedOrigins.join(", ")}`);
+      console.log("✅ Backend aktif via Nginx reverse proxy");
+      console.log("");
+    });
 
-// ====== Graceful Shutdown (PM2 / VPS Safe) ======
-const shutdown = (signal) => {
-  console.log(`🛑 ${signal} received. Shutting down gracefully...`);
+    // Graceful Shutdown (PM2 / VPS Safe)
+    const shutdown = (signal) => {
+      console.log(`🛑 ${signal} received. Shutting down gracefully...`);
 
-  server.close(() => {
-    console.log("✅ HTTP server closed");
-    process.exit(0);
-  });
+      server.close(() => {
+        console.log("✅ HTTP server closed");
+        process.exit(0);
+      });
 
-  setTimeout(() => {
-    console.error("⏰ Force shutdown after 10s");
+      setTimeout(() => {
+        console.error("⏰ Force shutdown after 10s");
+        process.exit(1);
+      }, 10000);
+    };
+
+    process.on("SIGTERM", () => shutdown("SIGTERM"));
+    process.on("SIGINT", () => shutdown("SIGINT"));
+  } catch (error) {
+    console.error("❌ Failed to start server:", error.message);
     process.exit(1);
-  }, 10000);
+  }
 };
 
-process.on("SIGTERM", () => shutdown("SIGTERM"));
-process.on("SIGINT", () => shutdown("SIGINT"));
+startServer();
+
+export default app;

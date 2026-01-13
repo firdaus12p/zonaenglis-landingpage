@@ -19,10 +19,12 @@ import {
 interface AmbassadorFormData {
   name: string;
   type:
-    | "Senior Ambassador"
-    | "Campus Ambassador"
-    | "Community Ambassador"
-    | "Junior Ambassador";
+    | "Affiliate Campus"
+    | "Affiliate SMA"
+    | "Affiliate SMP"
+    | "Ambassador Campus"
+    | "Ambassador SMA"
+    | "Ambassador SMP";
   location: string;
   institution: string;
   address: string;
@@ -45,7 +47,7 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
 }) => {
   const [formData, setFormData] = useState<AmbassadorFormData>({
     name: existingAmbassadorData?.name || "",
-    type: existingAmbassadorData?.type || "Senior Ambassador",
+    type: existingAmbassadorData?.type || "Affiliate Campus",
     location: existingAmbassadorData?.location || "",
     institution: existingAmbassadorData?.institution || "",
     address: existingAmbassadorData?.address || "",
@@ -141,13 +143,17 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
     try {
       // Generate affiliate code based on type and name
       const typePrefix =
-        formData.type === "Senior Ambassador"
-          ? "SNR"
-          : formData.type === "Campus Ambassador"
-          ? "CAM"
-          : formData.type === "Junior Ambassador"
-          ? "JNR"
-          : "COM";
+        formData.type === "Affiliate Campus"
+          ? "AFC"
+          : formData.type === "Affiliate SMA"
+          ? "AFS"
+          : formData.type === "Affiliate SMP"
+          ? "AFP"
+          : formData.type === "Ambassador Campus"
+          ? "AMC"
+          : formData.type === "Ambassador SMA"
+          ? "AMS"
+          : "AMP"; // Ambassador SMP
 
       const nameCode =
         formData.name.length >= 3
@@ -344,11 +350,16 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
                   }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="Senior Ambassador">Senior Ambassador</option>
-                  <option value="Campus Ambassador">Campus Ambassador</option>
-                  <option value="Community Ambassador">
-                    Community Ambassador
-                  </option>
+                  <optgroup label="Affiliate">
+                    <option value="Affiliate Campus">Affiliate Campus</option>
+                    <option value="Affiliate SMA">Affiliate SMA</option>
+                    <option value="Affiliate SMP">Affiliate SMP</option>
+                  </optgroup>
+                  <optgroup label="Ambassador">
+                    <option value="Ambassador Campus">Ambassador Campus</option>
+                    <option value="Ambassador SMA">Ambassador SMA</option>
+                    <option value="Ambassador SMP">Ambassador SMP</option>
+                  </optgroup>
                 </select>
               </div>
 

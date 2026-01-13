@@ -25,7 +25,13 @@ import {
 interface Ambassador {
   id: number;
   name: string;
-  type: "Senior Ambassador" | "Campus Ambassador" | "Community Ambassador";
+  type:
+    | "Affiliate Campus"
+    | "Affiliate SMA"
+    | "Affiliate SMP"
+    | "Ambassador Campus"
+    | "Ambassador SMA"
+    | "Ambassador SMP";
   role: "Ambassador" | "Affiliate";
   location: string;
   address: string;
@@ -84,7 +90,13 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const [ambassadors, setAmbassadors] = useState<Ambassador[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<
-    "All" | "Senior Ambassador" | "Campus Ambassador" | "Community Ambassador"
+    | "All"
+    | "Affiliate Campus"
+    | "Affiliate SMA"
+    | "Affiliate SMP"
+    | "Ambassador Campus"
+    | "Ambassador SMA"
+    | "Ambassador SMP"
   >("All");
   const [filterRole, setFilterRole] = useState<
     "All" | "Ambassador" | "Affiliate"
@@ -146,18 +158,12 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       const transformedData = data.map((ambassador: any) => ({
         id: ambassador.id,
         name: ambassador.name,
-        type:
-          ambassador.role === "Senior Ambassador"
-            ? "Senior Ambassador"
-            : ambassador.role === "Campus Ambassador"
-            ? "Campus Ambassador"
-            : ambassador.role === "Community Ambassador"
-            ? "Community Ambassador"
-            : "Junior Ambassador",
-        // Determine Ambassador vs Affiliate based on type
-        // Senior Ambassador = Ambassador, Others = Affiliate
-        role:
-          ambassador.role === "Senior Ambassador" ? "Ambassador" : "Affiliate",
+        // Use the role directly from database (new 6-type system)
+        type: ambassador.role as Ambassador["type"],
+        // Determine Ambassador vs Affiliate based on type prefix
+        role: ambassador.role?.startsWith("Ambassador")
+          ? "Ambassador"
+          : "Affiliate",
         location: ambassador.location || "N/A",
         address: ambassador.institution || "N/A",
         photo: ambassador.photo_url || "/images/ambassadors/default.jpg",
@@ -192,9 +198,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       if (ambassadors.length === 0) return;
 
       try {
-        const response = await fetch(
-          `${API_BASE}/affiliate/unread-counts`
-        );
+        const response = await fetch(`${API_BASE}/affiliate/unread-counts`);
         const data = await response.json();
 
         if (data.success && data.unread_counts) {
@@ -262,15 +266,12 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const handleDeleteAmbassador = async (id: number) => {
     try {
       // Call API to delete from database
-      const response = await fetch(
-        `${API_BASE}/ambassadors/${id}`,
-        {
-          method: "DELETE",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
+      const response = await fetch(`${API_BASE}/ambassadors/${id}`, {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
 
       if (!response.ok) {
         throw new Error("Failed to delete ambassador");
@@ -380,13 +381,10 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
   const markAmbassadorAsViewed = async (ambassadorId: number) => {
     try {
-      await fetch(
-        `${API_BASE}/affiliate/mark-viewed/${ambassadorId}`,
-        {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-        }
-      );
+      await fetch(`${API_BASE}/affiliate/mark-viewed/${ambassadorId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+      });
 
       // Update local state - set this ambassador's unread count to 0
       setAmbassadorUsageCounts((prev) => ({
@@ -504,14 +502,11 @@ Tim Zona English siap membantu! 🚀`;
       "Data akan disimpan selama 3 hari sebelum dihapus permanen. Lead ini akan masuk ke 'Deleted History' dan nomor user bisa digunakan lagi.",
       async () => {
         try {
-          const response = await fetch(
-            `${API_BASE}/affiliate/lead/${leadId}`,
-            {
-              method: "DELETE",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ deleted_by: "admin" }),
-            }
-          );
+          const response = await fetch(`${API_BASE}/affiliate/lead/${leadId}`, {
+            method: "DELETE",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ deleted_by: "admin" }),
+          });
 
           const data = await response.json();
 
@@ -705,28 +700,12 @@ Tim Zona English siap membantu! 🚀`;
         </div>
 
         {/* Stats Cards */}
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2">
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium text-slate-600">
                   Total Ambassadors
-                </p>
-                <p className="text-2xl font-bold text-slate-900 mt-1">
-                  {ambassadors.length}
-                </p>
-              </div>
-              <div className="p-3 bg-blue-100 rounded-xl">
-                <Users className="h-6 w-6 text-blue-600" />
-              </div>
-            </div>
-          </Card>
-
-          <Card className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-slate-600">
-                  Ambassadors
                 </p>
                 <p className="text-2xl font-bold text-emerald-600 mt-1">
                   {ambassadors.filter((a) => a.role === "Ambassador").length}
@@ -741,7 +720,9 @@ Tim Zona English siap membantu! 🚀`;
           <Card className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-slate-600">Affiliates</p>
+                <p className="text-sm font-medium text-slate-600">
+                  Total Affiliates
+                </p>
                 <p className="text-2xl font-bold text-purple-600 mt-1">
                   {ambassadors.filter((a) => a.role === "Affiliate").length}
                 </p>
@@ -779,11 +760,16 @@ Tim Zona English siap membantu! 🚀`;
                 className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="All">All Types</option>
-                <option value="Senior Ambassador">Senior Ambassador</option>
-                <option value="Campus Ambassador">Campus Ambassador</option>
-                <option value="Community Ambassador">
-                  Community Ambassador
-                </option>
+                <optgroup label="Affiliate">
+                  <option value="Affiliate Campus">Affiliate Campus</option>
+                  <option value="Affiliate SMA">Affiliate SMA</option>
+                  <option value="Affiliate SMP">Affiliate SMP</option>
+                </optgroup>
+                <optgroup label="Ambassador">
+                  <option value="Ambassador Campus">Ambassador Campus</option>
+                  <option value="Ambassador SMA">Ambassador SMA</option>
+                  <option value="Ambassador SMP">Ambassador SMP</option>
+                </optgroup>
               </select>
             </div>
 
