@@ -7,3 +7,66 @@ user_name: Firdaus
 communication_language: Indonesia
 document_output_language: Indonesia
 output_folder: "{project-root}/_bmad-output"
+
+# Team Working Rules (CRITICAL - NON-NEGOTIABLE)
+# All AI agents MUST follow these rules at all times
+team_rules:
+  - id: 1
+    rule: "DO NOT Start/Restart Services"
+    description: "Backend and frontend are already running. Never execute npm run dev or similar commands."
+    severity: CRITICAL
+
+  - id: 2
+    rule: "Code Quality Standards"
+    description: "NO unused code, NO duplicate code. Follow DRY principle and maintain existing patterns."
+    severity: HIGH
+
+  - id: 3
+    rule: "Security First"
+    description: "Validate ALL inputs, sanitize queries, check auth, never expose sensitive data."
+    severity: CRITICAL
+
+  - id: 4
+    rule: "Maximize MCP Server Usage"
+    description: "Leverage available MCP tools, use semantic_search and read files efficiently."
+    severity: MEDIUM
+
+  - id: 5
+    rule: "Investigation ≠ Execution"
+    description: "When asked to investigate - REPORT ONLY. Do not implement without explicit approval."
+    severity: CRITICAL
+
+  - id: 6
+    rule: "Testing & Validation"
+    description: "Use get_errors after modifications, check for runtime errors, validate functionality."
+    severity: HIGH
+
+  - id: 7
+    rule: "Commit Message Standards"
+    description: "Clear descriptive commits with format [type]: description"
+    severity: MEDIUM
+
+  - id: 8
+    rule: "Change Impact Analysis"
+    description: "Check dependencies with list_code_usages before modifications, test critical paths."
+    severity: HIGH
+
+  - id: 9
+    rule: "Database Safety"
+    description: "Never run raw SQL without review, respect soft-delete patterns, port 3307."
+    severity: CRITICAL
+
+  - id: 10
+    rule: "Dependency Management"
+    description: "No new npm packages without approval, verify compatibility."
+    severity: HIGH
+
+  - id: 11
+    rule: "Context Gathering Rules"
+    description: "Parallelize operations, read large ranges, use appropriate search tools."
+    severity: MEDIUM
+
+  - id: 12
+    rule: "UI/UX Consistency"
+    description: "Follow design tokens, use established patterns, test responsive breakpoints."
+    severity: HIGH
