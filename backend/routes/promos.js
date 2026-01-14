@@ -804,35 +804,42 @@ router.get("/deleted-leads/:promo_id", async (req, res) => {
 
 /**
  * PATCH /api/promos/update-status/:usage_id
- * Update follow-up status for a promo usage
+ * Update follow-up status for a promo usage (ADMIN ONLY)
  */
-router.patch("/update-status/:usage_id", async (req, res) => {
-  try {
-    const { usage_id } = req.params;
-    const { follow_up_status, registered } = req.body;
+router.patch(
+  "/update-status/:usage_id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { usage_id } = req.params;
+      const { follow_up_status, registered } = req.body;
 
-    const validStatuses = ["pending", "contacted", "converted", "lost"];
-    if (!validStatuses.includes(follow_up_status)) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "Invalid status. Must be: pending, contacted, converted, or lost",
-      });
-    }
+      const validStatuses = ["pending", "contacted", "converted", "lost"];
+      if (!validStatuses.includes(follow_up_status)) {
+        return res.status(400).json({
+          success: false,
+          error:
+            "Invalid status. Must be: pending, contacted, converted, or lost",
+        });
+      }
 
-    await db.query(
-      `UPDATE promo_usage 
+      await db.query(
+        `UPDATE promo_usage 
        SET follow_up_status = ?, registered = ?
        WHERE id = ?`,
-      [follow_up_status, registered ? 1 : 0, usage_id]
-    );
+        [follow_up_status, registered ? 1 : 0, usage_id]
+      );
 
-    res.json({ success: true, message: "Status updated successfully" });
-  } catch (error) {
-    console.error("Error updating status:", error);
-    res.status(500).json({ success: false, error: "Failed to update status" });
+      res.json({ success: true, message: "Status updated successfully" });
+    } catch (error) {
+      console.error("Error updating status:", error);
+      res
+        .status(500)
+        .json({ success: false, error: "Failed to update status" });
+    }
   }
-});
+);
 
 /**
  * DELETE /api/promos/lead/:usage_id
@@ -887,82 +894,89 @@ router.put(
 
 /**
  * DELETE /api/promos/permanent-delete/:usage_id
- * Permanently delete a promo lead (only if already soft-deleted)
+ * Permanently delete a promo lead (only if already soft-deleted) (ADMIN ONLY)
  */
-router.delete("/permanent-delete/:usage_id", async (req, res) => {
-  try {
-    const { usage_id } = req.params;
-
-    // Check if record exists and is soft-deleted
-    const [existing] = await db.query(
-      "SELECT id, user_name, deleted_at FROM promo_usage WHERE id = ?",
-      [usage_id]
-    );
-
-    if (existing.length === 0) {
-      return res.status(404).json({ success: false, error: "Lead not found" });
-    }
-
-    if (!existing[0].deleted_at) {
-      return res.status(400).json({
-        success: false,
-        error:
-          "Cannot permanently delete active records. Please soft-delete first.",
-      });
-    }
-
-    // Get promo_code_id before deletion to decrement used_count
-    const [usageData] = await db.query(
-      "SELECT promo_code_id FROM promo_usage WHERE id = ?",
-      [usage_id]
-    );
-
-    const promoCodeId = usageData[0].promo_code_id;
-
-    // Use transaction to ensure atomicity (delete + decrement happen together)
-    const connection = await db.getConnection();
-    await connection.beginTransaction();
-
+router.delete(
+  "/permanent-delete/:usage_id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
     try {
-      // Permanent deletion
-      await connection.query(
-        "DELETE FROM promo_usage WHERE id = ? AND deleted_at IS NOT NULL",
+      const { usage_id } = req.params;
+
+      // Check if record exists and is soft-deleted
+      const [existing] = await db.query(
+        "SELECT id, user_name, deleted_at FROM promo_usage WHERE id = ?",
         [usage_id]
       );
 
-      // Decrement used_count (but never go below 0)
-      await connection.query(
-        "UPDATE promo_codes SET used_count = GREATEST(used_count - 1, 0) WHERE id = ?",
-        [promoCodeId]
+      if (existing.length === 0) {
+        return res
+          .status(404)
+          .json({ success: false, error: "Lead not found" });
+      }
+
+      if (!existing[0].deleted_at) {
+        return res.status(400).json({
+          success: false,
+          error:
+            "Cannot permanently delete active records. Please soft-delete first.",
+        });
+      }
+
+      // Get promo_code_id before deletion to decrement used_count
+      const [usageData] = await db.query(
+        "SELECT promo_code_id FROM promo_usage WHERE id = ?",
+        [usage_id]
       );
 
-      // Commit transaction
-      await connection.commit();
-      connection.release();
+      const promoCodeId = usageData[0].promo_code_id;
 
-      console.log(
-        `🗑️ PERMANENT DELETE: Promo Lead ID ${usage_id} (${existing[0].user_name}) permanently removed & used_count decremented`
-      );
+      // Use transaction to ensure atomicity (delete + decrement happen together)
+      const connection = await db.getConnection();
+      await connection.beginTransaction();
 
-      res.json({
-        success: true,
-        message: "Lead permanently deleted from database",
-        deleted_id: usage_id,
-        deleted_user: existing[0].user_name,
+      try {
+        // Permanent deletion
+        await connection.query(
+          "DELETE FROM promo_usage WHERE id = ? AND deleted_at IS NOT NULL",
+          [usage_id]
+        );
+
+        // Decrement used_count (but never go below 0)
+        await connection.query(
+          "UPDATE promo_codes SET used_count = GREATEST(used_count - 1, 0) WHERE id = ?",
+          [promoCodeId]
+        );
+
+        // Commit transaction
+        await connection.commit();
+        connection.release();
+
+        console.log(
+          `🗑️ PERMANENT DELETE: Promo Lead ID ${usage_id} (${existing[0].user_name}) permanently removed & used_count decremented`
+        );
+
+        res.json({
+          success: true,
+          message: "Lead permanently deleted from database",
+          deleted_id: usage_id,
+          deleted_user: existing[0].user_name,
+        });
+      } catch (transactionError) {
+        // Rollback on error
+        await connection.rollback();
+        connection.release();
+        throw transactionError;
+      }
+    } catch (error) {
+      console.error("Error permanently deleting lead:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to permanently delete lead",
       });
-    } catch (transactionError) {
-      // Rollback on error
-      await connection.rollback();
-      connection.release();
-      throw transactionError;
     }
-  } catch (error) {
-    console.error("Error permanently deleting lead:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to permanently delete lead",
-    });
   }
-});
+);
 
 export default router;

@@ -67,7 +67,30 @@ app.use(
 // ====== SECURITY HEADERS (Helmet) ======
 app.use(
   helmet({
-    crossOriginResourcePolicy: false, // allow images/uploads
+    crossOriginResourcePolicy: false, // allow images/uploads cross-origin
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'",
+          "'unsafe-eval'",
+          "https://www.youtube.com",
+          "https://www.google.com",
+        ],
+        styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+        imgSrc: ["'self'", "data:", "https:", "blob:"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com"],
+        connectSrc: [
+          "'self'",
+          "https://zonaenglish.com",
+          "https://www.googleapis.com",
+        ],
+        frameSrc: ["'self'", "https://www.youtube.com", "https://youtube.com"],
+        objectSrc: ["'none'"],
+        upgradeInsecureRequests: NODE_ENV === "production" ? [] : null,
+      },
+    },
   })
 );
 
@@ -88,8 +111,16 @@ app.use(globalLimiter);
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: true }));
 
-// Static uploads
-app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+// Static uploads with security headers
+app.use(
+  "/uploads",
+  (req, res, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year cache
+    next();
+  },
+  express.static(path.join(__dirname, "uploads"))
+);
 
 // ====== REQUEST LOGGING ======
 app.use(requestLogger);
