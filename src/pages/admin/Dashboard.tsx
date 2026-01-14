@@ -81,11 +81,6 @@ const Dashboard = ({
     }>
   >([]);
 
-  // Cache untuk menghindari duplicate API calls
-  const [cachedAmbassadors, setCachedAmbassadors] = useState<any[] | null>(
-    null
-  );
-
   // === FUNCTION DEFINITIONS (harus sebelum useEffect) ===
 
   const fetchAllDashboardData = async () => {
@@ -113,9 +108,6 @@ const Dashboard = ({
       const promos = await promosRes.json();
       const countdown = await countdownRes.json();
       const articlesData = await articlesRes.json();
-
-      // Cache ambassadors untuk digunakan function lain
-      setCachedAmbassadors(Array.isArray(ambassadors) ? ambassadors : []);
 
       // Process stats
       processDashboardStats(ambassadors, promos, countdown, articlesData);
