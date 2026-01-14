@@ -4,8 +4,21 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 import db from "../db/connection.js";
+import { authenticateToken } from "./auth.js";
 
 const router = express.Router();
+
+/**
+ * Middleware to check if user is admin
+ */
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== "admin" && req.user.role !== "super_admin") {
+    return res.status(403).json({
+      error: "Akses ditolak. Hanya admin yang dapat mengakses fitur ini",
+    });
+  }
+  next();
+};
 
 // Get __dirname equivalent in ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -91,159 +104,203 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /api/gallery - Create new gallery item with image upload or video URL
-router.post("/", upload.single("image"), async (req, res) => {
-  try {
-    const {
-      title,
-      category,
-      description,
-      order_index,
-      media_type,
-      youtube_url,
-    } = req.body;
-
-    // Validation
-    if (!title || !category) {
-      return res.status(400).json({ error: "Title and category are required" });
-    }
-
-    if (!["Kids", "Teens", "Intensive"].includes(category)) {
-      return res.status(400).json({ error: "Invalid category" });
-    }
-
-    const mediaType = media_type || "image";
-    if (!["image", "video"].includes(mediaType)) {
-      return res.status(400).json({ error: "Invalid media type" });
-    }
-
-    let imageUrl = null;
-    let youtubeUrl = null;
-
-    if (mediaType === "video") {
-      if (!youtube_url) {
-        return res
-          .status(400)
-          .json({ error: "YouTube URL is required for video media type" });
-      }
-      youtubeUrl = youtube_url;
-    } else {
-      if (!req.file) {
-        return res
-          .status(400)
-          .json({ error: "Image file is required for image media type" });
-      }
-      imageUrl = `/uploads/gallery/${req.file.filename}`;
-    }
-
-    const [result] = await db.query(
-      "INSERT INTO gallery (title, image_url, media_type, youtube_url, category, description, order_index) VALUES (?, ?, ?, ?, ?, ?, ?)",
-      [
+// POST /api/gallery - Create new gallery item with image upload or video URL (ADMIN ONLY)
+router.post(
+  "/",
+  authenticateToken,
+  requireAdmin,
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      const {
         title,
-        imageUrl,
-        mediaType,
-        youtubeUrl,
         category,
-        description || null,
-        order_index || 0,
-      ]
-    );
+        description,
+        order_index,
+        media_type,
+        youtube_url,
+      } = req.body;
 
-    const [newItem] = await db.query(
-      `SELECT id, title, category, description, image_url, media_type, youtube_url, order_index, created_at, updated_at 
+      // Validation
+      if (!title || !category) {
+        return res
+          .status(400)
+          .json({ error: "Title and category are required" });
+      }
+
+      if (!["Kids", "Teens", "Intensive"].includes(category)) {
+        return res.status(400).json({ error: "Invalid category" });
+      }
+
+      const mediaType = media_type || "image";
+      if (!["image", "video"].includes(mediaType)) {
+        return res.status(400).json({ error: "Invalid media type" });
+      }
+
+      let imageUrl = null;
+      let youtubeUrl = null;
+
+      if (mediaType === "video") {
+        if (!youtube_url) {
+          return res
+            .status(400)
+            .json({ error: "YouTube URL is required for video media type" });
+        }
+        youtubeUrl = youtube_url;
+      } else {
+        if (!req.file) {
+          return res
+            .status(400)
+            .json({ error: "Image file is required for image media type" });
+        }
+        imageUrl = `/uploads/gallery/${req.file.filename}`;
+      }
+
+      const [result] = await db.query(
+        "INSERT INTO gallery (title, image_url, media_type, youtube_url, category, description, order_index) VALUES (?, ?, ?, ?, ?, ?, ?)",
+        [
+          title,
+          imageUrl,
+          mediaType,
+          youtubeUrl,
+          category,
+          description || null,
+          order_index || 0,
+        ]
+      );
+
+      const [newItem] = await db.query(
+        `SELECT id, title, category, description, image_url, media_type, youtube_url, order_index, created_at, updated_at 
        FROM gallery WHERE id = ?`,
-      [result.insertId]
-    );
+        [result.insertId]
+      );
 
-    res.status(201).json({
-      success: true,
-      message: "Gallery item created successfully",
-      data: newItem[0],
-    });
-  } catch (error) {
-    console.error("Error creating gallery item:", error);
-    // Delete uploaded file if database insert fails
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
+      res.status(201).json({
+        success: true,
+        message: "Gallery item created successfully",
+        data: newItem[0],
+      });
+    } catch (error) {
+      console.error("Error creating gallery item:", error);
+      // Delete uploaded file if database insert fails
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      res.status(500).json({ error: "Failed to create gallery item" });
     }
-    res.status(500).json({ error: "Failed to create gallery item" });
   }
-});
+);
 
-// PUT /api/gallery/:id - Update gallery item
-router.put("/:id", upload.single("image"), async (req, res) => {
-  try {
-    const {
-      title,
-      category,
-      description,
-      order_index,
-      media_type,
-      youtube_url,
-    } = req.body;
+// PUT /api/gallery/:id - Update gallery item (ADMIN ONLY)
+router.put(
+  "/:id",
+  authenticateToken,
+  requireAdmin,
+  upload.single("image"),
+  async (req, res) => {
+    try {
+      const {
+        title,
+        category,
+        description,
+        order_index,
+        media_type,
+        youtube_url,
+      } = req.body;
 
-    // Check if item exists
-    const [existing] = await db.query(
-      `SELECT id, image_url, media_type FROM gallery WHERE id = ?`,
-      [req.params.id]
-    );
+      // Check if item exists
+      const [existing] = await db.query(
+        `SELECT id, image_url, media_type FROM gallery WHERE id = ?`,
+        [req.params.id]
+      );
 
-    if (existing.length === 0) {
-      if (req.file) {
-        fs.unlinkSync(req.file.path); // Clean up uploaded file
+      if (existing.length === 0) {
+        if (req.file) {
+          fs.unlinkSync(req.file.path); // Clean up uploaded file
+        }
+        return res.status(404).json({ error: "Gallery item not found" });
       }
-      return res.status(404).json({ error: "Gallery item not found" });
-    }
 
-    // Validation
-    if (category && !["Kids", "Teens", "Intensive"].includes(category)) {
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
+      // Validation
+      if (category && !["Kids", "Teens", "Intensive"].includes(category)) {
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(400).json({ error: "Invalid category" });
       }
-      return res.status(400).json({ error: "Invalid category" });
-    }
 
-    if (media_type && !["image", "video"].includes(media_type)) {
-      if (req.file) {
-        fs.unlinkSync(req.file.path);
+      if (media_type && !["image", "video"].includes(media_type)) {
+        if (req.file) {
+          fs.unlinkSync(req.file.path);
+        }
+        return res.status(400).json({ error: "Invalid media type" });
       }
-      return res.status(400).json({ error: "Invalid media type" });
-    }
 
-    // Build update query dynamically
-    const updates = [];
-    const values = [];
+      // Build update query dynamically
+      const updates = [];
+      const values = [];
 
-    if (title !== undefined) {
-      updates.push("title = ?");
-      values.push(title);
-    }
-    if (category !== undefined) {
-      updates.push("category = ?");
-      values.push(category);
-    }
-    if (description !== undefined) {
-      updates.push("description = ?");
-      values.push(description);
-    }
-    if (order_index !== undefined) {
-      updates.push("order_index = ?");
-      values.push(order_index);
-    }
+      if (title !== undefined) {
+        updates.push("title = ?");
+        values.push(title);
+      }
+      if (category !== undefined) {
+        updates.push("category = ?");
+        values.push(category);
+      }
+      if (description !== undefined) {
+        updates.push("description = ?");
+        values.push(description);
+      }
+      if (order_index !== undefined) {
+        updates.push("order_index = ?");
+        values.push(order_index);
+      }
 
-    // Handle media type changes
-    if (media_type !== undefined) {
-      updates.push("media_type = ?");
-      values.push(media_type);
+      // Handle media type changes
+      if (media_type !== undefined) {
+        updates.push("media_type = ?");
+        values.push(media_type);
 
-      if (media_type === "video") {
-        // Switching to video or updating video URL
+        if (media_type === "video") {
+          // Switching to video or updating video URL
+          updates.push("youtube_url = ?");
+          values.push(youtube_url || null);
+          updates.push("image_url = ?");
+          values.push(null);
+
+          // Delete old image file if exists
+          if (existing[0].image_url) {
+            const oldImagePath = path.join(
+              __dirname,
+              "..",
+              existing[0].image_url
+            );
+            if (fs.existsSync(oldImagePath)) {
+              fs.unlinkSync(oldImagePath);
+            }
+          }
+        } else if (media_type === "image") {
+          // Switching to image
+          updates.push("youtube_url = ?");
+          values.push(null);
+        }
+      } else if (
+        youtube_url !== undefined &&
+        existing[0].media_type === "video"
+      ) {
+        // Update youtube_url for existing video
         updates.push("youtube_url = ?");
-        values.push(youtube_url || null);
-        updates.push("image_url = ?");
-        values.push(null);
+        values.push(youtube_url);
+      }
 
-        // Delete old image file if exists
+      // If new image uploaded, update image_url and delete old image
+      if (req.file) {
+        const imageUrl = `/uploads/gallery/${req.file.filename}`;
+        updates.push("image_url = ?");
+        values.push(imageUrl);
+
+        // Delete old image file
         if (existing[0].image_url) {
           const oldImagePath = path.join(
             __dirname,
@@ -254,68 +311,42 @@ router.put("/:id", upload.single("image"), async (req, res) => {
             fs.unlinkSync(oldImagePath);
           }
         }
-      } else if (media_type === "image") {
-        // Switching to image
-        updates.push("youtube_url = ?");
-        values.push(null);
       }
-    } else if (
-      youtube_url !== undefined &&
-      existing[0].media_type === "video"
-    ) {
-      // Update youtube_url for existing video
-      updates.push("youtube_url = ?");
-      values.push(youtube_url);
-    }
 
-    // If new image uploaded, update image_url and delete old image
-    if (req.file) {
-      const imageUrl = `/uploads/gallery/${req.file.filename}`;
-      updates.push("image_url = ?");
-      values.push(imageUrl);
-
-      // Delete old image file
-      if (existing[0].image_url) {
-        const oldImagePath = path.join(__dirname, "..", existing[0].image_url);
-        if (fs.existsSync(oldImagePath)) {
-          fs.unlinkSync(oldImagePath);
-        }
+      if (updates.length === 0) {
+        return res.status(400).json({ error: "No fields to update" });
       }
-    }
 
-    if (updates.length === 0) {
-      return res.status(400).json({ error: "No fields to update" });
-    }
+      values.push(req.params.id);
 
-    values.push(req.params.id);
+      await db.query(
+        `UPDATE gallery SET ${updates.join(", ")} WHERE id = ?`,
+        values
+      );
 
-    await db.query(
-      `UPDATE gallery SET ${updates.join(", ")} WHERE id = ?`,
-      values
-    );
-
-    const [updated] = await db.query(
-      `SELECT id, title, category, description, image_url, media_type, youtube_url, order_index, created_at, updated_at 
+      const [updated] = await db.query(
+        `SELECT id, title, category, description, image_url, media_type, youtube_url, order_index, created_at, updated_at 
        FROM gallery WHERE id = ?`,
-      [req.params.id]
-    );
+        [req.params.id]
+      );
 
-    res.json({
-      success: true,
-      message: "Gallery item updated successfully",
-      data: updated[0],
-    });
-  } catch (error) {
-    console.error("Error updating gallery item:", error);
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
+      res.json({
+        success: true,
+        message: "Gallery item updated successfully",
+        data: updated[0],
+      });
+    } catch (error) {
+      console.error("Error updating gallery item:", error);
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+      res.status(500).json({ error: "Failed to update gallery item" });
     }
-    res.status(500).json({ error: "Failed to update gallery item" });
   }
-});
+);
 
-// DELETE /api/gallery/:id - Delete gallery item
-router.delete("/:id", async (req, res) => {
+// DELETE /api/gallery/:id - Delete gallery item (ADMIN ONLY)
+router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     // Get item to find image path
     const [existing] = await db.query(

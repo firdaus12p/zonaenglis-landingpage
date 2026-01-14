@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 import { useParams } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, ConfirmModal, SuccessModal } from "../../components";
@@ -14,6 +15,7 @@ import {
   FileText,
 } from "lucide-react";
 import { API_BASE } from "../../config/api";
+import { formatRupiahInput, parseRupiahInput } from "../../utils/currency";
 
 interface CountdownBatchFormData {
   name: string;
@@ -44,6 +46,7 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
   setCurrentPage,
   mode = "create",
 }) => {
+  const { token } = useAuth();
   const { id } = useParams<{ id: string }>();
   const batchId = id ? parseInt(id) : undefined;
   const [formData, setFormData] = useState<CountdownBatchFormData>({
@@ -71,6 +74,7 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+  const [priceDisplay, setPriceDisplay] = useState("");
 
   // Modal State
   const [modal, setModal] = useState<{
@@ -95,7 +99,9 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
   const fetchBatchData = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/countdown/${batchId}`);
+      const response = await fetch(`${API_BASE}/countdown/${batchId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -125,6 +131,7 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
           status: batch.status,
           visibility: batch.visibility,
         });
+        setPriceDisplay(formatRupiahInput(batch.price || 0));
       } else {
         showAlert(
           "Error",
@@ -221,6 +228,19 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
     }));
   };
 
+  // Handle Price Input Change with Formatting
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    const formatted = formatRupiahInput(inputValue);
+    const numeric = parseRupiahInput(inputValue);
+
+    setPriceDisplay(formatted);
+    setFormData((prev) => ({
+      ...prev,
+      price: numeric,
+    }));
+  };
+
   // Handle Form Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -248,6 +268,7 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
         method,
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(formData),
       });
@@ -597,17 +618,15 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
                   Price (IDR)
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   name="price"
-                  value={formData.price}
-                  onChange={handleInputChange}
+                  value={priceDisplay}
+                  onChange={handlePriceChange}
                   placeholder="0"
-                  min="0"
-                  step="10000"
                   className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                 />
                 <p className="text-slate-500 text-sm mt-1">
-                  Leave as 0 for free batches
+                  Leave as 0 for free batches. Format: 1000000 → 1.000.000
                 </p>
               </div>
             </Card>

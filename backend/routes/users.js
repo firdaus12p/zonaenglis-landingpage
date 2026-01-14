@@ -337,11 +337,11 @@ router.put("/:id/password", authenticateToken, async (req, res) => {
     // Hash new password
     const password_hash = await bcrypt.hash(newPassword, 10);
 
-    // Update password
-    await db.query("UPDATE admin_users SET password_hash = ? WHERE id = ?", [
-      password_hash,
-      id,
-    ]);
+    // Update password and reset must_change_password flag
+    await db.query(
+      "UPDATE admin_users SET password_hash = ?, must_change_password = 0 WHERE id = ?",
+      [password_hash, id]
+    );
 
     res.json({
       success: true,

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 import AdminLayout from "../../components/layout/AdminLayout";
 import {
   Card,
@@ -47,6 +48,7 @@ interface CountdownBatch {
 const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   setCurrentPage,
 }) => {
+  const { token } = useAuth();
   const [currentTime, setCurrentTime] = useState(new Date());
   const [batches, setBatches] = useState<CountdownBatch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,7 +73,9 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       setLoading(true);
       setError(null);
 
-      const response = await fetch(`${API_BASE}/countdown`);
+      const response = await fetch(`${API_BASE}/countdown`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -112,7 +116,9 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   // Fetch stats from API
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_BASE}/countdown/stats`);
+      const response = await fetch(`${API_BASE}/countdown/stats`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await response.json();
 
       if (data.success) {
@@ -217,6 +223,7 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -254,6 +261,7 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         `${API_BASE}/countdown/${batchToDelete.id}`,
         {
           method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 

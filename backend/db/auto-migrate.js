@@ -37,6 +37,7 @@ const tables = {
       password_hash VARCHAR(255) NOT NULL,
       role ENUM('super_admin', 'admin', 'editor') DEFAULT 'admin',
       is_active TINYINT(1) DEFAULT 1,
+      must_change_password TINYINT(1) DEFAULT 0,
       last_login TIMESTAMP NULL DEFAULT NULL,
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
@@ -426,17 +427,19 @@ const tables = {
 // ====== DEFAULT DATA ======
 
 const defaultData = {
-  // Default admin user
+  // Default admin user - REQUIRES PASSWORD CHANGE ON FIRST LOGIN
   admin_users: async () => {
     const [existing] = await db.query(
       "SELECT id FROM admin_users WHERE email = ?",
       ["admin@zonaenglish.com"]
     );
     if (existing.length === 0) {
-      const passwordHash = await bcrypt.hash("admin123", 10);
+      // Generate a temporary password - MUST be changed on first login
+      const tempPassword = "admin123";
+      const passwordHash = await bcrypt.hash(tempPassword, 10);
       await db.query(
-        `INSERT INTO admin_users (username, email, name, password_hash, role) 
-         VALUES (?, ?, ?, ?, ?)`,
+        `INSERT INTO admin_users (username, email, name, password_hash, role, must_change_password) 
+         VALUES (?, ?, ?, ?, ?, 1)`,
         [
           "admin",
           "admin@zonaenglish.com",
@@ -447,6 +450,9 @@ const defaultData = {
       );
       console.log(
         "   ✅ Default admin created (admin@zonaenglish.com / admin123)"
+      );
+      console.log(
+        "   ⚠️  WARNING: Default admin MUST change password on first login!"
       );
     }
   },
@@ -592,6 +598,52 @@ const defaultData = {
   },
 };
 
+// ====== COLUMN MIGRATIONS (for updating existing tables) ======
+const columnMigrations = [
+  {
+    table: "admin_users",
+    column: "must_change_password",
+    addSQL:
+      "ALTER TABLE admin_users ADD COLUMN must_change_password TINYINT(1) DEFAULT 0 AFTER is_active",
+  },
+  {
+    table: "settings",
+    column: "label",
+    addSQL:
+      "ALTER TABLE settings ADD COLUMN label VARCHAR(200) NOT NULL DEFAULT '' AFTER category",
+  },
+];
+
+async function runColumnMigrations() {
+  console.log("");
+  console.log("📦 Checking column migrations...");
+
+  for (const migration of columnMigrations) {
+    try {
+      // Check if column exists
+      const [columns] = await db.query(
+        `SHOW COLUMNS FROM ${migration.table} LIKE '${migration.column}'`
+      );
+
+      if (columns.length === 0) {
+        // Column doesn't exist, add it
+        await db.query(migration.addSQL);
+        console.log(
+          `   ✅ Added column ${migration.column} to ${migration.table}`
+        );
+      }
+    } catch (error) {
+      // Table might not exist yet, skip
+      if (!error.message.includes("doesn't exist")) {
+        console.error(
+          `   ⚠️  Column migration ${migration.table}.${migration.column}:`,
+          error.message
+        );
+      }
+    }
+  }
+}
+
 // ====== MIGRATION RUNNER ======
 
 async function runAutoMigration() {
@@ -635,6 +687,9 @@ async function runAutoMigration() {
     console.log(
       `📊 Summary: ${createdCount} created, ${existingCount} already exist`
     );
+
+    // Run column migrations for existing tables
+    await runColumnMigrations();
 
     // Run default data insertions
     console.log("");

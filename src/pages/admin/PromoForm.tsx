@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   ArrowLeft,
   Calendar,
@@ -14,8 +15,10 @@ import {
   Phone,
 } from "lucide-react";
 import { API_BASE } from "../../config/api";
+import { formatRupiahInput, parseRupiahInput } from "../../utils/currency";
 
 const PromoForm = () => {
+  const { token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -40,6 +43,7 @@ const PromoForm = () => {
   const [error, setError] = useState("");
   const [uploading, setUploading] = useState(false);
   const [imagePreview, setImagePreview] = useState("");
+  const [priceDisplay, setPriceDisplay] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -86,6 +90,7 @@ const PromoForm = () => {
           wa_phone: extractPhoneFromWaLink(data.wa_link || ""),
           perks: perks.length > 0 ? perks : [""],
         });
+        setPriceDisplay(formatRupiahInput(data.price));
       } else {
         setError(data.error || "Failed to fetch program");
       }
@@ -134,6 +139,9 @@ const PromoForm = () => {
       // Upload to server
       const res = await fetch(`${API_BASE}/upload`, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: uploadFormData,
       });
 
@@ -222,7 +230,10 @@ const PromoForm = () => {
 
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           ...formData,
           wa_link: waLink, // Use generated WhatsApp link
@@ -254,6 +265,18 @@ const PromoForm = () => {
     setFormData({
       ...formData,
       [e.target.name]: e.target.value,
+    });
+  };
+
+  const handlePriceChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    const formatted = formatRupiahInput(inputValue);
+    const numeric = parseRupiahInput(inputValue);
+
+    setPriceDisplay(formatted);
+    setFormData({
+      ...formData,
+      price: numeric.toString(),
     });
   };
 
@@ -434,16 +457,17 @@ const PromoForm = () => {
                   Harga (Rp) *
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   name="price"
-                  value={formData.price}
-                  onChange={handleChange}
-                  min="0"
-                  step="1000"
-                  placeholder="1200000"
+                  value={priceDisplay}
+                  onChange={handlePriceChange}
+                  placeholder="1.200.000"
                   className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   required
                 />
+                <p className="mt-1 text-xs text-slate-500">
+                  Format otomatis: 1000000 → 1.000.000
+                </p>
               </div>
             </div>
 

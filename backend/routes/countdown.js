@@ -1,7 +1,21 @@
 import express from "express";
 import db from "../db/connection.js";
+import { authenticateToken } from "./auth.js";
 
 const router = express.Router();
+
+/**
+ * Middleware to check if user is admin
+ */
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== "admin" && req.user.role !== "super_admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Akses ditolak. Hanya admin yang dapat mengakses fitur ini",
+    });
+  }
+  next();
+};
 
 /**
  * @route   GET /api/countdown
@@ -153,9 +167,9 @@ router.get("/:id", async (req, res) => {
 /**
  * @route   POST /api/countdown
  * @desc    Create new countdown batch
- * @access  Admin
+ * @access  Admin (PROTECTED)
  */
-router.post("/", async (req, res) => {
+router.post("/", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const {
       name,
@@ -271,9 +285,9 @@ router.post("/", async (req, res) => {
 /**
  * @route   PUT /api/countdown/:id
  * @desc    Update countdown batch
- * @access  Admin
+ * @access  Admin (PROTECTED)
  */
-router.put("/:id", async (req, res) => {
+router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
     const {
@@ -460,138 +474,148 @@ router.put("/:id", async (req, res) => {
 /**
  * @route   PUT /api/countdown/:id/toggle-status
  * @desc    Toggle batch status between Active and Paused
- * @access  Admin
+ * @access  Admin (PROTECTED)
  */
-router.put("/:id/toggle-status", async (req, res) => {
-  try {
-    const { id } = req.params;
+router.put(
+  "/:id/toggle-status",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
 
-    // Get current status
-    const [batches] = await db.query(
-      "SELECT status FROM countdown_batches WHERE id = ?",
-      [id]
-    );
+      // Get current status
+      const [batches] = await db.query(
+        "SELECT status FROM countdown_batches WHERE id = ?",
+        [id]
+      );
 
-    if (batches.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Countdown batch not found",
-      });
-    }
+      if (batches.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Countdown batch not found",
+        });
+      }
 
-    const currentStatus = batches[0].status;
-    const newStatus = currentStatus === "Active" ? "Paused" : "Active";
+      const currentStatus = batches[0].status;
+      const newStatus = currentStatus === "Active" ? "Paused" : "Active";
 
-    // Update status
-    await db.query("UPDATE countdown_batches SET status = ? WHERE id = ?", [
-      newStatus,
-      id,
-    ]);
+      // Update status
+      await db.query("UPDATE countdown_batches SET status = ? WHERE id = ?", [
+        newStatus,
+        id,
+      ]);
 
-    // Fetch updated batch
-    const [updatedBatch] = await db.query(
-      `SELECT 
+      // Fetch updated batch
+      const [updatedBatch] = await db.query(
+        `SELECT 
         id, name, start_date, start_time, end_date, end_time, timezone, description,
         instructor, location_mode, location_address, price, registration_deadline,
         target_students, current_students, status, visibility,
         created_at, updated_at
       FROM countdown_batches
       WHERE id = ?`,
-      [id]
-    );
+        [id]
+      );
 
-    res.json({
-      success: true,
-      message: `Batch status changed from ${currentStatus} to ${newStatus}`,
-      data: updatedBatch[0],
-    });
-  } catch (error) {
-    console.error("Error toggling batch status:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to toggle batch status",
-      error: error.message,
-    });
+      res.json({
+        success: true,
+        message: `Batch status changed from ${currentStatus} to ${newStatus}`,
+        data: updatedBatch[0],
+      });
+    } catch (error) {
+      console.error("Error toggling batch status:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to toggle batch status",
+        error: error.message,
+      });
+    }
   }
-});
+);
 
 /**
  * @route   PUT /api/countdown/:id/students
  * @desc    Update student count (increment/decrement)
- * @access  Admin
+ * @access  Admin (PROTECTED)
  */
-router.put("/:id/students", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { action, count = 1 } = req.body;
+router.put(
+  "/:id/students",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { action, count = 1 } = req.body;
 
-    if (!action || !["increment", "decrement", "set"].includes(action)) {
-      return res.status(400).json({
-        success: false,
-        message: "Action must be 'increment', 'decrement', or 'set'",
-      });
-    }
+      if (!action || !["increment", "decrement", "set"].includes(action)) {
+        return res.status(400).json({
+          success: false,
+          message: "Action must be 'increment', 'decrement', or 'set'",
+        });
+      }
 
-    // Check if batch exists
-    const [existing] = await db.query(
-      "SELECT current_students FROM countdown_batches WHERE id = ?",
-      [id]
-    );
+      // Check if batch exists
+      const [existing] = await db.query(
+        "SELECT current_students FROM countdown_batches WHERE id = ?",
+        [id]
+      );
 
-    if (existing.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Countdown batch not found",
-      });
-    }
+      if (existing.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Countdown batch not found",
+        });
+      }
 
-    let newCount;
-    if (action === "increment") {
-      newCount = existing[0].current_students + count;
-    } else if (action === "decrement") {
-      newCount = Math.max(0, existing[0].current_students - count);
-    } else {
-      newCount = count;
-    }
+      let newCount;
+      if (action === "increment") {
+        newCount = existing[0].current_students + count;
+      } else if (action === "decrement") {
+        newCount = Math.max(0, existing[0].current_students - count);
+      } else {
+        newCount = count;
+      }
 
-    await db.query(
-      "UPDATE countdown_batches SET current_students = ? WHERE id = ?",
-      [newCount, id]
-    );
+      await db.query(
+        "UPDATE countdown_batches SET current_students = ? WHERE id = ?",
+        [newCount, id]
+      );
 
-    // Fetch updated batch
-    const [updatedBatch] = await db.query(
-      `SELECT 
+      // Fetch updated batch
+      const [updatedBatch] = await db.query(
+        `SELECT 
         id, name, start_date, start_time, end_date, end_time, timezone, description,
         instructor, location_mode, location_address, price, registration_deadline,
         target_students, current_students, status, visibility,
         created_at, updated_at
       FROM countdown_batches
       WHERE id = ?`,
-      [id]
-    );
+        [id]
+      );
 
-    res.json({
-      success: true,
-      message: `Student count updated successfully`,
-      data: updatedBatch[0],
-    });
-  } catch (error) {
-    console.error("Error updating student count:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to update student count",
-      error: error.message,
-    });
+      res.json({
+        success: true,
+        message: `Student count updated successfully`,
+        data: updatedBatch[0],
+      });
+    } catch (error) {
+      console.error("Error updating student count:", error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to update student count",
+        error: error.message,
+      });
+    }
   }
-});
+);
 
 /**
  * @route   DELETE /api/countdown/:id
  * @desc    Delete countdown batch
- * @access  Admin
+ * @access  Admin (PROTECTED)
  */
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 

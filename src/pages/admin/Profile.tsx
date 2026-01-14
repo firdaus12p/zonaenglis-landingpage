@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button } from "../../components";
@@ -12,6 +13,7 @@ import {
   AlertCircle,
   Eye,
   EyeOff,
+  ShieldAlert,
 } from "lucide-react";
 import { API_BASE } from "../../config/api";
 
@@ -20,7 +22,11 @@ const Profile = ({
 }: {
   setCurrentPage: (page: string) => void;
 }) => {
-  const { user, token, logout } = useAuth();
+  const { user, token, logout, mustChangePassword, clearMustChangePassword } =
+    useAuth();
+  const [searchParams] = useSearchParams();
+  const forcePasswordChange =
+    searchParams.get("change_password") === "required" || mustChangePassword;
 
   // Profile form
   const [profileForm, setProfileForm] = useState({
@@ -160,6 +166,11 @@ const Profile = ({
         throw new Error(result.message || "Failed to change password");
       }
 
+      // Clear the must_change_password flag if it was set
+      if (mustChangePassword) {
+        clearMustChangePassword();
+      }
+
       showNotification(
         "Password berhasil diubah! Silakan login kembali",
         "success"
@@ -212,6 +223,22 @@ const Profile = ({
             Kelola informasi profil dan keamanan akun Anda
           </p>
         </div>
+
+        {/* Force Password Change Warning */}
+        {forcePasswordChange && (
+          <div className="flex items-center gap-3 rounded-lg border border-yellow-300 bg-yellow-50 p-4">
+            <ShieldAlert className="h-6 w-6 flex-shrink-0 text-yellow-600" />
+            <div>
+              <p className="font-semibold text-yellow-800">
+                Perubahan Password Diperlukan
+              </p>
+              <p className="text-sm text-yellow-700">
+                Demi keamanan akun, Anda harus mengganti password default
+                sebelum melanjutkan. Silakan ubah password Anda di bawah ini.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Notification */}
         {notification.show && (

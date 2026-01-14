@@ -2,6 +2,7 @@ import { useState } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button } from "../../components";
 import { API_BASE } from "../../config/api";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   ArrowLeft,
   Upload,
@@ -45,6 +46,7 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
   mode = "create",
   ambassadorData: existingAmbassadorData,
 }) => {
+  const { token } = useAuth();
   const [formData, setFormData] = useState<AmbassadorFormData>({
     name: existingAmbassadorData?.name || "",
     type: existingAmbassadorData?.type || "Affiliate Campus",
@@ -194,6 +196,7 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
         method: mode === "create" ? "POST" : "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(apiData),
       });

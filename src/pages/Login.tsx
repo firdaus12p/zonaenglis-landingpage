@@ -1,17 +1,28 @@
-import { useState, type FormEvent } from "react";
+import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogIn, Eye, EyeOff, Mail, Lock, AlertCircle } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 
 const Login = () => {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, isAuthenticated, mustChangePassword } = useAuth();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+
+  // Handle navigation after login state updates
+  useEffect(() => {
+    if (isAuthenticated) {
+      if (mustChangePassword) {
+        navigate("/admin/profile?change_password=required");
+      } else {
+        navigate("/admin/dashboard");
+      }
+    }
+  }, [isAuthenticated, mustChangePassword, navigate]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -20,8 +31,7 @@ const Login = () => {
 
     try {
       await login(email, password);
-      // Redirect to admin dashboard on successful login
-      navigate("/admin/dashboard");
+      // Navigation handled by useEffect above
     } catch (err: any) {
       setError(err.message || "Login gagal. Silakan coba lagi.");
     } finally {

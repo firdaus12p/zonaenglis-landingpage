@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 import { Video, Save, AlertCircle, CheckCircle2 } from "lucide-react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, YouTubePlayer } from "../../components";
@@ -20,6 +21,7 @@ const getYouTubeVideoId = (url: string): string | null => {
 };
 
 export default function HomepageVideo() {
+  const { token } = useAuth();
   const [videoUrl, setVideoUrl] = useState("");
   const [originalUrl, setOriginalUrl] = useState("");
   const [loading, setLoading] = useState(true);
@@ -36,7 +38,9 @@ export default function HomepageVideo() {
 
   const fetchVideoUrl = async () => {
     try {
-      const response = await fetch(`${API_BASE}/settings/homepage_video_url`);
+      const response = await fetch(`${API_BASE}/settings/homepage_video_url`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await response.json();
 
       if (data.success && data.data) {
@@ -73,6 +77,7 @@ export default function HomepageVideo() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ value: videoUrl }),
       });

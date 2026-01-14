@@ -238,7 +238,7 @@ const AdminLayout = ({
                 <button
                   onClick={() => {
                     logout();
-                    navigate("/admin/login");
+                    navigate("/ze-admin-portal-2025");
                   }}
                   className="flex items-center w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50"
                 >

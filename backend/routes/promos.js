@@ -1,11 +1,24 @@
 // Promo Code Routes
 import express from "express";
 import db from "../db/connection.js";
+import { authenticateToken } from "./auth.js";
 
 const router = express.Router();
 
-// GET /api/promos/admin/all - Get ALL promo codes for admin (including inactive/expired)
-router.get("/admin/all", async (req, res) => {
+/**
+ * Middleware to check if user is admin
+ */
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== "admin" && req.user.role !== "super_admin") {
+    return res.status(403).json({
+      error: "Akses ditolak. Hanya admin yang dapat mengakses fitur ini",
+    });
+  }
+  next();
+};
+
+// GET /api/promos/admin/all - Get ALL promo codes for admin (including inactive/expired) (ADMIN ONLY)
+router.get("/admin/all", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const [rows] = await db.query(
       `SELECT id, code, name, description, discount_type, discount_value, 
@@ -79,8 +92,8 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /api/promos - Create new promo code (ADMIN)
-router.post("/", async (req, res) => {
+// POST /api/promos - Create new promo code (ADMIN ONLY)
+router.post("/", authenticateToken, requireAdmin, async (req, res) => {
   const {
     code,
     name,
@@ -147,8 +160,8 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /api/promos/:id - Update promo code (ADMIN)
-router.put("/:id", async (req, res) => {
+// PUT /api/promos/:id - Update promo code (ADMIN ONLY)
+router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
   const { id } = req.params;
   const {
     code,
@@ -220,42 +233,47 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// PATCH /api/promos/:id/toggle - Toggle active status (ADMIN)
-router.patch("/:id/toggle", async (req, res) => {
-  const { id } = req.params;
+// PATCH /api/promos/:id/toggle - Toggle active status (ADMIN ONLY)
+router.patch(
+  "/:id/toggle",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    const { id } = req.params;
 
-  try {
-    // Check if promo code exists
-    const [existing] = await db.query(
-      "SELECT is_active FROM promo_codes WHERE id = ?",
-      [id]
-    );
+    try {
+      // Check if promo code exists
+      const [existing] = await db.query(
+        "SELECT is_active FROM promo_codes WHERE id = ?",
+        [id]
+      );
 
-    if (existing.length === 0) {
-      return res.status(404).json({ error: "Promo code not found" });
+      if (existing.length === 0) {
+        return res.status(404).json({ error: "Promo code not found" });
+      }
+
+      // Toggle the is_active status
+      const newStatus = existing[0].is_active === 1 ? 0 : 1;
+      await db.query("UPDATE promo_codes SET is_active = ? WHERE id = ?", [
+        newStatus,
+        id,
+      ]);
+
+      res.json({
+        message: `Promo code ${
+          newStatus === 1 ? "activated" : "deactivated"
+        } successfully`,
+        is_active: newStatus,
+      });
+    } catch (error) {
+      console.error("Error toggling promo code status:", error);
+      res.status(500).json({ error: "Failed to toggle promo code status" });
     }
-
-    // Toggle the is_active status
-    const newStatus = existing[0].is_active === 1 ? 0 : 1;
-    await db.query("UPDATE promo_codes SET is_active = ? WHERE id = ?", [
-      newStatus,
-      id,
-    ]);
-
-    res.json({
-      message: `Promo code ${
-        newStatus === 1 ? "activated" : "deactivated"
-      } successfully`,
-      is_active: newStatus,
-    });
-  } catch (error) {
-    console.error("Error toggling promo code status:", error);
-    res.status(500).json({ error: "Failed to toggle promo code status" });
   }
-});
+);
 
-// DELETE /api/promos/:id - Delete promo code (ADMIN)
-router.delete("/:id", async (req, res) => {
+// DELETE /api/promos/:id - Delete promo code (ADMIN ONLY)
+router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   const { id } = req.params;
 
   try {
@@ -579,77 +597,86 @@ router.post("/track", async (req, res) => {
 
 /**
  * GET /api/promos/stats/:promo_id
- * Get usage statistics for a specific promo code
+ * Get usage statistics for a specific promo code (ADMIN ONLY)
  */
-router.get("/stats/:promo_id", async (req, res) => {
-  try {
-    const { promo_id } = req.params;
+router.get(
+  "/stats/:promo_id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { promo_id } = req.params;
 
-    // Get total uses (excluding deleted)
-    const [totalResult] = await db.query(
-      "SELECT COUNT(*) as total FROM promo_usage WHERE promo_code_id = ? AND deleted_at IS NULL",
-      [promo_id]
-    );
+      // Get total uses (excluding deleted)
+      const [totalResult] = await db.query(
+        "SELECT COUNT(*) as total FROM promo_usage WHERE promo_code_id = ? AND deleted_at IS NULL",
+        [promo_id]
+      );
 
-    // Get today's uses
-    const today = new Date().toISOString().split("T")[0];
-    const [todayResult] = await db.query(
-      "SELECT COUNT(*) as today FROM promo_usage WHERE promo_code_id = ? AND DATE(used_at) = ? AND deleted_at IS NULL",
-      [promo_id, today]
-    );
+      // Get today's uses
+      const today = new Date().toISOString().split("T")[0];
+      const [todayResult] = await db.query(
+        "SELECT COUNT(*) as today FROM promo_usage WHERE promo_code_id = ? AND DATE(used_at) = ? AND deleted_at IS NULL",
+        [promo_id, today]
+      );
 
-    // Get pending follow-ups
-    const [pendingResult] = await db.query(
-      "SELECT COUNT(*) as pending FROM promo_usage WHERE promo_code_id = ? AND follow_up_status = 'pending' AND deleted_at IS NULL",
-      [promo_id]
-    );
+      // Get pending follow-ups
+      const [pendingResult] = await db.query(
+        "SELECT COUNT(*) as pending FROM promo_usage WHERE promo_code_id = ? AND follow_up_status = 'pending' AND deleted_at IS NULL",
+        [promo_id]
+      );
 
-    // Get contacted/follow-ups
-    const [followupsResult] = await db.query(
-      "SELECT COUNT(*) as followups FROM promo_usage WHERE promo_code_id = ? AND follow_up_status = 'contacted' AND deleted_at IS NULL",
-      [promo_id]
-    );
+      // Get contacted/follow-ups
+      const [followupsResult] = await db.query(
+        "SELECT COUNT(*) as followups FROM promo_usage WHERE promo_code_id = ? AND follow_up_status = 'contacted' AND deleted_at IS NULL",
+        [promo_id]
+      );
 
-    // Get conversions
-    const [conversionsResult] = await db.query(
-      "SELECT COUNT(*) as conversions FROM promo_usage WHERE promo_code_id = ? AND follow_up_status = 'converted' AND deleted_at IS NULL",
-      [promo_id]
-    );
+      // Get conversions
+      const [conversionsResult] = await db.query(
+        "SELECT COUNT(*) as conversions FROM promo_usage WHERE promo_code_id = ? AND follow_up_status = 'converted' AND deleted_at IS NULL",
+        [promo_id]
+      );
 
-    // Get lost
-    const [lostResult] = await db.query(
-      "SELECT COUNT(*) as lost FROM promo_usage WHERE promo_code_id = ? AND follow_up_status = 'lost' AND deleted_at IS NULL",
-      [promo_id]
-    );
+      // Get lost
+      const [lostResult] = await db.query(
+        "SELECT COUNT(*) as lost FROM promo_usage WHERE promo_code_id = ? AND follow_up_status = 'lost' AND deleted_at IS NULL",
+        [promo_id]
+      );
 
-    const stats = {
-      total_uses: totalResult[0].total,
-      today_uses: todayResult[0].today,
-      pending_followups: pendingResult[0].pending,
-      followups: followupsResult[0].followups,
-      conversions: conversionsResult[0].conversions,
-      lost: lostResult[0].lost,
-    };
+      const stats = {
+        total_uses: totalResult[0].total,
+        today_uses: todayResult[0].today,
+        pending_followups: pendingResult[0].pending,
+        followups: followupsResult[0].followups,
+        conversions: conversionsResult[0].conversions,
+        lost: lostResult[0].lost,
+      };
 
-    res.json({ success: true, stats });
-  } catch (error) {
-    console.error("Error fetching promo stats:", error);
-    res
-      .status(500)
-      .json({ success: false, error: "Failed to fetch promo stats" });
+      res.json({ success: true, stats });
+    } catch (error) {
+      console.error("Error fetching promo stats:", error);
+      res
+        .status(500)
+        .json({ success: false, error: "Failed to fetch promo stats" });
+    }
   }
-});
+);
 
 /**
  * GET /api/promos/leads/:promo_id
- * Get active leads (pending/contacted/converted) for a promo code
+ * Get active leads (pending/contacted/converted) for a promo code (ADMIN ONLY)
  */
-router.get("/leads/:promo_id", async (req, res) => {
-  try {
-    const { promo_id } = req.params;
+router.get(
+  "/leads/:promo_id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { promo_id } = req.params;
 
-    const [leads] = await db.query(
-      `SELECT 
+      const [leads] = await db.query(
+        `SELECT 
         pu.id,
         pu.user_name,
         pu.user_phone,
@@ -671,28 +698,33 @@ router.get("/leads/:promo_id", async (req, res) => {
        AND pu.deleted_at IS NULL
        AND pu.follow_up_status IN ('pending', 'contacted', 'converted')
        ORDER BY pu.used_at DESC`,
-      [promo_id]
-    );
+        [promo_id]
+      );
 
-    res.json({ success: true, leads });
-  } catch (error) {
-    console.error("Error fetching promo leads:", error);
-    res
-      .status(500)
-      .json({ success: false, error: "Failed to fetch promo leads" });
+      res.json({ success: true, leads });
+    } catch (error) {
+      console.error("Error fetching promo leads:", error);
+      res
+        .status(500)
+        .json({ success: false, error: "Failed to fetch promo leads" });
+    }
   }
-});
+);
 
 /**
  * GET /api/promos/lost-leads/:promo_id
- * Get lost leads for a promo code
+ * Get lost leads for a promo code (ADMIN ONLY)
  */
-router.get("/lost-leads/:promo_id", async (req, res) => {
-  try {
-    const { promo_id } = req.params;
+router.get(
+  "/lost-leads/:promo_id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { promo_id } = req.params;
 
-    const [leads] = await db.query(
-      `SELECT 
+      const [leads] = await db.query(
+        `SELECT 
         pu.id,
         pu.user_name,
         pu.user_phone,
@@ -714,17 +746,18 @@ router.get("/lost-leads/:promo_id", async (req, res) => {
        AND pu.deleted_at IS NULL
        AND pu.follow_up_status = 'lost'
        ORDER BY pu.used_at DESC`,
-      [promo_id]
-    );
+        [promo_id]
+      );
 
-    res.json({ success: true, leads });
-  } catch (error) {
-    console.error("Error fetching lost leads:", error);
-    res
-      .status(500)
-      .json({ success: false, error: "Failed to fetch lost leads" });
+      res.json({ success: true, leads });
+    } catch (error) {
+      console.error("Error fetching lost leads:", error);
+      res
+        .status(500)
+        .json({ success: false, error: "Failed to fetch lost leads" });
+    }
   }
-});
+);
 
 /**
  * GET /api/promos/deleted-leads/:promo_id
@@ -803,44 +836,54 @@ router.patch("/update-status/:usage_id", async (req, res) => {
 
 /**
  * DELETE /api/promos/lead/:usage_id
- * Soft delete a promo lead
+ * Soft delete a promo lead (ADMIN ONLY)
  */
-router.delete("/lead/:usage_id", async (req, res) => {
-  try {
-    const { usage_id } = req.params;
-    const { deleted_by } = req.body;
+router.delete(
+  "/lead/:usage_id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { usage_id } = req.params;
+      const { deleted_by } = req.body;
 
-    await db.query(
-      "UPDATE promo_usage SET deleted_at = NOW(), deleted_by = ? WHERE id = ?",
-      [deleted_by || "admin", usage_id]
-    );
+      await db.query(
+        "UPDATE promo_usage SET deleted_at = NOW(), deleted_by = ? WHERE id = ?",
+        [deleted_by || "admin", usage_id]
+      );
 
-    res.json({ success: true, message: "Lead soft deleted successfully" });
-  } catch (error) {
-    console.error("Error soft deleting lead:", error);
-    res.status(500).json({ success: false, error: "Failed to delete lead" });
+      res.json({ success: true, message: "Lead soft deleted successfully" });
+    } catch (error) {
+      console.error("Error soft deleting lead:", error);
+      res.status(500).json({ success: false, error: "Failed to delete lead" });
+    }
   }
-});
+);
 
 /**
  * PUT /api/promos/restore/:usage_id
- * Restore a soft-deleted promo lead
+ * Restore a soft-deleted promo lead (ADMIN ONLY)
  */
-router.put("/restore/:usage_id", async (req, res) => {
-  try {
-    const { usage_id } = req.params;
+router.put(
+  "/restore/:usage_id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { usage_id } = req.params;
 
-    await db.query(
-      "UPDATE promo_usage SET deleted_at = NULL, deleted_by = NULL WHERE id = ?",
-      [usage_id]
-    );
+      await db.query(
+        "UPDATE promo_usage SET deleted_at = NULL, deleted_by = NULL WHERE id = ?",
+        [usage_id]
+      );
 
-    res.json({ success: true, message: "Lead restored successfully" });
-  } catch (error) {
-    console.error("Error restoring lead:", error);
-    res.status(500).json({ success: false, error: "Failed to restore lead" });
+      res.json({ success: true, message: "Lead restored successfully" });
+    } catch (error) {
+      console.error("Error restoring lead:", error);
+      res.status(500).json({ success: false, error: "Failed to restore lead" });
+    }
   }
-});
+);
 
 /**
  * DELETE /api/promos/permanent-delete/:usage_id

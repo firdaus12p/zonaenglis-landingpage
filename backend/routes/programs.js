@@ -1,6 +1,7 @@
 // Program Promo Routes (for PromoHub)
 import express from "express";
 import db from "../db/connection.js";
+import { authenticateToken } from "./auth.js";
 
 const router = express.Router();
 
@@ -41,8 +42,12 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /api/programs - Create new program
-router.post("/", async (req, res) => {
+// POST /api/programs - Create new program (ADMIN ONLY)
+router.post("/", authenticateToken, async (req, res) => {
+  // Check admin role
+  if (req.user.role !== "admin" && req.user.role !== "super_admin") {
+    return res.status(403).json({ error: "Admin privileges required" });
+  }
   const {
     title,
     branch,
@@ -102,8 +107,12 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /api/programs/:id - Update program
-router.put("/:id", async (req, res) => {
+// PUT /api/programs/:id - Update program (ADMIN ONLY)
+router.put("/:id", authenticateToken, async (req, res) => {
+  // Check admin role
+  if (req.user.role !== "admin" && req.user.role !== "super_admin") {
+    return res.status(403).json({ error: "Admin privileges required" });
+  }
   const {
     title,
     branch,
@@ -153,8 +162,12 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/programs/:id - Soft delete program
-router.delete("/:id", async (req, res) => {
+// DELETE /api/programs/:id - Soft delete program (ADMIN ONLY)
+router.delete("/:id", authenticateToken, async (req, res) => {
+  // Check admin role
+  if (req.user.role !== "admin" && req.user.role !== "super_admin") {
+    return res.status(403).json({ error: "Admin privileges required" });
+  }
   try {
     const [result] = await db.query(
       "UPDATE programs SET is_active = 0 WHERE id = ?",

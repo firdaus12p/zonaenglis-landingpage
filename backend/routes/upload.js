@@ -1,11 +1,12 @@
 // Upload Routes for handling image uploads
 import express from "express";
 import upload from "../middleware/upload.js";
+import { authenticateToken } from "./auth.js";
 
 const router = express.Router();
 
-// POST /api/upload - Upload single image
-router.post("/", upload.single("image"), (req, res) => {
+// POST /api/upload - Upload single image (ADMIN ONLY)
+router.post("/", authenticateToken, upload.single("image"), (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No file uploaded" });
@@ -28,30 +29,35 @@ router.post("/", upload.single("image"), (req, res) => {
   }
 });
 
-// POST /api/upload/multiple - Upload multiple images
-router.post("/multiple", upload.array("images", 5), (req, res) => {
-  try {
-    if (!req.files || req.files.length === 0) {
-      return res.status(400).json({ error: "No files uploaded" });
+// POST /api/upload/multiple - Upload multiple images (ADMIN ONLY)
+router.post(
+  "/multiple",
+  authenticateToken,
+  upload.array("images", 5),
+  (req, res) => {
+    try {
+      if (!req.files || req.files.length === 0) {
+        return res.status(400).json({ error: "No files uploaded" });
+      }
+
+      const files = req.files.map((file) => ({
+        url: `/uploads/${file.filename}`,
+        filename: file.filename,
+        originalName: file.originalname,
+        size: file.size,
+        mimetype: file.mimetype,
+      }));
+
+      res.json({
+        message: `${files.length} files uploaded successfully`,
+        files,
+      });
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      res.status(500).json({ error: "Failed to upload files" });
     }
-
-    const files = req.files.map((file) => ({
-      url: `/uploads/${file.filename}`,
-      filename: file.filename,
-      originalName: file.originalname,
-      size: file.size,
-      mimetype: file.mimetype,
-    }));
-
-    res.json({
-      message: `${files.length} files uploaded successfully`,
-      files,
-    });
-  } catch (error) {
-    console.error("Error uploading files:", error);
-    res.status(500).json({ error: "Failed to upload files" });
   }
-});
+);
 
 // Error handling middleware for multer
 router.use((err, req, res, next) => {

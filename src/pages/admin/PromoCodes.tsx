@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, Badge, Toast } from "../../components";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   Plus,
   Search,
@@ -245,6 +246,7 @@ const ErrorToast = ({
 const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   setCurrentPage,
 }) => {
+  const { token } = useAuth();
   const navigate = useNavigate();
   const [promoCodes, setPromoCodes] = useState<PromoCode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -310,7 +312,11 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     try {
       setLoading(true);
       setError("");
-      const res = await fetch(`${API_BASE}/promos/admin/all`);
+      const res = await fetch(`${API_BASE}/promos/admin/all`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = await res.json();
 
       if (res.ok) {
@@ -330,6 +336,9 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     try {
       const res = await fetch(`${API_BASE}/promos/${id}`, {
         method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (res.ok) {
@@ -362,6 +371,9 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     try {
       const res = await fetch(`${API_BASE}/promos/${id}/toggle`, {
         method: "PATCH",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (res.ok) {
@@ -464,7 +476,11 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   // Promo Tracking API Functions
   const fetchPromoStats = async (promoId: number) => {
     try {
-      const response = await fetch(`${API_BASE}/promos/stats/${promoId}`);
+      const response = await fetch(`${API_BASE}/promos/stats/${promoId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = await response.json();
       if (data.success && data.stats) {
         setPromoStats(data.stats);
@@ -477,7 +493,11 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const fetchPromoLeads = async (promoId: number) => {
     try {
       setLoadingPromoTracking(true);
-      const response = await fetch(`${API_BASE}/promos/leads/${promoId}`);
+      const response = await fetch(`${API_BASE}/promos/leads/${promoId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = await response.json();
       if (data.success && data.leads) {
         setPromoLeads(data.leads);
@@ -491,7 +511,11 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
   const fetchLostPromoLeads = async (promoId: number) => {
     try {
-      const response = await fetch(`${API_BASE}/promos/lost-leads/${promoId}`);
+      const response = await fetch(`${API_BASE}/promos/lost-leads/${promoId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
       const data = await response.json();
       if (data.success && data.leads) {
         setLostPromoLeads(data.leads);
@@ -572,7 +596,10 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         try {
           const response = await fetch(`${API_BASE}/promos/lead/${leadId}`, {
             method: "DELETE",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({ deleted_by: "admin" }),
           });
 
@@ -618,7 +645,10 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         try {
           const response = await fetch(`${API_BASE}/promos/restore/${leadId}`, {
             method: "PUT",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
           });
 
           const data = await response.json();

@@ -3,12 +3,25 @@
 
 import express from "express";
 import db from "../db/connection.js";
+import { authenticateToken } from "./auth.js";
 import {
   validatePhoneNumber,
   generateDeviceFingerprint,
 } from "../services/whatsapp.js";
+import { publicFormProtection } from "../middleware/public-form-protection.js";
 
 const router = express.Router();
+
+// Middleware to require admin role
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== "admin" && req.user.role !== "super_admin") {
+    return res.status(403).json({
+      success: false,
+      error: "Access denied. Admin privileges required.",
+    });
+  }
+  next();
+};
 
 /**
  * POST /api/promo-claims/claim
@@ -28,7 +41,7 @@ const router = express.Router();
  *   urgency?: 'urgent' | 'this_month' | 'browsing'
  * }
  */
-router.post("/claim", async (req, res) => {
+router.post("/claim", publicFormProtection, async (req, res) => {
   try {
     console.log("\n📝 Direct promo claim request:", req.body);
 
@@ -130,7 +143,7 @@ router.post("/claim", async (req, res) => {
  * GET /api/promo-claims/all
  * Get all active promo claims (for admin dashboard)
  */
-router.get("/all", async (req, res) => {
+router.get("/all", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const [claims] = await db.query(
       `SELECT 
@@ -175,7 +188,7 @@ router.get("/all", async (req, res) => {
  * GET /api/promo-claims/stats
  * Get statistics for promo claims
  */
-router.get("/stats", async (req, res) => {
+router.get("/stats", authenticateToken, requireAdmin, async (req, res) => {
   try {
     // Get total claims count
     const [totalCount] = await db.query(
@@ -238,133 +251,148 @@ router.get("/stats", async (req, res) => {
  * PATCH /api/promo-claims/update-status/:claim_id
  * Update follow-up status for a claim
  */
-router.patch("/update-status/:claim_id", async (req, res) => {
-  try {
-    const { claim_id } = req.params;
-    const { follow_up_status, follow_up_notes, registered, follow_up_by } =
-      req.body;
+router.patch(
+  "/update-status/:claim_id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { claim_id } = req.params;
+      const { follow_up_status, follow_up_notes, registered, follow_up_by } =
+        req.body;
 
-    const updates = [];
-    const values = [];
+      const updates = [];
+      const values = [];
 
-    if (follow_up_status) {
-      updates.push("follow_up_status = ?");
-      values.push(follow_up_status);
-    }
-
-    if (follow_up_notes !== undefined) {
-      updates.push("follow_up_notes = ?");
-      values.push(follow_up_notes);
-    }
-
-    if (registered !== undefined) {
-      updates.push("registered = ?");
-      values.push(registered);
-
-      if (registered) {
-        updates.push("registered_at = NOW()");
+      if (follow_up_status) {
+        updates.push("follow_up_status = ?");
+        values.push(follow_up_status);
       }
-    }
 
-    if (follow_up_by !== undefined) {
-      updates.push("follow_up_by = ?");
-      values.push(follow_up_by);
-    }
+      if (follow_up_notes !== undefined) {
+        updates.push("follow_up_notes = ?");
+        values.push(follow_up_notes);
+      }
 
-    if (updates.length === 0) {
-      return res.status(400).json({
+      if (registered !== undefined) {
+        updates.push("registered = ?");
+        values.push(registered);
+
+        if (registered) {
+          updates.push("registered_at = NOW()");
+        }
+      }
+
+      if (follow_up_by !== undefined) {
+        updates.push("follow_up_by = ?");
+        values.push(follow_up_by);
+      }
+
+      if (updates.length === 0) {
+        return res.status(400).json({
+          success: false,
+          error: "No fields to update",
+        });
+      }
+
+      values.push(claim_id);
+
+      await db.query(
+        `UPDATE promo_claims SET ${updates.join(", ")} WHERE id = ?`,
+        values
+      );
+
+      res.json({
+        success: true,
+        message: "Claim status updated successfully",
+      });
+    } catch (error) {
+      console.error("❌ Error updating claim status:", error);
+      res.status(500).json({
         success: false,
-        error: "No fields to update",
+        error: "Failed to update claim status",
       });
     }
-
-    values.push(claim_id);
-
-    await db.query(
-      `UPDATE promo_claims SET ${updates.join(", ")} WHERE id = ?`,
-      values
-    );
-
-    res.json({
-      success: true,
-      message: "Claim status updated successfully",
-    });
-  } catch (error) {
-    console.error("❌ Error updating claim status:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to update claim status",
-    });
   }
-});
+);
 
 /**
  * DELETE /api/promo-claims/:claim_id
  * Soft delete a promo claim
  */
-router.delete("/:claim_id", async (req, res) => {
-  try {
-    const { claim_id } = req.params;
-    const { deleted_by } = req.body;
+router.delete(
+  "/:claim_id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { claim_id } = req.params;
+      const { deleted_by } = req.body;
 
-    const [result] = await db.query(
-      "UPDATE promo_claims SET deleted_at = NOW(), deleted_by = ? WHERE id = ? AND deleted_at IS NULL",
-      [deleted_by || "admin", claim_id]
-    );
+      const [result] = await db.query(
+        "UPDATE promo_claims SET deleted_at = NOW(), deleted_by = ? WHERE id = ? AND deleted_at IS NULL",
+        [deleted_by || "admin", claim_id]
+      );
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Claim not found or already deleted",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Claim deleted successfully (soft delete)",
+        deleted_id: parseInt(claim_id),
+      });
+    } catch (error) {
+      console.error("❌ Error deleting claim:", error);
+      res.status(500).json({
         success: false,
-        error: "Claim not found or already deleted",
+        error: "Failed to delete claim",
       });
     }
-
-    res.json({
-      success: true,
-      message: "Claim deleted successfully (soft delete)",
-      deleted_id: parseInt(claim_id),
-    });
-  } catch (error) {
-    console.error("❌ Error deleting claim:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to delete claim",
-    });
   }
-});
+);
 
 /**
  * PUT /api/promo-claims/restore/:claim_id
  * Restore a soft-deleted claim
  */
-router.put("/restore/:claim_id", async (req, res) => {
-  try {
-    const { claim_id } = req.params;
+router.put(
+  "/restore/:claim_id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { claim_id } = req.params;
 
-    const [result] = await db.query(
-      "UPDATE promo_claims SET deleted_at = NULL, deleted_by = NULL WHERE id = ? AND deleted_at IS NOT NULL",
-      [claim_id]
-    );
+      const [result] = await db.query(
+        "UPDATE promo_claims SET deleted_at = NULL, deleted_by = NULL WHERE id = ? AND deleted_at IS NOT NULL",
+        [claim_id]
+      );
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({
+      if (result.affectedRows === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Claim not found or not deleted",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Claim restored successfully",
+        restored_id: parseInt(claim_id),
+      });
+    } catch (error) {
+      console.error("❌ Error restoring claim:", error);
+      res.status(500).json({
         success: false,
-        error: "Claim not found or not deleted",
+        error: "Failed to restore claim",
       });
     }
-
-    res.json({
-      success: true,
-      message: "Claim restored successfully",
-      restored_id: parseInt(claim_id),
-    });
-  } catch (error) {
-    console.error("❌ Error restoring claim:", error);
-    res.status(500).json({
-      success: false,
-      error: "Failed to restore claim",
-    });
   }
-});
+);
 
 export default router;

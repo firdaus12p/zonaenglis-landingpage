@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
+import DOMPurify from "dompurify";
 import {
   Calendar,
   User,
@@ -250,15 +251,25 @@ const ArticlesList = () => {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState("");
   const [categories, setCategories] = useState<string[]>([]);
   const [hashtags, setHashtags] = useState<string[]>([]);
   const [selectedHashtag, setSelectedHashtag] = useState("");
+
+  // Debounce search query - 400ms delay before triggering API call
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     fetchArticles();
     fetchCategories();
     fetchHashtags();
-  }, [selectedCategory, searchQuery, selectedHashtag]);
+  }, [selectedCategory, debouncedSearchQuery, selectedHashtag]);
 
   const fetchArticles = async () => {
     try {
@@ -266,7 +277,7 @@ const ArticlesList = () => {
       const params = new URLSearchParams();
       if (selectedCategory !== "All")
         params.append("category", selectedCategory);
-      if (searchQuery) params.append("search", searchQuery);
+      if (debouncedSearchQuery) params.append("search", debouncedSearchQuery);
       if (selectedHashtag) params.append("hashtag", selectedHashtag);
 
       const response = await fetch(`${API_BASE}/articles/public?${params}`);
@@ -647,7 +658,52 @@ const ArticleDetail = () => {
           {/* Content */}
           <div
             className="prose prose-lg max-w-none prose-headings:text-slate-900 prose-p:text-slate-700 prose-a:text-blue-700 prose-strong:text-slate-900"
-            dangerouslySetInnerHTML={{ __html: article.content }}
+            dangerouslySetInnerHTML={{
+              __html: DOMPurify.sanitize(article.content, {
+                ALLOWED_TAGS: [
+                  "h1",
+                  "h2",
+                  "h3",
+                  "h4",
+                  "h5",
+                  "h6",
+                  "p",
+                  "br",
+                  "hr",
+                  "ul",
+                  "ol",
+                  "li",
+                  "blockquote",
+                  "pre",
+                  "code",
+                  "a",
+                  "strong",
+                  "em",
+                  "u",
+                  "s",
+                  "img",
+                  "table",
+                  "thead",
+                  "tbody",
+                  "tr",
+                  "th",
+                  "td",
+                  "div",
+                  "span",
+                ],
+                ALLOWED_ATTR: [
+                  "href",
+                  "src",
+                  "alt",
+                  "title",
+                  "class",
+                  "id",
+                  "target",
+                  "rel",
+                ],
+                ALLOW_DATA_ATTR: false,
+              }),
+            }}
           />
 
           {/* Additional Images */}

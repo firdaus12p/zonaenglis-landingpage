@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { SuccessModal } from "../../components";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   ArrowLeft,
   Calendar,
@@ -14,8 +15,10 @@ import {
   Hash,
 } from "lucide-react";
 import { API_BASE } from "../../config/api";
+import { formatRupiahInput, parseRupiahInput } from "../../utils/currency";
 
 const PromoCodeForm = () => {
+  const { token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const { id } = useParams();
@@ -39,6 +42,11 @@ const PromoCodeForm = () => {
   const [error, setError] = useState("");
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
+
+  // Display states for formatted inputs
+  const [discountDisplay, setDiscountDisplay] = useState("");
+  const [minPurchaseDisplay, setMinPurchaseDisplay] = useState("");
+  const [maxDiscountDisplay, setMaxDiscountDisplay] = useState("");
 
   // Modal State
   const [modal, setModal] = useState<{
@@ -86,6 +94,19 @@ const PromoCodeForm = () => {
           valid_until: formatDateForInput(data.valid_until),
           applicable_to: data.applicable_to || "all",
         });
+
+        // Set display values for currency fields
+        if (data.discount_type === "fixed_amount" && data.discount_value) {
+          setDiscountDisplay(formatRupiahInput(data.discount_value));
+        } else {
+          setDiscountDisplay(data.discount_value || "");
+        }
+        if (data.min_purchase) {
+          setMinPurchaseDisplay(formatRupiahInput(data.min_purchase));
+        }
+        if (data.max_discount) {
+          setMaxDiscountDisplay(formatRupiahInput(data.max_discount));
+        }
       } else {
         setError(data.error || "Failed to fetch promo code");
       }
@@ -135,7 +156,10 @@ const PromoCodeForm = () => {
 
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({
           ...formData,
           discount_value: parseFloat(formData.discount_value),
@@ -186,12 +210,48 @@ const PromoCodeForm = () => {
         ...formData,
         [name]: value.toUpperCase().replace(/\s/g, ""),
       });
+    } else if (name === "discount_type") {
+      // Reset discount display when type changes
+      setFormData({ ...formData, [name]: value });
+      setDiscountDisplay("");
     } else {
       setFormData({
         ...formData,
         [name]: value,
       });
     }
+  };
+
+  const handleDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+
+    if (formData.discount_type === "percentage") {
+      // For percentage, allow plain numbers
+      setDiscountDisplay(inputValue);
+      setFormData({ ...formData, discount_value: inputValue });
+    } else {
+      // For fixed amount, format as Rupiah
+      const formatted = formatRupiahInput(inputValue);
+      const numeric = parseRupiahInput(inputValue);
+      setDiscountDisplay(formatted);
+      setFormData({ ...formData, discount_value: numeric.toString() });
+    }
+  };
+
+  const handleMinPurchaseChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    const formatted = formatRupiahInput(inputValue);
+    const numeric = parseRupiahInput(inputValue);
+    setMinPurchaseDisplay(formatted);
+    setFormData({ ...formData, min_purchase: numeric.toString() });
+  };
+
+  const handleMaxDiscountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const inputValue = e.target.value;
+    const formatted = formatRupiahInput(inputValue);
+    const numeric = parseRupiahInput(inputValue);
+    setMaxDiscountDisplay(formatted);
+    setFormData({ ...formData, max_discount: numeric.toString() });
   };
 
   return (
@@ -301,22 +361,20 @@ const PromoCodeForm = () => {
                   Nilai Diskon *
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   name="discount_value"
-                  value={formData.discount_value}
-                  onChange={handleChange}
+                  value={discountDisplay}
+                  onChange={handleDiscountChange}
                   placeholder={
-                    formData.discount_type === "percentage" ? "50" : "100000"
+                    formData.discount_type === "percentage" ? "50" : "100.000"
                   }
-                  min="0"
-                  step={formData.discount_type === "percentage" ? "1" : "1000"}
                   className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   required
                 />
                 <p className="mt-1 text-xs text-slate-500">
                   {formData.discount_type === "percentage"
                     ? "Masukkan persentase (0-100)"
-                    : "Masukkan nominal dalam Rupiah"}
+                    : "Format otomatis: 100000 → 100.000"}
                 </p>
               </div>
             </div>
@@ -328,13 +386,11 @@ const PromoCodeForm = () => {
                   Minimal Pembelian
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   name="min_purchase"
-                  value={formData.min_purchase}
-                  onChange={handleChange}
+                  value={minPurchaseDisplay}
+                  onChange={handleMinPurchaseChange}
                   placeholder="0"
-                  min="0"
-                  step="1000"
                   className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                 />
                 <p className="mt-1 text-xs text-slate-500">
@@ -347,13 +403,11 @@ const PromoCodeForm = () => {
                   Maksimal Diskon
                 </label>
                 <input
-                  type="number"
+                  type="text"
                   name="max_discount"
-                  value={formData.max_discount}
-                  onChange={handleChange}
+                  value={maxDiscountDisplay}
+                  onChange={handleMaxDiscountChange}
                   placeholder="0"
-                  min="0"
-                  step="1000"
                   className="w-full rounded-lg border border-slate-200 px-4 py-2.5 text-sm focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
                   disabled={formData.discount_type === "fixed"}
                 />

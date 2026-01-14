@@ -9,6 +9,12 @@ import rateLimit from "express-rate-limit";
 import path from "path";
 import { fileURLToPath } from "url";
 
+// ====== LOGGER ======
+import logger, { createLogger } from "./utils/logger.js";
+import { requestLogger } from "./middleware/logger.js";
+
+const serverLogger = createLogger("SERVER");
+
 // ====== ENV ======
 dotenv.config();
 
@@ -32,8 +38,10 @@ if (NODE_ENV === "production") {
   const missingVars = requiredEnvVars.filter((v) => !process.env[v]);
 
   if (missingVars.length > 0) {
-    console.error("❌ Missing required environment variables:");
-    missingVars.forEach((v) => console.error(`   - ${v}`));
+    serverLogger.error("Missing required environment variables", {
+      missingVars,
+    });
+    missingVars.forEach((v) => serverLogger.error(`   - ${v}`));
     process.exit(1);
   }
 }
@@ -83,13 +91,8 @@ app.use(express.urlencoded({ extended: true }));
 // Static uploads
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
-// Logging ringan (hindari noisy log di production)
-if (NODE_ENV !== "production") {
-  app.use((req, res, next) => {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-    next();
-  });
-}
+// ====== REQUEST LOGGING ======
+app.use(requestLogger);
 
 // ====== Import routes ======
 import authRoutes from "./routes/auth.js";
@@ -105,6 +108,9 @@ import countdownRoutes from "./routes/countdown.js";
 import articlesRoutes from "./routes/articles.js";
 import settingsRoutes from "./routes/settings.js";
 import galleryRoutes from "./routes/gallery.js";
+import { rateLimiterStatsMiddleware } from "./utils/rate-limiter-monitor.js";
+import { authenticateToken } from "./routes/auth.js";
+import { formTokenEndpoint } from "./middleware/public-form-protection.js";
 
 // ====== Health Check ======
 app.get("/api/health", (req, res) => {
@@ -115,6 +121,16 @@ app.get("/api/health", (req, res) => {
     timestamp: new Date().toISOString(),
   });
 });
+
+// ====== Public Form Token Endpoint ======
+app.get("/api/form-token", formTokenEndpoint);
+
+// ====== Rate Limiter Stats (Admin Only) ======
+app.get(
+  "/api/admin/rate-limiter-stats",
+  authenticateToken,
+  rateLimiterStatsMiddleware
+);
 
 // ====== API Docs (aman di production) ======
 app.get("/api/docs", (req, res) => {
@@ -184,21 +200,21 @@ const startServer = async () => {
       console.log(`🌍 Environment : ${NODE_ENV}`);
       console.log(`📡 Port        : ${PORT} (localhost only)`);
       console.log(`🔐 CORS        : ${allowedOrigins.join(", ")}`);
-      console.log("✅ Backend aktif via Nginx reverse proxy");
-      console.log("");
+      serverLogger.info("Backend aktif via Nginx reverse proxy");
+      serverLogger.info("");
     });
 
     // Graceful Shutdown (PM2 / VPS Safe)
     const shutdown = (signal) => {
-      console.log(`🛑 ${signal} received. Shutting down gracefully...`);
+      serverLogger.warn(`${signal} received. Shutting down gracefully...`);
 
       server.close(() => {
-        console.log("✅ HTTP server closed");
+        serverLogger.info("HTTP server closed");
         process.exit(0);
       });
 
       setTimeout(() => {
-        console.error("⏰ Force shutdown after 10s");
+        serverLogger.error("Force shutdown after 10s");
         process.exit(1);
       }, 10000);
     };
@@ -206,7 +222,10 @@ const startServer = async () => {
     process.on("SIGTERM", () => shutdown("SIGTERM"));
     process.on("SIGINT", () => shutdown("SIGINT"));
   } catch (error) {
-    console.error("❌ Failed to start server:", error.message);
+    serverLogger.error("Failed to start server", {
+      error: error.message,
+      stack: error.stack,
+    });
     process.exit(1);
   }
 };

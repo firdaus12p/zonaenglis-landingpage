@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 import { Plus, Trash2, Edit2, FolderOpen, X, Check } from "lucide-react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { API_BASE } from "../../config/api";
@@ -14,6 +15,7 @@ interface Category {
 }
 
 const ArticleCategories = () => {
+  const { token } = useAuth();
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -37,7 +39,12 @@ const ArticleCategories = () => {
   const fetchCategories = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/articles/categories/admin/all`);
+      const response = await fetch(
+        `${API_BASE}/articles/categories/admin/all`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       if (!response.ok) throw new Error("Failed to fetch categories");
       const result = await response.json();
       setCategories(result.data || []);
@@ -91,7 +98,10 @@ const ArticleCategories = () => {
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify(formData),
       });
 
@@ -122,6 +132,7 @@ const ArticleCategories = () => {
     try {
       const response = await fetch(`${API_BASE}/articles/categories/${id}`, {
         method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       const result = await response.json();

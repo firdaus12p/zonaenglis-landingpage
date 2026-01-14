@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, Badge } from "../../components";
 import { API_BASE } from "../../config/api";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   Search,
   Filter,
@@ -87,6 +88,7 @@ interface AffiliateStats {
 const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   setCurrentPage,
 }) => {
+  const { token } = useAuth();
   const [ambassadors, setAmbassadors] = useState<Ambassador[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState<
@@ -145,7 +147,9 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const loadAmbassadors = async () => {
     try {
       console.log("🔄 Fetching ambassadors from API...");
-      const response = await fetch(`${API_BASE}/ambassadors`);
+      const response = await fetch(`${API_BASE}/ambassadors`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
 
       if (!response.ok) {
         throw new Error(`API Error: ${response.status}`);
@@ -198,7 +202,9 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       if (ambassadors.length === 0) return;
 
       try {
-        const response = await fetch(`${API_BASE}/affiliate/unread-counts`);
+        const response = await fetch(`${API_BASE}/affiliate/unread-counts`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
         const data = await response.json();
 
         if (data.success && data.unread_counts) {
@@ -270,6 +276,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -323,7 +330,10 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const fetchAffiliateStats = async (ambassadorId: number) => {
     try {
       const response = await fetch(
-        `${API_BASE}/affiliate/stats/${ambassadorId}`
+        `${API_BASE}/affiliate/stats/${ambassadorId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       const data = await response.json();
       if (data.success && data.stats) {
@@ -338,7 +348,10 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     try {
       setLoadingAffiliate(true);
       const response = await fetch(
-        `${API_BASE}/affiliate/leads/${ambassadorId}`
+        `${API_BASE}/affiliate/leads/${ambassadorId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       const data = await response.json();
       if (data.success && data.leads) {
@@ -354,7 +367,10 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const fetchLostLeads = async (ambassadorId: number) => {
     try {
       const response = await fetch(
-        `${API_BASE}/affiliate/lost-leads/${ambassadorId}`
+        `${API_BASE}/affiliate/lost-leads/${ambassadorId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       const data = await response.json();
       if (data.success && data.leads) {
@@ -368,7 +384,10 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const fetchDeletedLeads = async (ambassadorId: number) => {
     try {
       const response = await fetch(
-        `${API_BASE}/affiliate/deleted-leads/${ambassadorId}`
+        `${API_BASE}/affiliate/deleted-leads/${ambassadorId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       const data = await response.json();
       if (data.success && data.leads) {
@@ -383,7 +402,10 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     try {
       await fetch(`${API_BASE}/affiliate/mark-viewed/${ambassadorId}`, {
         method: "PUT",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       // Update local state - set this ambassador's unread count to 0
@@ -407,7 +429,10 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         `${API_BASE}/affiliate/update-status/${leadId}`,
         {
           method: "PATCH",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({
             follow_up_status: status,
             registered: status === "converted",
@@ -477,6 +502,7 @@ Tim Zona English siap membantu! 🚀`;
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             follow_up_notes: notes,
@@ -504,7 +530,10 @@ Tim Zona English siap membantu! 🚀`;
         try {
           const response = await fetch(`${API_BASE}/affiliate/lead/${leadId}`, {
             method: "DELETE",
-            headers: { "Content-Type": "application/json" },
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
             body: JSON.stringify({ deleted_by: "admin" }),
           });
 
@@ -554,7 +583,10 @@ Tim Zona English siap membantu! 🚀`;
             `${API_BASE}/affiliate/restore/${leadId}`,
             {
               method: "PUT",
-              headers: { "Content-Type": "application/json" },
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`,
+              },
             }
           );
 
@@ -610,7 +642,10 @@ Tim Zona English siap membantu! 🚀`;
                 `${API_BASE}/affiliate/permanent-delete/${leadId}`,
                 {
                   method: "DELETE",
-                  headers: { "Content-Type": "application/json" },
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                  },
                 }
               );
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import AdminLayout from "../../components/layout/AdminLayout";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   Plus,
   Edit,
@@ -31,6 +32,7 @@ interface Program {
 }
 
 const Programs = () => {
+  const { token } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [programs, setPrograms] = useState<Program[]>([]);
@@ -118,6 +120,9 @@ const Programs = () => {
         try {
           const res = await fetch(`${API_BASE}/programs/${id}`, {
             method: "DELETE",
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
           });
 
           if (res.ok) {

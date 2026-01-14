@@ -10,10 +10,25 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
+import { authenticateToken } from "./auth.js";
+import rateLimiterMonitor from "../utils/rate-limiter-monitor.js";
 
 const router = express.Router();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+/**
+ * Middleware to check if user is admin
+ */
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== "admin" && req.user.role !== "super_admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Akses ditolak. Hanya admin yang dapat mengakses fitur ini",
+    });
+  }
+  next();
+};
 
 // =====================================================
 // MULTER CONFIGURATION FOR IMAGE UPLOADS
@@ -80,8 +95,68 @@ function toMySQLDateTime(isoString) {
   if (!isoString) return null;
   const date = new Date(isoString);
   if (isNaN(date.getTime())) return null;
-  return date.toISOString().slice(0, 19).replace('T', ' ');
+  return date.toISOString().slice(0, 19).replace("T", " ");
 }
+
+// =====================================================
+// RATE LIMITING FOR COMMENTS
+// Prevents spam comments (3 comments per minute per IP)
+// =====================================================
+const commentAttempts = new Map(); // IP -> { count, firstAttempt }
+const COMMENT_MAX_ATTEMPTS = 3; // 3 comments per minute
+const COMMENT_WINDOW = 60 * 1000; // 1 minute window
+
+// Cleanup old entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, data] of commentAttempts.entries()) {
+    if (now - data.firstAttempt > COMMENT_WINDOW) {
+      commentAttempts.delete(ip);
+    }
+  }
+}, 5 * 60 * 1000);
+
+// Rate limiter middleware for comments
+const commentRateLimiter = (req, res, next) => {
+  const clientIp =
+    req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+  const now = Date.now();
+
+  const attempts = commentAttempts.get(clientIp);
+
+  if (attempts) {
+    const timeSinceFirst = now - attempts.firstAttempt;
+
+    // Reset window if expired
+    if (timeSinceFirst > COMMENT_WINDOW) {
+      commentAttempts.set(clientIp, { count: 1, firstAttempt: now });
+      return next();
+    }
+
+    // Check if over limit
+    if (attempts.count >= COMMENT_MAX_ATTEMPTS) {
+      const remainingSeconds = Math.ceil(
+        (COMMENT_WINDOW - timeSinceFirst) / 1000
+      );
+
+      // Log rate limit hit
+      rateLimiterMonitor.logRateLimitHit(clientIp, req.path, "article_comment");
+
+      return res.status(429).json({
+        success: false,
+        message: `Terlalu banyak komentar. Coba lagi dalam ${remainingSeconds} detik.`,
+        retryAfter: remainingSeconds,
+      });
+    }
+
+    // Increment count
+    attempts.count++;
+  } else {
+    commentAttempts.set(clientIp, { count: 1, firstAttempt: now });
+  }
+
+  next();
+};
 
 // =====================================================
 // PUBLIC ROUTES (No authentication required)
@@ -376,7 +451,7 @@ router.post("/:id/like", async (req, res) => {
  * POST /api/articles/:id/comment
  * Add comment to article
  */
-router.post("/:id/comment", async (req, res) => {
+router.post("/:id/comment", commentRateLimiter, async (req, res) => {
   try {
     const { id } = req.params;
     const { user_name, user_email, comment } = req.body;
@@ -460,7 +535,7 @@ router.get("/:id/user-reaction", async (req, res) => {
  * GET /api/articles/admin/all
  * Get all articles (admin view - includes drafts, archived, etc.)
  */
-router.get("/admin/all", async (req, res) => {
+router.get("/admin/all", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const [articles] = await db.query(
       `
@@ -498,11 +573,15 @@ router.get("/admin/all", async (req, res) => {
  * GET /api/articles/admin/comments
  * Get all comments (admin view)
  */
-router.get("/admin/comments", async (req, res) => {
-  try {
-    const { status, articleId } = req.query;
+router.get(
+  "/admin/comments",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { status, articleId } = req.query;
 
-    let query = `
+      let query = `
       SELECT 
         c.*,
         a.title as article_title,
@@ -512,74 +591,85 @@ router.get("/admin/comments", async (req, res) => {
       WHERE c.status != 'Deleted'
     `;
 
-    const params = [];
+      const params = [];
 
-    if (status) {
-      query += " AND c.status = ?";
-      params.push(status);
+      if (status) {
+        query += " AND c.status = ?";
+        params.push(status);
+      }
+
+      if (articleId) {
+        query += " AND c.article_id = ?";
+        params.push(articleId);
+      }
+
+      query += " ORDER BY c.created_at DESC";
+
+      const [comments] = await db.query(query, params);
+
+      res.json({ success: true, data: comments });
+    } catch (error) {
+      console.error("Error fetching comments:", error);
+      res.status(500).json({ success: false, message: "Server error" });
     }
-
-    if (articleId) {
-      query += " AND c.article_id = ?";
-      params.push(articleId);
-    }
-
-    query += " ORDER BY c.created_at DESC";
-
-    const [comments] = await db.query(query, params);
-
-    res.json({ success: true, data: comments });
-  } catch (error) {
-    console.error("Error fetching comments:", error);
-    res.status(500).json({ success: false, message: "Server error" });
   }
-});
+);
 
 /**
  * PUT /api/articles/admin/comments/:id/approve
- * Approve comment
+ * Approve comment (ADMIN ONLY)
  */
-router.put("/admin/comments/:id/approve", async (req, res) => {
-  try {
-    const { id } = req.params;
+router.put(
+  "/admin/comments/:id/approve",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
 
-    await db.query(
-      "UPDATE article_comments SET status = 'Approved' WHERE id = ?",
-      [id]
-    );
+      await db.query(
+        "UPDATE article_comments SET status = 'Approved' WHERE id = ?",
+        [id]
+      );
 
-    res.json({ success: true, message: "Comment approved" });
-  } catch (error) {
-    console.error("Error approving comment:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+      res.json({ success: true, message: "Comment approved" });
+    } catch (error) {
+      console.error("Error approving comment:", error);
+      res.status(500).json({ success: false, message: "Server error" });
+    }
   }
-});
+);
 
 /**
  * DELETE /api/articles/admin/comments/:id
- * Delete comment
+ * Delete comment (ADMIN ONLY)
  */
-router.delete("/admin/comments/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
+router.delete(
+  "/admin/comments/:id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
 
-    await db.query(
-      "UPDATE article_comments SET status = 'Deleted' WHERE id = ?",
-      [id]
-    );
+      await db.query(
+        "UPDATE article_comments SET status = 'Deleted' WHERE id = ?",
+        [id]
+      );
 
-    res.json({ success: true, message: "Comment deleted" });
-  } catch (error) {
-    console.error("Error deleting comment:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+      res.json({ success: true, message: "Comment deleted" });
+    } catch (error) {
+      console.error("Error deleting comment:", error);
+      res.status(500).json({ success: false, message: "Server error" });
+    }
   }
-});
+);
 
 /**
  * GET /api/articles/admin/:id
  * Get single article (admin view)
  */
-router.get("/admin/:id", async (req, res) => {
+router.get("/admin/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -627,191 +717,205 @@ router.get("/admin/:id", async (req, res) => {
 
 /**
  * POST /api/articles
- * Create new article
+ * Create new article (ADMIN ONLY)
  */
-router.post("/", upload.single("featuredImage"), async (req, res) => {
-  const connection = await db.getConnection();
+router.post(
+  "/",
+  authenticateToken,
+  requireAdmin,
+  upload.single("featuredImage"),
+  async (req, res) => {
+    const connection = await db.getConnection();
 
-  try {
-    await connection.beginTransaction();
+    try {
+      await connection.beginTransaction();
 
-    const {
-      title,
-      excerpt,
-      content,
-      author = "Admin",
-      category,
-      status = "Draft",
-      seo_title,
-      seo_description,
-      published_at,
-      hashtags, // JSON string array
-    } = req.body;
+      const {
+        title,
+        excerpt,
+        content,
+        author = "Admin",
+        category,
+        status = "Draft",
+        seo_title,
+        seo_description,
+        published_at,
+        hashtags, // JSON string array
+      } = req.body;
 
-    // Generate slug
-    let slug = generateSlug(title);
+      // Generate slug
+      let slug = generateSlug(title);
 
-    // Check if slug exists and generate unique slug
-    const [existingSlugs] = await connection.query(
-      "SELECT slug FROM articles WHERE slug LIKE ?",
-      [`${slug}%`]
-    );
+      // Check if slug exists and generate unique slug
+      const [existingSlugs] = await connection.query(
+        "SELECT slug FROM articles WHERE slug LIKE ?",
+        [`${slug}%`]
+      );
 
-    if (existingSlugs.length > 0) {
-      // Find the highest number suffix
-      const slugNumbers = existingSlugs
-        .map((row) => {
-          const match = row.slug.match(new RegExp(`^${slug}-(\\d+)$`));
-          return match ? parseInt(match[1]) : 0;
-        })
-        .filter((num) => num > 0);
+      if (existingSlugs.length > 0) {
+        // Find the highest number suffix
+        const slugNumbers = existingSlugs
+          .map((row) => {
+            const match = row.slug.match(new RegExp(`^${slug}-(\\d+)$`));
+            return match ? parseInt(match[1]) : 0;
+          })
+          .filter((num) => num > 0);
 
-      const maxNumber = slugNumbers.length > 0 ? Math.max(...slugNumbers) : 0;
+        const maxNumber = slugNumbers.length > 0 ? Math.max(...slugNumbers) : 0;
 
-      // Check if base slug exists
-      const baseSlugExists = existingSlugs.some((row) => row.slug === slug);
+        // Check if base slug exists
+        const baseSlugExists = existingSlugs.some((row) => row.slug === slug);
 
-      if (baseSlugExists) {
-        slug = `${slug}-${maxNumber + 1}`;
-        console.log(
-          `Slug already exists, using: ${slug} (original: ${generateSlug(
-            title
-          )})`
-        );
+        if (baseSlugExists) {
+          slug = `${slug}-${maxNumber + 1}`;
+          console.log(
+            `Slug already exists, using: ${slug} (original: ${generateSlug(
+              title
+            )})`
+          );
+        }
       }
-    }
 
-    // Handle featured image
-    const featuredImage = req.file
-      ? `/uploads/articles/${req.file.filename}`
-      : null;
+      // Handle featured image
+      const featuredImage = req.file
+        ? `/uploads/articles/${req.file.filename}`
+        : null;
 
-    // Insert article
-    const [result] = await connection.query(
-      `
+      // Insert article
+      const [result] = await connection.query(
+        `
       INSERT INTO articles (
         title, slug, excerpt, content, author, category, status,
         seo_title, seo_description, featured_image, published_at
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
-      [
+        [
+          title,
+          slug,
+          excerpt,
+          content,
+          author,
+          category,
+          status,
+          seo_title || title,
+          seo_description || excerpt,
+          featuredImage,
+          status === "Published"
+            ? toMySQLDateTime(published_at) ||
+              toMySQLDateTime(new Date().toISOString())
+            : null,
+        ]
+      );
+
+      const articleId = result.insertId;
+
+      // Insert hashtags
+      if (hashtags) {
+        const hashtagArray = JSON.parse(hashtags);
+        for (const tag of hashtagArray) {
+          await connection.query(
+            "INSERT INTO article_hashtags (article_id, hashtag) VALUES (?, ?)",
+            [articleId, tag.toLowerCase().trim()]
+          );
+        }
+      }
+
+      await connection.commit();
+
+      res.json({
+        success: true,
+        message: "Article created successfully",
+        data: { id: articleId, slug },
+      });
+    } catch (error) {
+      await connection.rollback();
+      console.error("Error creating article:", error);
+      console.error("Error details:", {
+        message: error.message,
+        code: error.code,
+        sqlMessage: error.sqlMessage,
+      });
+
+      // Delete uploaded file if error occurs
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+
+      res.status(500).json({
+        success: false,
+        message: error.sqlMessage || error.message || "Server error",
+      });
+    } finally {
+      connection.release();
+    }
+  }
+);
+
+/**
+ * PUT /api/articles/:id
+ * Update article (ADMIN ONLY)
+ */
+router.put(
+  "/:id",
+  authenticateToken,
+  requireAdmin,
+  upload.single("featuredImage"),
+  async (req, res) => {
+    const connection = await db.getConnection();
+
+    try {
+      await connection.beginTransaction();
+
+      const { id } = req.params;
+      const {
         title,
-        slug,
         excerpt,
         content,
         author,
         category,
         status,
-        seo_title || title,
-        seo_description || excerpt,
-        featuredImage,
-        status === "Published" ? toMySQLDateTime(published_at) || toMySQLDateTime(new Date().toISOString()) : null,
-      ]
-    );
+        seo_title,
+        seo_description,
+        published_at,
+        hashtags,
+      } = req.body;
 
-    const articleId = result.insertId;
-
-    // Insert hashtags
-    if (hashtags) {
-      const hashtagArray = JSON.parse(hashtags);
-      for (const tag of hashtagArray) {
-        await connection.query(
-          "INSERT INTO article_hashtags (article_id, hashtag) VALUES (?, ?)",
-          [articleId, tag.toLowerCase().trim()]
-        );
-      }
-    }
-
-    await connection.commit();
-
-    res.json({
-      success: true,
-      message: "Article created successfully",
-      data: { id: articleId, slug },
-    });
-  } catch (error) {
-    await connection.rollback();
-    console.error("Error creating article:", error);
-    console.error("Error details:", {
-      message: error.message,
-      code: error.code,
-      sqlMessage: error.sqlMessage,
-    });
-
-    // Delete uploaded file if error occurs
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-    }
-
-    res.status(500).json({
-      success: false,
-      message: error.sqlMessage || error.message || "Server error",
-    });
-  } finally {
-    connection.release();
-  }
-});
-
-/**
- * PUT /api/articles/:id
- * Update article
- */
-router.put("/:id", upload.single("featuredImage"), async (req, res) => {
-  const connection = await db.getConnection();
-
-  try {
-    await connection.beginTransaction();
-
-    const { id } = req.params;
-    const {
-      title,
-      excerpt,
-      content,
-      author,
-      category,
-      status,
-      seo_title,
-      seo_description,
-      published_at,
-      hashtags,
-    } = req.body;
-
-    // Get existing article
-    const [existing] = await connection.query(
-      `SELECT id, slug, title, featured_image, status 
+      // Get existing article
+      const [existing] = await connection.query(
+        `SELECT id, slug, title, featured_image, status 
        FROM articles WHERE id = ? AND deleted_at IS NULL`,
-      [id]
-    );
+        [id]
+      );
 
-    if (existing.length === 0) {
-      await connection.rollback();
-      return res
-        .status(404)
-        .json({ success: false, message: "Article not found" });
-    }
-
-    const oldArticle = existing[0];
-
-    // Generate new slug if title changed
-    const slug = title ? generateSlug(title) : oldArticle.slug;
-
-    // Handle featured image
-    let featuredImage = oldArticle.featured_image;
-
-    if (req.file) {
-      // Delete old image if exists
-      if (featuredImage) {
-        const imagePath = path.join(__dirname, "..", featuredImage);
-        if (fs.existsSync(imagePath)) {
-          fs.unlinkSync(imagePath);
-        }
+      if (existing.length === 0) {
+        await connection.rollback();
+        return res
+          .status(404)
+          .json({ success: false, message: "Article not found" });
       }
-      featuredImage = `/uploads/articles/${req.file.filename}`;
-    }
 
-    // Update article
-    await connection.query(
-      `
+      const oldArticle = existing[0];
+
+      // Generate new slug if title changed
+      const slug = title ? generateSlug(title) : oldArticle.slug;
+
+      // Handle featured image
+      let featuredImage = oldArticle.featured_image;
+
+      if (req.file) {
+        // Delete old image if exists
+        if (featuredImage) {
+          const imagePath = path.join(__dirname, "..", featuredImage);
+          if (fs.existsSync(imagePath)) {
+            fs.unlinkSync(imagePath);
+          }
+        }
+        featuredImage = `/uploads/articles/${req.file.filename}`;
+      }
+
+      // Update article
+      await connection.query(
+        `
       UPDATE articles SET
         title = COALESCE(?, title),
         slug = ?,
@@ -829,72 +933,73 @@ router.put("/:id", upload.single("featuredImage"), async (req, res) => {
         END
       WHERE id = ?
     `,
-      [
-        title,
-        slug,
-        excerpt,
-        content,
-        author,
-        category,
-        status,
-        seo_title,
-        seo_description,
-        featuredImage,
-        status,
-        toMySQLDateTime(published_at),
-        id,
-      ]
-    );
-
-    // Update hashtags
-    if (hashtags) {
-      await connection.query(
-        "DELETE FROM article_hashtags WHERE article_id = ?",
-        [id]
+        [
+          title,
+          slug,
+          excerpt,
+          content,
+          author,
+          category,
+          status,
+          seo_title,
+          seo_description,
+          featuredImage,
+          status,
+          toMySQLDateTime(published_at),
+          id,
+        ]
       );
 
-      const hashtagArray = JSON.parse(hashtags);
-      for (const tag of hashtagArray) {
+      // Update hashtags
+      if (hashtags) {
         await connection.query(
-          "INSERT INTO article_hashtags (article_id, hashtag) VALUES (?, ?)",
-          [id, tag.toLowerCase().trim()]
+          "DELETE FROM article_hashtags WHERE article_id = ?",
+          [id]
         );
+
+        const hashtagArray = JSON.parse(hashtags);
+        for (const tag of hashtagArray) {
+          await connection.query(
+            "INSERT INTO article_hashtags (article_id, hashtag) VALUES (?, ?)",
+            [id, tag.toLowerCase().trim()]
+          );
+        }
       }
+
+      await connection.commit();
+
+      res.json({
+        success: true,
+        message: "Article updated successfully",
+      });
+    } catch (error) {
+      await connection.rollback();
+      console.error("Error updating article:", error);
+      console.error("Error details:", {
+        message: error.message,
+        code: error.code,
+        sqlMessage: error.sqlMessage,
+      });
+
+      if (req.file) {
+        fs.unlinkSync(req.file.path);
+      }
+
+      res.status(500).json({
+        success: false,
+        message: error.sqlMessage || error.message || "Server error",
+      });
+    } finally {
+      connection.release();
     }
-
-    await connection.commit();
-
-    res.json({
-      success: true,
-      message: "Article updated successfully",
-    });
-  } catch (error) {
-    await connection.rollback();
-    console.error("Error updating article:", error);
-    console.error("Error details:", {
-      message: error.message,
-      code: error.code,
-      sqlMessage: error.sqlMessage,
-    });
-
-    if (req.file) {
-      fs.unlinkSync(req.file.path);
-    }
-
-    res.status(500).json({
-      success: false,
-      message: error.sqlMessage || error.message || "Server error",
-    });
-  } finally {
-    connection.release();
   }
-});
+);
 
 /**
  * DELETE /api/articles/:id
- * Soft delete article
+ * Soft delete article (ADMIN ONLY)
  */
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -912,10 +1017,12 @@ router.delete("/:id", async (req, res) => {
 
 /**
  * POST /api/articles/:id/upload-images
- * Upload additional article images
+ * Upload additional article images (ADMIN ONLY)
  */
 router.post(
   "/:id/upload-images",
+  authenticateToken,
+  requireAdmin,
   upload.array("images", 10),
   async (req, res) => {
     try {
@@ -1013,204 +1120,224 @@ router.get("/hashtags", async (req, res) => {
  * GET /api/articles/categories/admin/all
  * Get all categories for admin panel (including deleted)
  */
-router.get("/categories/admin/all", async (req, res) => {
-  try {
-    const [categories] = await db.query(
-      `SELECT 
+router.get(
+  "/categories/admin/all",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const [categories] = await db.query(
+        `SELECT 
         id, name, slug, description, created_at, updated_at, deleted_at,
         (SELECT COUNT(*) FROM articles WHERE category = article_categories.name AND deleted_at IS NULL) as article_count
        FROM article_categories
        WHERE deleted_at IS NULL
        ORDER BY name ASC`
-    );
+      );
 
-    res.json({ success: true, data: categories });
-  } catch (error) {
-    console.error("Error fetching categories:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+      res.json({ success: true, data: categories });
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+      res.status(500).json({ success: false, message: "Server error" });
+    }
   }
-});
+);
 
 /**
  * POST /api/articles/categories
- * Create new category
+ * Create new category (ADMIN ONLY)
  */
-router.post("/categories", async (req, res) => {
-  try {
-    const { name, description } = req.body;
+router.post(
+  "/categories",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { name, description } = req.body;
 
-    if (!name || name.trim() === "") {
-      return res.status(400).json({
-        success: false,
-        message: "Category name is required",
+      if (!name || name.trim() === "") {
+        return res.status(400).json({
+          success: false,
+          message: "Category name is required",
+        });
+      }
+
+      // Generate slug from name
+      const slug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .trim();
+
+      // Check if category already exists
+      const [existing] = await db.query(
+        "SELECT id FROM article_categories WHERE slug = ? AND deleted_at IS NULL",
+        [slug]
+      );
+
+      if (existing.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Category already exists",
+        });
+      }
+
+      // Insert new category
+      const [result] = await db.query(
+        "INSERT INTO article_categories (name, slug, description) VALUES (?, ?, ?)",
+        [name.trim(), slug, description || null]
+      );
+
+      res.json({
+        success: true,
+        message: "Category created successfully",
+        data: {
+          id: result.insertId,
+          name: name.trim(),
+          slug,
+          description: description || null,
+        },
       });
+    } catch (error) {
+      console.error("Error creating category:", error);
+      res.status(500).json({ success: false, message: "Server error" });
     }
-
-    // Generate slug from name
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .trim();
-
-    // Check if category already exists
-    const [existing] = await db.query(
-      "SELECT id FROM article_categories WHERE slug = ? AND deleted_at IS NULL",
-      [slug]
-    );
-
-    if (existing.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Category already exists",
-      });
-    }
-
-    // Insert new category
-    const [result] = await db.query(
-      "INSERT INTO article_categories (name, slug, description) VALUES (?, ?, ?)",
-      [name.trim(), slug, description || null]
-    );
-
-    res.json({
-      success: true,
-      message: "Category created successfully",
-      data: {
-        id: result.insertId,
-        name: name.trim(),
-        slug,
-        description: description || null,
-      },
-    });
-  } catch (error) {
-    console.error("Error creating category:", error);
-    res.status(500).json({ success: false, message: "Server error" });
   }
-});
+);
 
 /**
  * PUT /api/articles/categories/:id
- * Update category
+ * Update category (ADMIN ONLY)
  */
-router.put("/categories/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { name, description } = req.body;
+router.put(
+  "/categories/:id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { name, description } = req.body;
 
-    if (!name || name.trim() === "") {
-      return res.status(400).json({
-        success: false,
-        message: "Category name is required",
+      if (!name || name.trim() === "") {
+        return res.status(400).json({
+          success: false,
+          message: "Category name is required",
+        });
+      }
+
+      // Check if category exists
+      const [existing] = await db.query(
+        "SELECT id FROM article_categories WHERE id = ? AND deleted_at IS NULL",
+        [id]
+      );
+
+      if (existing.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Category not found",
+        });
+      }
+
+      // Generate new slug
+      const slug = name
+        .toLowerCase()
+        .replace(/[^a-z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-")
+        .trim();
+
+      // Check if new slug conflicts with another category
+      const [conflict] = await db.query(
+        "SELECT id FROM article_categories WHERE slug = ? AND id != ? AND deleted_at IS NULL",
+        [slug, id]
+      );
+
+      if (conflict.length > 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Category name already exists",
+        });
+      }
+
+      // Update category
+      await db.query(
+        "UPDATE article_categories SET name = ?, slug = ?, description = ? WHERE id = ?",
+        [name.trim(), slug, description || null, id]
+      );
+
+      res.json({
+        success: true,
+        message: "Category updated successfully",
+        data: {
+          id: parseInt(id),
+          name: name.trim(),
+          slug,
+          description: description || null,
+        },
       });
+    } catch (error) {
+      console.error("Error updating category:", error);
+      res.status(500).json({ success: false, message: "Server error" });
     }
-
-    // Check if category exists
-    const [existing] = await db.query(
-      "SELECT id FROM article_categories WHERE id = ? AND deleted_at IS NULL",
-      [id]
-    );
-
-    if (existing.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
-      });
-    }
-
-    // Generate new slug
-    const slug = name
-      .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, "")
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .trim();
-
-    // Check if new slug conflicts with another category
-    const [conflict] = await db.query(
-      "SELECT id FROM article_categories WHERE slug = ? AND id != ? AND deleted_at IS NULL",
-      [slug, id]
-    );
-
-    if (conflict.length > 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Category name already exists",
-      });
-    }
-
-    // Update category
-    await db.query(
-      "UPDATE article_categories SET name = ?, slug = ?, description = ? WHERE id = ?",
-      [name.trim(), slug, description || null, id]
-    );
-
-    res.json({
-      success: true,
-      message: "Category updated successfully",
-      data: {
-        id: parseInt(id),
-        name: name.trim(),
-        slug,
-        description: description || null,
-      },
-    });
-  } catch (error) {
-    console.error("Error updating category:", error);
-    res.status(500).json({ success: false, message: "Server error" });
   }
-});
+);
 
 /**
  * DELETE /api/articles/categories/:id
- * Soft delete category
+ * Soft delete category (ADMIN ONLY)
  */
-router.delete("/categories/:id", async (req, res) => {
-  try {
-    const { id } = req.params;
+router.delete(
+  "/categories/:id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { id } = req.params;
 
-    // Check if category exists
-    const [existing] = await db.query(
-      "SELECT name FROM article_categories WHERE id = ? AND deleted_at IS NULL",
-      [id]
-    );
+      // Check if category exists
+      const [existing] = await db.query(
+        "SELECT name FROM article_categories WHERE id = ? AND deleted_at IS NULL",
+        [id]
+      );
 
-    if (existing.length === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Category not found",
+      if (existing.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Category not found",
+        });
+      }
+
+      const categoryName = existing[0].name;
+
+      // Check if any articles are using this category
+      const [articles] = await db.query(
+        "SELECT COUNT(*) as count FROM articles WHERE category = ? AND deleted_at IS NULL",
+        [categoryName]
+      );
+
+      if (articles[0].count > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot delete category. ${articles[0].count} article(s) are using this category.`,
+        });
+      }
+
+      // Soft delete category
+      await db.query(
+        "UPDATE article_categories SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [id]
+      );
+
+      res.json({
+        success: true,
+        message: "Category deleted successfully",
       });
+    } catch (error) {
+      console.error("Error deleting category:", error);
+      res.status(500).json({ success: false, message: "Server error" });
     }
-
-    const categoryName = existing[0].name;
-
-    // Check if any articles are using this category
-    const [articles] = await db.query(
-      "SELECT COUNT(*) as count FROM articles WHERE category = ? AND deleted_at IS NULL",
-      [categoryName]
-    );
-
-    if (articles[0].count > 0) {
-      return res.status(400).json({
-        success: false,
-        message: `Cannot delete category. ${articles[0].count} article(s) are using this category.`,
-      });
-    }
-
-    // Soft delete category
-    await db.query(
-      "UPDATE article_categories SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?",
-      [id]
-    );
-
-    res.json({
-      success: true,
-      message: "Category deleted successfully",
-    });
-  } catch (error) {
-    console.error("Error deleting category:", error);
-    res.status(500).json({ success: false, message: "Server error" });
   }
-});
+);
 
 export default router;

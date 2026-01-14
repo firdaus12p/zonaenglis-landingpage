@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, Badge, RichTextEditor } from "../../components";
 import {
@@ -60,6 +61,7 @@ interface Article {
 const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   setCurrentPage,
 }) => {
+  const { token } = useAuth();
   const [articles, setArticles] = useState<Article[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -98,7 +100,12 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(`${API_BASE}/articles/categories/admin/all`);
+      const response = await fetch(
+        `${API_BASE}/articles/categories/admin/all`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
       if (!response.ok) throw new Error("Failed to fetch categories");
       const result = await response.json();
       // Extract category names from the result
@@ -123,7 +130,9 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const fetchArticles = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`${API_BASE}/articles/admin/all`);
+      const response = await fetch(`${API_BASE}/articles/admin/all`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (!response.ok) throw new Error("Failed to fetch articles");
       const result = await response.json();
       setArticles(result.data || []);
@@ -186,7 +195,9 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
   const fetchArticleHashtags = async (articleId: number) => {
     try {
-      const response = await fetch(`${API_BASE}/articles/admin/${articleId}`);
+      const response = await fetch(`${API_BASE}/articles/admin/${articleId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (response.ok) {
         const result = await response.json();
         const article = result.data;
@@ -268,6 +279,7 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
       const response = await fetch(url, {
         method,
+        headers: { Authorization: `Bearer ${token}` },
         body: submitData,
       });
 
@@ -312,6 +324,7 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     try {
       const response = await fetch(`${API_BASE}/articles/${id}`, {
         method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) throw new Error("Failed to delete article");

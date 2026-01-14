@@ -11,6 +11,7 @@ interface User {
   email: string;
   name: string;
   role: string;
+  must_change_password?: boolean;
 }
 
 interface AuthContextType {
@@ -20,6 +21,8 @@ interface AuthContextType {
   logout: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
+  mustChangePassword: boolean;
+  clearMustChangePassword: () => void;
 }
 
 import { API_BASE } from "../config/api";
@@ -119,6 +122,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const clearMustChangePassword = () => {
+    if (user) {
+      const updatedUser = { ...user, must_change_password: false };
+      setUser(updatedUser);
+      localStorage.setItem(USER_KEY, JSON.stringify(updatedUser));
+    }
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -126,6 +137,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     logout,
     isAuthenticated: !!token && !!user,
     isLoading,
+    mustChangePassword: Boolean(user?.must_change_password),
+    clearMustChangePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

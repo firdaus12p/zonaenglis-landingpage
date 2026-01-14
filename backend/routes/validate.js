@@ -1,11 +1,72 @@
 // Validation Routes (for affiliate code validation in PromoHub)
 import express from "express";
 import db from "../db/connection.js";
+import rateLimiterMonitor from "../utils/rate-limiter-monitor.js";
 
 const router = express.Router();
 
+// =====================================================
+// RATE LIMITING FOR CODE VALIDATION
+// Prevents brute-force attacks on promo/affiliate codes
+// =====================================================
+const codeValidationAttempts = new Map(); // IP -> { count, firstAttempt }
+const CODE_VALIDATION_MAX_ATTEMPTS = 10; // 10 attempts per minute
+const CODE_VALIDATION_WINDOW = 60 * 1000; // 1 minute window
+
+// Cleanup old entries every 5 minutes
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, data] of codeValidationAttempts.entries()) {
+    if (now - data.firstAttempt > CODE_VALIDATION_WINDOW) {
+      codeValidationAttempts.delete(ip);
+    }
+  }
+}, 5 * 60 * 1000);
+
+// Rate limiter middleware for code validation
+const codeValidationRateLimiter = (req, res, next) => {
+  const clientIp =
+    req.ip || req.headers["x-forwarded-for"] || req.connection.remoteAddress;
+  const now = Date.now();
+
+  const attempts = codeValidationAttempts.get(clientIp);
+
+  if (attempts) {
+    const timeSinceFirst = now - attempts.firstAttempt;
+
+    // Reset window if expired
+    if (timeSinceFirst > CODE_VALIDATION_WINDOW) {
+      codeValidationAttempts.set(clientIp, { count: 1, firstAttempt: now });
+      return next();
+    }
+
+    // Check if over limit
+    if (attempts.count >= CODE_VALIDATION_MAX_ATTEMPTS) {
+      const remainingSeconds = Math.ceil(
+        (CODE_VALIDATION_WINDOW - timeSinceFirst) / 1000
+      );
+
+      // Log rate limit hit
+      rateLimiterMonitor.logRateLimitHit(clientIp, req.path, "code_validation");
+
+      return res.status(429).json({
+        valid: false,
+        error: `Terlalu banyak percobaan. Coba lagi dalam ${remainingSeconds} detik.`,
+        retryAfter: remainingSeconds,
+      });
+    }
+
+    // Increment count
+    attempts.count++;
+  } else {
+    codeValidationAttempts.set(clientIp, { count: 1, firstAttempt: now });
+  }
+
+  next();
+};
+
 // POST /api/validate/code - Universal code validation (promo codes + affiliate codes)
-router.post("/code", async (req, res) => {
+router.post("/code", codeValidationRateLimiter, async (req, res) => {
   const { code, purchaseAmount } = req.body;
 
   if (!code) {

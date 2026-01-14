@@ -2,11 +2,34 @@ import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import db from "../db/connection.js";
+import { createLogger } from "../utils/logger.js";
 
 const router = express.Router();
+const logger = createLogger("AUTH");
 
-// JWT Secret (in production, use environment variable)
-const JWT_SECRET = process.env.JWT_SECRET || "zona-english-secret-key-2025";
+// JWT Secret - MUST be set in production via environment variable
+const NODE_ENV = process.env.NODE_ENV || "development";
+const JWT_SECRET = process.env.JWT_SECRET;
+
+// Validate JWT_SECRET in production
+if (NODE_ENV === "production" && !JWT_SECRET) {
+  console.error("❌ CRITICAL: JWT_SECRET environment variable is not set!");
+  console.error("   This is required for production security.");
+  console.error(
+    "   Please set JWT_SECRET in your .env file with a strong random value."
+  );
+  process.exit(1);
+}
+
+// Use fallback only in development (with warning)
+const EFFECTIVE_JWT_SECRET =
+  JWT_SECRET ||
+  (() => {
+    console.warn("⚠️  WARNING: Using default JWT_SECRET in development mode.");
+    console.warn("   Set JWT_SECRET in .env for production deployment!");
+    return "zona-english-dev-secret-DO-NOT-USE-IN-PRODUCTION";
+  })();
+
 const JWT_EXPIRES_IN = "7d"; // Token valid for 7 days
 
 // Simple rate limiting: Track failed login attempts
@@ -70,7 +93,7 @@ router.post("/login", async (req, res) => {
 
     // Find user by email (select only needed fields)
     const [users] = await db.query(
-      "SELECT id, email, password_hash, name, role, is_active FROM admin_users WHERE email = ? AND is_active = true",
+      "SELECT id, email, password_hash, name, role, is_active, must_change_password FROM admin_users WHERE email = ? AND is_active = true",
       [email]
     );
 
@@ -83,6 +106,11 @@ router.post("/login", async (req, res) => {
       loginAttempts.set(clientIp, {
         count: current.count + 1,
         lastAttempt: Date.now(),
+      });
+
+      logger.logSecurity("Failed login - user not found", {
+        email,
+        ip: clientIp,
       });
 
       return res.status(401).json({
@@ -107,6 +135,12 @@ router.post("/login", async (req, res) => {
         lastAttempt: Date.now(),
       });
 
+      logger.logSecurity("Failed login - wrong password", {
+        email,
+        userId: user.id,
+        ip: clientIp,
+      });
+
       return res.status(401).json({
         success: false,
         message: "Email atau password salah",
@@ -128,11 +162,18 @@ router.post("/login", async (req, res) => {
         email: user.email,
         role: user.role,
       },
-      JWT_SECRET,
+      EFFECTIVE_JWT_SECRET,
       { expiresIn: JWT_EXPIRES_IN }
     );
 
     // Return success response
+    logger.info("Login successful", {
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      ip: clientIp,
+    });
+
     res.json({
       success: true,
       token,
@@ -141,10 +182,16 @@ router.post("/login", async (req, res) => {
         email: user.email,
         name: user.name,
         role: user.role,
+        must_change_password: Boolean(user.must_change_password),
       },
     });
   } catch (error) {
-    console.error("Error in login:", error);
+    logger.error("Login error", {
+      error: error.message,
+      email,
+      ip: clientIp,
+      stack: error.stack,
+    });
     res.status(500).json({
       success: false,
       message: "Terjadi kesalahan server",
@@ -174,11 +221,11 @@ router.get("/verify", async (req, res) => {
     const token = authHeader.split(" ")[1];
 
     // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, EFFECTIVE_JWT_SECRET);
 
     // Get fresh user data from database
     const [users] = await db.query(
-      "SELECT id, email, name, role, is_active FROM admin_users WHERE id = ?",
+      "SELECT id, email, name, role, is_active, must_change_password FROM admin_users WHERE id = ?",
       [decoded.id]
     );
 
@@ -198,6 +245,7 @@ router.get("/verify", async (req, res) => {
         email: user.email,
         name: user.name,
         role: user.role,
+        must_change_password: Boolean(user.must_change_password),
       },
     });
   } catch (error) {
@@ -254,7 +302,7 @@ export const authenticateToken = async (req, res, next) => {
     }
 
     const token = authHeader.split(" ")[1];
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, EFFECTIVE_JWT_SECRET);
 
     // Attach user info to request
     req.user = decoded;

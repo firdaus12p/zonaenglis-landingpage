@@ -1,8 +1,21 @@
 // Ambassador Routes
 import express from "express";
 import db from "../db/connection.js";
+import { authenticateToken } from "./auth.js";
 
 const router = express.Router();
+
+/**
+ * Middleware to check if user is admin
+ */
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== "admin" && req.user.role !== "super_admin") {
+    return res.status(403).json({
+      error: "Akses ditolak. Hanya admin yang dapat mengakses fitur ini",
+    });
+  }
+  next();
+};
 
 // GET /api/ambassadors - Get all active ambassadors
 router.get("/", async (req, res) => {
@@ -39,8 +52,8 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// POST /api/ambassadors - Create new ambassador
-router.post("/", async (req, res) => {
+// POST /api/ambassadors - Create new ambassador (ADMIN ONLY)
+router.post("/", authenticateToken, requireAdmin, async (req, res) => {
   const {
     name,
     role,
@@ -110,8 +123,8 @@ router.post("/", async (req, res) => {
   }
 });
 
-// PUT /api/ambassadors/:id - Update ambassador
-router.put("/:id", async (req, res) => {
+// PUT /api/ambassadors/:id - Update ambassador (ADMIN ONLY)
+router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
   const {
     name,
     role,
@@ -179,8 +192,8 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-// DELETE /api/ambassadors/:id - Delete ambassador (soft delete)
-router.delete("/:id", async (req, res) => {
+// DELETE /api/ambassadors/:id - Delete ambassador (soft delete) (ADMIN ONLY)
+router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const [result] = await db.query(
       "UPDATE ambassadors SET is_active = 0 WHERE id = ?",

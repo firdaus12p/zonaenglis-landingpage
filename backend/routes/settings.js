@@ -1,8 +1,22 @@
 // Settings Routes - Admin Configuration Management
 import express from "express";
 import db from "../db/connection.js";
+import { authenticateToken } from "./auth.js";
 
 const router = express.Router();
+
+/**
+ * Middleware to check if user is admin
+ */
+const requireAdmin = (req, res, next) => {
+  if (req.user.role !== "admin" && req.user.role !== "super_admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Akses ditolak. Hanya admin yang dapat mengakses fitur ini",
+    });
+  }
+  next();
+};
 
 /**
  * GET /api/settings
@@ -92,9 +106,9 @@ router.get("/:key", async (req, res) => {
 
 /**
  * PUT /api/settings/:key
- * Update single setting value
+ * Update single setting value (ADMIN ONLY)
  */
-router.put("/:key", async (req, res) => {
+router.put("/:key", authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { key } = req.params;
     const { value } = req.body;
@@ -172,9 +186,9 @@ router.put("/:key", async (req, res) => {
 
 /**
  * PUT /api/settings/bulk
- * Update multiple settings at once
+ * Update multiple settings at once (ADMIN ONLY)
  */
-router.put("/", async (req, res) => {
+router.put("/", authenticateToken, requireAdmin, async (req, res) => {
   const connection = await db.getConnection();
 
   try {

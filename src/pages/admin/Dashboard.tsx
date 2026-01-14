@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card } from "../../components";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   Users,
   Tag,
@@ -18,6 +19,7 @@ const Dashboard = ({
 }: {
   setCurrentPage: (page: string) => void;
 }) => {
+  const { token } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<
     Array<{
@@ -68,7 +70,7 @@ const Dashboard = ({
   const [activeStudents, setActiveStudents] = useState("0");
   const [completionRate, setCompletionRate] = useState("0");
 
-  // Recent activities from database
+  // Recent activities state
   const [recentActivities, setRecentActivities] = useState<
     Array<{
       id: number;
@@ -79,23 +81,32 @@ const Dashboard = ({
     }>
   >([]);
 
-  useEffect(() => {
-    fetchDashboardStats();
-    fetchAdditionalStats();
-    fetchRecentActivities();
-  }, []);
+  // Cache untuk menghindari duplicate API calls
+  const [cachedAmbassadors, setCachedAmbassadors] = useState<any[] | null>(
+    null
+  );
 
-  const fetchDashboardStats = async () => {
+  // === FUNCTION DEFINITIONS (harus sebelum useEffect) ===
+
+  const fetchAllDashboardData = async () => {
+    if (!token) return;
+    setLoading(true);
     try {
-      setLoading(true);
-
-      // Fetch all data in parallel
+      // Fetch data yang diperlukan dalam satu batch
       const [ambassadorsRes, promosRes, countdownRes, articlesRes] =
         await Promise.all([
-          fetch(`${API_BASE}/ambassadors`),
-          fetch(`${API_BASE}/promos`),
-          fetch(`${API_BASE}/countdown/active`),
-          fetch(`${API_BASE}/articles/admin/all`),
+          fetch(`${API_BASE}/ambassadors`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_BASE}/promos`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_BASE}/countdown/active`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`${API_BASE}/articles/admin/all`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
         ]);
 
       const ambassadors = await ambassadorsRes.json();
@@ -103,6 +114,31 @@ const Dashboard = ({
       const countdown = await countdownRes.json();
       const articlesData = await articlesRes.json();
 
+      // Cache ambassadors untuk digunakan function lain
+      setCachedAmbassadors(Array.isArray(ambassadors) ? ambassadors : []);
+
+      // Process stats
+      processDashboardStats(ambassadors, promos, countdown, articlesData);
+
+      // Fetch additional stats (menggunakan cached ambassadors)
+      await fetchAdditionalStats(ambassadors);
+
+      // Fetch recent activities (menggunakan ALL cached data)
+      fetchRecentActivities(ambassadors, articlesData, countdown, promos);
+    } catch (error) {
+      console.error("Error fetching dashboard data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const processDashboardStats = (
+    ambassadors: any,
+    promos: any,
+    countdown: any,
+    articlesData: any
+  ) => {
+    try {
       // Count ambassadors (active only)
       const ambassadorCount = Array.isArray(ambassadors)
         ? ambassadors.length
@@ -162,18 +198,17 @@ const Dashboard = ({
           color: "purple",
         },
       ]);
-
-      setLoading(false);
     } catch (error) {
-      console.error("Error fetching dashboard stats:", error);
-      setLoading(false);
+      console.error("Error processing dashboard stats:", error);
     }
   };
 
-  const fetchAdditionalStats = async () => {
+  const fetchAdditionalStats = async (ambassadors: any[]) => {
     try {
       // Fetch countdown stats for active students
-      const countdownStatsRes = await fetch(`${API_BASE}/countdown/stats`);
+      const countdownStatsRes = await fetch(`${API_BASE}/countdown/stats`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const countdownStats = await countdownStatsRes.json();
 
       if (countdownStats.success && countdownStats.data) {
@@ -181,10 +216,7 @@ const Dashboard = ({
         setActiveStudents(students.toString());
       }
 
-      // Calculate total revenue from ambassadors
-      const ambassadorsRes = await fetch(`${API_BASE}/ambassadors`);
-      const ambassadors = await ambassadorsRes.json();
-
+      // Calculate total revenue from ambassadors (gunakan parameter, bukan fetch lagi!)
       if (Array.isArray(ambassadors)) {
         const revenue = ambassadors.reduce((sum: number, amb: any) => {
           return sum + (parseFloat(amb.total_earnings) || 0);
@@ -196,9 +228,9 @@ const Dashboard = ({
       }
 
       // Fetch completion rate from affiliate stats
-      const affiliateStatsRes = await fetch(
-        `${API_BASE}/affiliate/stats/all`
-      ).catch(() => null);
+      const affiliateStatsRes = await fetch(`${API_BASE}/affiliate/stats/all`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => null);
 
       if (affiliateStatsRes && affiliateStatsRes.ok) {
         const affiliateStats = await affiliateStatsRes.json();
@@ -218,14 +250,16 @@ const Dashboard = ({
     }
   };
 
-  const fetchRecentActivities = async () => {
+  const fetchRecentActivities = (
+    ambassadors: any[],
+    articlesData: any,
+    countdown: any,
+    promos: any[]
+  ) => {
     try {
       const activities = [];
 
-      // Get recent ambassadors (limit 1)
-      const ambassadorsRes = await fetch(`${API_BASE}/ambassadors`);
-      const ambassadors = await ambassadorsRes.json();
-
+      // Get recent ambassadors (limit 1) - gunakan parameter!
       if (Array.isArray(ambassadors) && ambassadors.length > 0) {
         const latest = ambassadors[0];
         activities.push({
@@ -237,10 +271,7 @@ const Dashboard = ({
         });
       }
 
-      // Get recent articles
-      const articlesRes = await fetch(`${API_BASE}/articles/admin/all`);
-      const articlesData = await articlesRes.json();
-
+      // Get recent articles - gunakan parameter!
       if (articlesData.success && Array.isArray(articlesData.data)) {
         const publishedArticles = articlesData.data
           .filter((a: any) => a.status === "Published")
@@ -262,10 +293,7 @@ const Dashboard = ({
         }
       }
 
-      // Get recent countdown batch
-      const countdownRes = await fetch(`${API_BASE}/countdown/active`);
-      const countdown = await countdownRes.json();
-
+      // Get recent countdown batch - gunakan parameter!
       if (countdown.success && countdown.data) {
         activities.push({
           id: 3,
@@ -278,10 +306,7 @@ const Dashboard = ({
         });
       }
 
-      // Get recent promo codes (limit 1)
-      const promosRes = await fetch(`${API_BASE}/promos/admin/all`);
-      const promos = await promosRes.json();
-
+      // Get recent promo codes (limit 1) - gunakan parameter!
       if (Array.isArray(promos) && promos.length > 0) {
         const latest = promos[0];
         activities.push({
@@ -329,6 +354,14 @@ const Dashboard = ({
 
     return date.toLocaleDateString();
   };
+
+  // === useEffect - Fetch data on mount ===
+  useEffect(() => {
+    if (token) {
+      fetchAllDashboardData();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token]);
 
   const quickActions = [
     {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, Badge } from "../../components";
 import {
@@ -30,6 +31,7 @@ interface Comment {
 const ArticleComments: React.FC<{
   setCurrentPage: (page: string) => void;
 }> = ({ setCurrentPage }) => {
+  const { token } = useAuth();
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState<string>("Pending");
@@ -56,7 +58,10 @@ const ArticleComments: React.FC<{
       }
 
       const response = await fetch(
-        `${API_BASE}/articles/admin/comments?${params}`
+        `${API_BASE}/articles/admin/comments?${params}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       if (!response.ok) throw new Error("Failed to fetch comments");
 
@@ -84,6 +89,7 @@ const ArticleComments: React.FC<{
         `${API_BASE}/articles/admin/comments/${id}/approve`,
         {
           method: "PUT",
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 
@@ -119,6 +125,7 @@ const ArticleComments: React.FC<{
         `${API_BASE}/articles/admin/comments/${id}`,
         {
           method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
         }
       );
 

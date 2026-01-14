@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, ConfirmModal, SuccessModal } from "../../components";
+import { useAuth } from "../../contexts/AuthContext";
 import {
   Clock,
   Phone,
@@ -41,6 +42,7 @@ interface ClaimStats {
 }
 
 export default function PromoClaims() {
+  const { token } = useAuth();
   const [claims, setClaims] = useState<PromoClaim[]>([]);
   const [stats, setStats] = useState<ClaimStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -58,7 +60,9 @@ export default function PromoClaims() {
 
   const fetchClaims = async () => {
     try {
-      const response = await fetch(`${API_BASE}/promo-claims/all`);
+      const response = await fetch(`${API_BASE}/promo-claims/all`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await response.json();
       if (data.success) {
         setClaims(data.claims);
@@ -72,7 +76,9 @@ export default function PromoClaims() {
 
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_BASE}/promo-claims/stats`);
+      const response = await fetch(`${API_BASE}/promo-claims/stats`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await response.json();
       if (data.success) {
         setStats(data.stats);
@@ -93,6 +99,7 @@ export default function PromoClaims() {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             follow_up_status: status,
@@ -117,6 +124,7 @@ export default function PromoClaims() {
           method: "PATCH",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             follow_up_notes: notes,
@@ -179,6 +187,7 @@ Tim Zona English siap membantu! 🚀`;
           method: "DELETE",
           headers: {
             "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             deleted_by: "admin",

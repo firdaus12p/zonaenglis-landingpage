@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useAuth } from "../../contexts/AuthContext";
 import AdminLayout from "../../components/layout/AdminLayout";
 import { Card, Button, Badge, SuccessModal } from "../../components";
 import {
@@ -29,6 +30,7 @@ interface GalleryItem {
 }
 
 const Gallery: React.FC = () => {
+  const { token } = useAuth();
   const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -68,7 +70,9 @@ const Gallery: React.FC = () => {
   const fetchGallery = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE}/gallery`);
+      const response = await fetch(`${API_BASE}/gallery`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       const data = await response.json();
       setGalleryItems(data);
     } catch (error) {
@@ -198,6 +202,7 @@ const Gallery: React.FC = () => {
 
       const response = await fetch(url, {
         method: modalMode === "create" ? "POST" : "PUT",
+        headers: { Authorization: `Bearer ${token}` },
         body: formDataToSend,
       });
 
@@ -224,6 +229,7 @@ const Gallery: React.FC = () => {
     try {
       const response = await fetch(`${API_BASE}/gallery/${id}`, {
         method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       });
 
       if (!response.ok) {
