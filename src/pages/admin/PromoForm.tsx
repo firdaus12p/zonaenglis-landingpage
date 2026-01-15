@@ -371,7 +371,7 @@ const PromoForm = () => {
               <div>
                 <label className="mb-2 flex items-center gap-2 text-sm font-medium text-slate-700">
                   <Tag className="h-4 w-4" />
-                  Kategori Promo *
+                  Kategori Program *
                 </label>
                 <input
                   type="text"
