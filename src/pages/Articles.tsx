@@ -17,6 +17,14 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { API_BASE } from "../config/api";
+import { SEOHead, useStructuredData } from "../components";
+import {
+  PAGE_SEO,
+  COMPANY_INFO,
+  getFullUrl,
+  getOgImageUrl,
+  generateArticleSchema,
+} from "../config/seo";
 
 // Helper function to generate full image URL
 const getImageUrl = (imagePath: string | null): string => {
@@ -322,6 +330,14 @@ const ArticlesList = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-emerald-50">
+      {/* SEO Meta Tags */}
+      <SEOHead
+        title={PAGE_SEO.articles.title}
+        description={PAGE_SEO.articles.description}
+        keywords={PAGE_SEO.articles.keywords}
+        path={PAGE_SEO.articles.path}
+      />
+
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-700 to-emerald-600 py-16">
         <div className="container mx-auto px-4">
@@ -571,6 +587,21 @@ const ArticleDetail = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-emerald-50">
+      {/* Dynamic SEO Meta Tags for Article */}
+      <SEOHead
+        title={article.seo_title || `${article.title} | Zona English`}
+        description={article.seo_description || article.excerpt}
+        path={`/articles/${article.slug}`}
+        image={article.featured_image || undefined}
+        type="article"
+        article={{
+          author: article.author || COMPANY_INFO.name,
+          publishedTime: article.published_at,
+          section: article.category,
+          tags: article.hashtags,
+        }}
+      />
+
       {/* Back Button */}
       <div className="container mx-auto px-4 py-6">
         <Link

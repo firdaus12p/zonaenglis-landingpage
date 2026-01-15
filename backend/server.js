@@ -153,6 +153,43 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+// ====== Dynamic Sitemap for Articles ======
+app.get("/api/sitemap.xml", async (req, res) => {
+  try {
+    const db = (await import("./db/connection.js")).default;
+    const [articles] = await db.query(
+      `SELECT slug, updated_at FROM articles WHERE status = 'published' AND deleted_at IS NULL ORDER BY published_at DESC`
+    );
+
+    const baseUrl = "https://zonaenglish.com";
+    let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+`;
+
+    // Add article URLs
+    articles.forEach((article) => {
+      const lastmod = article.updated_at
+        ? new Date(article.updated_at).toISOString().split("T")[0]
+        : new Date().toISOString().split("T")[0];
+      sitemap += `  <url>
+    <loc>${baseUrl}/articles/${article.slug}</loc>
+    <lastmod>${lastmod}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+`;
+    });
+
+    sitemap += `</urlset>`;
+
+    res.set("Content-Type", "application/xml");
+    res.send(sitemap);
+  } catch (error) {
+    console.error("Error generating sitemap:", error);
+    res.status(500).send("Error generating sitemap");
+  }
+});
+
 // ====== Public Form Token Endpoint ======
 app.get("/api/form-token", formTokenEndpoint);
 

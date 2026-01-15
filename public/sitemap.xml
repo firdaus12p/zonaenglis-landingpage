@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1">
+  
+  <!-- =====================================================
+       SITEMAP.XML - ZONA ENGLISH
+       Generated: 2026-01-15
+       Website: https://zonaenglish.com
+       
+       NOTE: This is a static sitemap for core pages.
+       Dynamic sitemap for articles is served from /api/sitemap.xml
+       ===================================================== -->
+  
+  <!-- HOMEPAGE - Highest Priority -->
+  <url>
+    <loc>https://zonaenglish.com/</loc>
+    <lastmod>2026-01-15</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  
+  <!-- PROMO CENTER -->
+  <url>
+    <loc>https://zonaenglish.com/promo-center</loc>
+    <lastmod>2026-01-15</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- PROMO HUB -->
+  <url>
+    <loc>https://zonaenglish.com/promo-hub</loc>
+    <lastmod>2026-01-15</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.9</priority>
+  </url>
+  
+  <!-- ARTICLES LISTING -->
+  <url>
+    <loc>https://zonaenglish.com/articles</loc>
+    <lastmod>2026-01-15</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.8</priority>
+  </url>
+  
+</urlset>

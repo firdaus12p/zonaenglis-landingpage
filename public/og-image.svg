@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1d4ed8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#10b981;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bgGrad)"/>
+  
+  <!-- Decorative circles -->
+  <circle cx="100" cy="100" r="150" fill="white" fill-opacity="0.1"/>
+  <circle cx="1100" cy="530" r="200" fill="white" fill-opacity="0.1"/>
+  
+  <!-- Main content area -->
+  <rect x="80" y="180" width="1040" height="270" rx="20" fill="white" fill-opacity="0.95"/>
+  
+  <!-- Logo Icon -->
+  <circle cx="200" cy="315" r="70" fill="#1d4ed8"/>
+  <text x="200" y="340" font-family="Arial, sans-serif" font-size="72" font-weight="bold" fill="white" text-anchor="middle">ZE</text>
+  
+  <!-- Text Content -->
+  <text x="310" y="290" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="#1e293b">Zona English</text>
+  <text x="310" y="350" font-family="Arial, sans-serif" font-size="28" fill="#475569">Kursus Bahasa Inggris Terbaik di Makassar</text>
+  <text x="310" y="395" font-family="Arial, sans-serif" font-size="22" fill="#64748b">Metode NBSN • Seru • Efektif • Terpercaya sejak 2019</text>
+  
+  <!-- Bottom tagline -->
+  <text x="600" y="550" font-family="Arial, sans-serif" font-size="24" fill="white" text-anchor="middle">zonaenglish.com</text>
+</svg>

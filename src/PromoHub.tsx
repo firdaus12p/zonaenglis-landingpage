@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from "react";
 import { CheckCircle2, MessageCircle, XCircle } from "lucide-react";
 
 // Import komponen universal dan konstanta
-import { FloatingButton } from "./components";
+import { FloatingButton, SEOHead } from "./components";
+import { PAGE_SEO } from "./config/seo";
 import { WHATSAPP_LINKS } from "./constants/cta";
 import Footer from "./components/layout/Footer";
 import { API_BASE, SERVER_URL } from "./config/api";
@@ -716,14 +717,11 @@ const PromoCard = ({
             discount_applied: data.discount,
           };
 
-          const trackResponse = await fetch(
-            `${API_BASE}/affiliate/track`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(trackPayload),
-            }
-          );
+          const trackResponse = await fetch(`${API_BASE}/affiliate/track`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(trackPayload),
+          });
 
           const trackData = await trackResponse.json();
 
@@ -796,14 +794,11 @@ const PromoCard = ({
             final_amount: promo.price - data.discount,
           };
 
-          const trackResponse = await fetch(
-            `${API_BASE}/promos/track`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(trackPayload),
-            }
-          );
+          const trackResponse = await fetch(`${API_BASE}/promos/track`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(trackPayload),
+          });
 
           const trackData = await trackResponse.json();
 
@@ -847,25 +842,22 @@ const PromoCard = ({
     try {
       console.log("📝 Submitting direct promo claim...");
 
-      const response = await fetch(
-        `${API_BASE}/promo-claims/claim`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            user_name: claimData.name,
-            user_phone: claimData.phone,
-            user_email: claimData.email || "",
-            program_id: promo.id,
-            program_name: promo.title,
-            program_branch: promo.branch,
-            program_type: promo.type,
-            urgency: "browsing", // Default urgency
-          }),
-        }
-      );
+      const response = await fetch(`${API_BASE}/promo-claims/claim`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          user_name: claimData.name,
+          user_phone: claimData.phone,
+          user_email: claimData.email || "",
+          program_id: promo.id,
+          program_name: promo.title,
+          program_branch: promo.branch,
+          program_type: promo.type,
+          urgency: "browsing", // Default urgency
+        }),
+      });
 
       const result = await response.json();
 
@@ -1193,9 +1185,7 @@ export default function PromoHub() {
     const fetchData = async () => {
       try {
         // Fetch ambassadors
-        const ambassadorsResponse = await fetch(
-          `${API_BASE}/ambassadors`
-        );
+        const ambassadorsResponse = await fetch(`${API_BASE}/ambassadors`);
         const ambassadorsData = await ambassadorsResponse.json();
 
         // Group ambassadors by institution
@@ -1237,9 +1227,7 @@ export default function PromoHub() {
         setAmbassadorInstitutions(Object.values(grouped));
 
         // Fetch programs
-        const programsResponse = await fetch(
-          `${API_BASE}/programs`
-        );
+        const programsResponse = await fetch(`${API_BASE}/programs`);
         const programsData = await programsResponse.json();
 
         // Transform API data to PromoData format
@@ -1313,9 +1301,7 @@ export default function PromoHub() {
 
       const fetchData = async () => {
         try {
-          const ambassadorsResponse = await fetch(
-            `${API_BASE}/ambassadors`
-          );
+          const ambassadorsResponse = await fetch(`${API_BASE}/ambassadors`);
           const ambassadorsData = await ambassadorsResponse.json();
 
           const grouped: Record<string, AmbassadorInstitution> = {};
@@ -1446,6 +1432,14 @@ export default function PromoHub() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-white text-slate-900">
+      {/* SEO Meta Tags */}
+      <SEOHead
+        title={PAGE_SEO.promoHub.title}
+        description={PAGE_SEO.promoHub.description}
+        keywords={PAGE_SEO.promoHub.keywords}
+        path={PAGE_SEO.promoHub.path}
+      />
+
       {/* HERO SECTION */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100 via-white to-white" />

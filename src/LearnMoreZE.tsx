@@ -15,7 +15,14 @@ import {
 } from "lucide-react";
 
 // Import komponen universal dan konstanta
-import { Badge, Button, FloatingButton, AutoplayYouTube } from "./components";
+import {
+  Badge,
+  Button,
+  FloatingButton,
+  AutoplayYouTube,
+  SEOHead,
+} from "./components";
+import { PAGE_SEO } from "./config/seo";
 import {
   CTA_WHATSAPP,
   CTA_REGISTER,
@@ -171,6 +178,14 @@ export default function LearnMoreZE() {
 
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-white text-slate-900">
+      {/* SEO Meta Tags */}
+      <SEOHead
+        title={PAGE_SEO.home.title}
+        description={PAGE_SEO.home.description}
+        keywords={PAGE_SEO.home.keywords}
+        path={PAGE_SEO.home.path}
+      />
+
       {/* HERO */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100 via-white to-white" />
@@ -188,9 +203,9 @@ export default function LearnMoreZE() {
                 <span className="text-blue-700">Percaya Diri</span>!
               </h1>
               <p className="mt-4 max-w-xl text-base leading-relaxed text-slate-600">
-                Beragam program sesuai usia 3 tahun hingga dewasa. Online & Offline. Dengan AI
-                Coach, project class, dan feedback harian agar progres nyata
-                terasa tiap minggu.
+                Beragam program sesuai usia 3 tahun hingga dewasa. Online &
+                Offline. Dengan AI Coach, project class, dan feedback harian
+                agar progres nyata terasa tiap minggu.
               </p>
               <div className="mt-6 flex flex-wrap gap-3">
                 <Button

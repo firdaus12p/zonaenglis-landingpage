@@ -27,3 +27,4 @@ export { default as AutoplayYouTube } from "./AutoplayYouTube";
 export { ConfirmModal } from "./ConfirmModal";
 export { SuccessModal } from "./SuccessModal";
 export { default as RichTextEditor } from "./RichTextEditor";
+export { default as SEOHead, useStructuredData } from "./SEOHead";

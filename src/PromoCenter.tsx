@@ -15,7 +15,9 @@ import {
   FloatingButton,
   YouTubePlayer,
   BADGE_VARIANTS,
+  SEOHead,
 } from "./components";
+import { PAGE_SEO } from "./config/seo";
 import { WHATSAPP_LINKS, CTA_REGISTER } from "./constants/cta";
 import { API_BASE } from "./config/api";
 import Footer from "./components/layout/Footer";
@@ -57,9 +59,7 @@ const ActiveBatchDisplay = () => {
   useEffect(() => {
     const fetchActiveBatch = async () => {
       try {
-        const response = await fetch(
-          `${API_BASE}/countdown/active`
-        );
+        const response = await fetch(`${API_BASE}/countdown/active`);
         const data = await response.json();
 
         if (data.success && data.data) {
@@ -561,6 +561,14 @@ const GallerySection = () => {
 export default function PromoCenter() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-white text-slate-900">
+      {/* SEO Meta Tags */}
+      <SEOHead
+        title={PAGE_SEO.promoCenter.title}
+        description={PAGE_SEO.promoCenter.description}
+        keywords={PAGE_SEO.promoCenter.keywords}
+        path={PAGE_SEO.promoCenter.path}
+      />
+
       {/* HERO SECTION */}
       <section className="relative overflow-hidden">
         <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-100 via-white to-white" />
