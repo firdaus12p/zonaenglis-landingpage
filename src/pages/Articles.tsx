@@ -17,14 +17,8 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { API_BASE } from "../config/api";
-import { SEOHead, useStructuredData } from "../components";
-import {
-  PAGE_SEO,
-  COMPANY_INFO,
-  getFullUrl,
-  getOgImageUrl,
-  generateArticleSchema,
-} from "../config/seo";
+import { SEOHead } from "../components";
+import { PAGE_SEO, COMPANY_INFO } from "../config/seo";
 
 // Helper function to generate full image URL
 const getImageUrl = (imagePath: string | null): string => {

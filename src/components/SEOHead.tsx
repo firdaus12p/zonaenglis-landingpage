@@ -23,7 +23,7 @@ import {
 interface SEOHeadProps {
   title?: string;
   description?: string;
-  keywords?: string[];
+  keywords?: readonly string[];
   path?: string;
   image?: string;
   type?: "website" | "article";
@@ -32,7 +32,7 @@ interface SEOHeadProps {
     publishedTime?: string;
     modifiedTime?: string;
     section?: string;
-    tags?: string[];
+    tags?: readonly string[];
   };
   noIndex?: boolean;
 }
