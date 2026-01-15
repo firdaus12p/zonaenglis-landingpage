@@ -59,10 +59,12 @@ router.get("/stats", async (req, res) => {
     const [stats] = await db.query(`
       SELECT 
         COUNT(*) as total_batches,
+        SUM(CASE WHEN status = 'Draft' THEN 1 ELSE 0 END) as draft_batches,
         SUM(CASE WHEN status = 'Active' THEN 1 ELSE 0 END) as active_batches,
         SUM(CASE WHEN status = 'Upcoming' THEN 1 ELSE 0 END) as upcoming_batches,
-        SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_batches,
         SUM(CASE WHEN status = 'Paused' THEN 1 ELSE 0 END) as paused_batches,
+        SUM(CASE WHEN status = 'Completed' THEN 1 ELSE 0 END) as completed_batches,
+        SUM(CASE WHEN status = 'Cancelled' THEN 1 ELSE 0 END) as cancelled_batches,
         SUM(current_students) as total_students,
         SUM(target_students) as total_target_students
       FROM countdown_batches
@@ -199,7 +201,14 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
     }
 
     // Validate status
-    const validStatuses = ["Active", "Paused", "Completed", "Upcoming"];
+    const validStatuses = [
+      "Draft",
+      "Active",
+      "Upcoming",
+      "Paused",
+      "Completed",
+      "Cancelled",
+    ];
     if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
@@ -324,7 +333,14 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
 
     // Validate status if provided
     if (status) {
-      const validStatuses = ["Active", "Paused", "Completed", "Upcoming"];
+      const validStatuses = [
+        "Draft",
+        "Active",
+        "Upcoming",
+        "Paused",
+        "Completed",
+        "Cancelled",
+      ];
       if (!validStatuses.includes(status)) {
         return res.status(400).json({
           success: false,

@@ -32,7 +32,13 @@ interface CountdownBatchFormData {
   registrationDeadline: string;
   targetStudents: number;
   currentStudents: number;
-  status: "Active" | "Paused" | "Completed" | "Upcoming";
+  status:
+    | "Draft"
+    | "Active"
+    | "Upcoming"
+    | "Paused"
+    | "Completed"
+    | "Cancelled";
   visibility: "Public" | "Private";
 }
 
@@ -683,10 +689,12 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
                     onChange={handleInputChange}
                     className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                   >
+                    <option value="Draft">Draft</option>
                     <option value="Upcoming">Upcoming</option>
                     <option value="Active">Active</option>
                     <option value="Paused">Paused</option>
                     <option value="Completed">Completed</option>
+                    <option value="Cancelled">Cancelled</option>
                   </select>
                 </div>
 

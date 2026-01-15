@@ -39,7 +39,13 @@ interface CountdownBatch {
   registrationDeadline?: string;
   targetStudents: number;
   currentStudents: number;
-  status: "Active" | "Paused" | "Completed" | "Upcoming";
+  status:
+    | "Draft"
+    | "Active"
+    | "Upcoming"
+    | "Paused"
+    | "Completed"
+    | "Cancelled";
   visibility: "Public" | "Private";
   createdAt: string;
   updatedAt: string;
@@ -158,7 +164,11 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       case "Completed":
         return "info";
       case "Upcoming":
-        return "default";
+        return "primary";
+      case "Draft":
+        return "secondary";
+      case "Cancelled":
+        return "danger";
       default:
         return "default";
     }

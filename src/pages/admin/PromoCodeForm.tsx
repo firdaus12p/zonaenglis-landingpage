@@ -351,7 +351,7 @@ const PromoCodeForm = () => {
                   required
                 >
                   <option value="percentage">Persentase (%)</option>
-                  <option value="fixed">Nominal (Rp)</option>
+                  <option value="fixed_amount">Nominal (Rp)</option>
                 </select>
               </div>
 
