@@ -235,7 +235,7 @@ router.get("/public", async (req, res) => {
     });
     res.status(500).json({
       success: false,
-      message: error.sqlMessage || error.message || "Server error",
+      message: "Failed to fetch articles",
     });
   }
 });
@@ -314,7 +314,7 @@ router.get("/public/:slug", async (req, res) => {
     });
     res.status(500).json({
       success: false,
-      message: error.sqlMessage || error.message || "Server error",
+      message: "Failed to fetch article",
     });
   }
 });
@@ -358,7 +358,7 @@ router.post("/:id/view", async (req, res) => {
     });
     res.status(500).json({
       success: false,
-      message: error.sqlMessage || error.message || "Server error",
+      message: "Failed to track view",
     });
   }
 });
@@ -442,7 +442,7 @@ router.post("/:id/like", async (req, res) => {
     });
     res.status(500).json({
       success: false,
-      message: error.sqlMessage || error.message || "Server error",
+      message: "Failed to toggle like",
     });
   }
 });
@@ -461,6 +461,28 @@ router.post("/:id/comment", commentRateLimiter, async (req, res) => {
       return res.status(400).json({
         success: false,
         message: "Name and comment are required",
+      });
+    }
+
+    // Input length validation
+    if (user_name.length > 100) {
+      return res.status(400).json({
+        success: false,
+        message: "Name must be 100 characters or less",
+      });
+    }
+
+    if (comment.length > 2000) {
+      return res.status(400).json({
+        success: false,
+        message: "Comment must be 2000 characters or less",
+      });
+    }
+
+    if (user_email && user_email.length > 255) {
+      return res.status(400).json({
+        success: false,
+        message: "Email must be 255 characters or less",
       });
     }
 
@@ -495,7 +517,7 @@ router.post("/:id/comment", commentRateLimiter, async (req, res) => {
     });
     res.status(500).json({
       success: false,
-      message: error.sqlMessage || error.message || "Server error",
+      message: "Failed to add comment",
     });
   }
 });
@@ -843,7 +865,7 @@ router.post(
 
       res.status(500).json({
         success: false,
-        message: error.sqlMessage || error.message || "Server error",
+        message: "Failed to create article",
       });
     } finally {
       connection.release();
@@ -987,7 +1009,7 @@ router.put(
 
       res.status(500).json({
         success: false,
-        message: error.sqlMessage || error.message || "Server error",
+        message: "Failed to update article",
       });
     } finally {
       connection.release();

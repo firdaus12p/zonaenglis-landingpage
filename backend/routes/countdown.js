@@ -44,7 +44,6 @@ router.get("/", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch countdown batches",
-      error: error.message,
     });
   }
 });
@@ -79,7 +78,6 @@ router.get("/stats", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch countdown statistics",
-      error: error.message,
     });
   }
 });
@@ -120,7 +118,6 @@ router.get("/active", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch active batch",
-      error: error.message,
     });
   }
 });
@@ -161,7 +158,6 @@ router.get("/:id", async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch countdown batch",
-      error: error.message,
     });
   }
 });
@@ -286,7 +282,6 @@ router.post("/", authenticateToken, requireAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to create countdown batch",
-      error: error.message,
     });
   }
 });
@@ -482,7 +477,6 @@ router.put("/:id", authenticateToken, requireAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to update countdown batch",
-      error: error.message,
     });
   }
 });
@@ -544,7 +538,6 @@ router.put(
       res.status(500).json({
         success: false,
         message: "Failed to toggle batch status",
-        error: error.message,
       });
     }
   }
@@ -620,7 +613,6 @@ router.put(
       res.status(500).json({
         success: false,
         message: "Failed to update student count",
-        error: error.message,
       });
     }
   }
@@ -659,7 +651,6 @@ router.delete("/:id", authenticateToken, requireAdmin, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to delete countdown batch",
-      error: error.message,
     });
   }
 });

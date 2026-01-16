@@ -528,7 +528,10 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const fetchDeletedPromoLeads = async (promoId: number) => {
     try {
       const response = await fetch(
-        `${API_BASE}/promos/deleted-leads/${promoId}`
+        `${API_BASE}/promos/deleted-leads/${promoId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
       );
       const data = await response.json();
       if (data.success && data.leads) {

@@ -6,6 +6,23 @@
 
 import db from "./connection.js";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
+
+/**
+ * Generate a secure random password
+ * @returns {string} Random password with uppercase, lowercase, numbers, and special chars
+ */
+function generateSecurePassword() {
+  const length = 16;
+  const chars =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+  let password = "";
+  const randomBytes = crypto.randomBytes(length);
+  for (let i = 0; i < length; i++) {
+    password += chars[randomBytes[i] % chars.length];
+  }
+  return password;
+}
 
 // ====== TABLE DEFINITIONS ======
 
@@ -434,8 +451,8 @@ const defaultData = {
       ["admin@zonaenglish.com"]
     );
     if (existing.length === 0) {
-      // Generate a temporary password - MUST be changed on first login
-      const tempPassword = "admin123";
+      // Generate a secure random password - MUST be changed on first login
+      const tempPassword = generateSecurePassword();
       const passwordHash = await bcrypt.hash(tempPassword, 10);
       await db.query(
         `INSERT INTO admin_users (username, email, name, password_hash, role, must_change_password) 
@@ -449,7 +466,10 @@ const defaultData = {
         ]
       );
       console.log(
-        "   ✅ Default admin created (admin@zonaenglish.com / admin123)"
+        `   ✅ Default admin created (admin@zonaenglish.com / ${tempPassword})`
+      );
+      console.log(
+        "   ⚠️  WARNING: SAVE THIS PASSWORD! It will NOT be shown again!"
       );
       console.log(
         "   ⚠️  WARNING: Default admin MUST change password on first login!"

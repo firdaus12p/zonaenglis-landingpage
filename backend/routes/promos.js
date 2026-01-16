@@ -761,14 +761,18 @@ router.get(
 
 /**
  * GET /api/promos/deleted-leads/:promo_id
- * Get deleted leads for a promo code
+ * Get deleted leads for a promo code (ADMIN ONLY)
  */
-router.get("/deleted-leads/:promo_id", async (req, res) => {
-  try {
-    const { promo_id } = req.params;
+router.get(
+  "/deleted-leads/:promo_id",
+  authenticateToken,
+  requireAdmin,
+  async (req, res) => {
+    try {
+      const { promo_id } = req.params;
 
-    const [leads] = await db.query(
-      `SELECT 
+      const [leads] = await db.query(
+        `SELECT 
         pu.id,
         pu.user_name,
         pu.user_phone,
@@ -790,17 +794,18 @@ router.get("/deleted-leads/:promo_id", async (req, res) => {
        WHERE pu.promo_code_id = ? 
        AND pu.deleted_at IS NOT NULL
        ORDER BY pu.deleted_at DESC`,
-      [promo_id]
-    );
+        [promo_id]
+      );
 
-    res.json({ success: true, leads });
-  } catch (error) {
-    console.error("Error fetching deleted leads:", error);
-    res
-      .status(500)
-      .json({ success: false, error: "Failed to fetch deleted leads" });
+      res.json({ success: true, leads });
+    } catch (error) {
+      console.error("Error fetching deleted leads:", error);
+      res
+        .status(500)
+        .json({ success: false, error: "Failed to fetch deleted leads" });
+    }
   }
-});
+);
 
 /**
  * PATCH /api/promos/update-status/:usage_id

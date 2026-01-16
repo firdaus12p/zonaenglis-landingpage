@@ -1,5 +1,6 @@
 // Upload Routes for handling image uploads
 import express from "express";
+import multer from "multer";
 import upload from "../middleware/upload.js";
 import { authenticateToken } from "./auth.js";
 
