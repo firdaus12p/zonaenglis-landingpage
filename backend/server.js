@@ -153,7 +153,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// ====== Dynamic Sitemap for Articles ======
+// ====== Dynamic Sitemap (Core Pages + Articles) ======
 app.get("/api/sitemap.xml", async (req, res) => {
   try {
     const db = (await import("./db/connection.js")).default;
@@ -162,15 +162,36 @@ app.get("/api/sitemap.xml", async (req, res) => {
     );
 
     const baseUrl = "https://zonaenglish.com";
+    const today = new Date().toISOString().split("T")[0];
+
+    // Core pages with their SEO properties
+    const corePages = [
+      { path: "/", changefreq: "weekly", priority: "1.0" },
+      { path: "/promo-center", changefreq: "daily", priority: "0.9" },
+      { path: "/promo-hub", changefreq: "daily", priority: "0.9" },
+      { path: "/articles", changefreq: "daily", priority: "0.8" },
+    ];
+
     let sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
 `;
+
+    // Add core pages
+    corePages.forEach((page) => {
+      sitemap += `  <url>
+    <loc>${baseUrl}${page.path}</loc>
+    <lastmod>${today}</lastmod>
+    <changefreq>${page.changefreq}</changefreq>
+    <priority>${page.priority}</priority>
+  </url>
+`;
+    });
 
     // Add article URLs
     articles.forEach((article) => {
       const lastmod = article.updated_at
         ? new Date(article.updated_at).toISOString().split("T")[0]
-        : new Date().toISOString().split("T")[0];
+        : today;
       sitemap += `  <url>
     <loc>${baseUrl}/articles/${article.slug}</loc>
     <lastmod>${lastmod}</lastmod>
@@ -183,9 +204,10 @@ app.get("/api/sitemap.xml", async (req, res) => {
     sitemap += `</urlset>`;
 
     res.set("Content-Type", "application/xml");
+    res.set("Cache-Control", "public, max-age=3600"); // Cache 1 hour
     res.send(sitemap);
   } catch (error) {
-    console.error("Error generating sitemap:", error);
+    serverLogger.error("Error generating sitemap", { error: error.message });
     res.status(500).send("Error generating sitemap");
   }
 });

@@ -199,6 +199,7 @@ const ArticleCard = ({ article }: { article: Article }) => {
           <img
             src={getImageUrl(article.featured_image)}
             alt={article.title}
+            loading="lazy"
             className="h-full w-full object-cover transition-transform group-hover:scale-105"
           />
         </div>
@@ -675,6 +676,7 @@ const ArticleDetail = () => {
               <img
                 src={getImageUrl(article.featured_image)}
                 alt={article.title}
+                loading="lazy"
                 className="h-auto w-full"
               />
             </div>
@@ -741,6 +743,7 @@ const ArticleDetail = () => {
                     <img
                       src={getImageUrl(img.image_url)}
                       alt={img.caption || ""}
+                      loading="lazy"
                       className="h-auto w-full"
                     />
                     {img.caption && (

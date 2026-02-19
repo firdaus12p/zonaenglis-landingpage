@@ -953,6 +953,7 @@ const PromoCard = ({
                 className="w-full rounded-xl border border-slate-200"
                 src={media.src}
                 alt={promo.title}
+                loading="lazy"
               />
             )}
           </div>

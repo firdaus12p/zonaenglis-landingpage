@@ -73,6 +73,7 @@ export const YouTubePlayer: React.FC<YouTubePlayerProps> = ({
       <img
         src={getYouTubeThumbnail(url, "hqdefault")}
         alt={title}
+        loading="lazy"
         className="w-full h-full object-cover"
       />
       <div className="absolute inset-0 bg-black/30 group-hover:bg-black/50 transition-all flex items-center justify-center">

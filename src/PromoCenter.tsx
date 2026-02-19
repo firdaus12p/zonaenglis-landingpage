@@ -548,6 +548,7 @@ const GallerySection = () => {
                   className="rounded-xl border border-slate-200 w-full h-48 object-cover"
                   src={item.src}
                   alt={item.alt}
+                  loading="lazy"
                 />
               )
             )}
