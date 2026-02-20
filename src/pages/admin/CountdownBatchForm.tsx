@@ -142,10 +142,10 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
         showAlert(
           "Error",
           data.message || "Failed to load batch data",
-          "error"
+          "error",
         );
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error fetching batch:", error);
       showAlert("Error", "Failed to connect to server", "error");
     } finally {
@@ -157,7 +157,7 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
   const showAlert = (
     title: string,
     message: string,
-    type: "alert" | "error" | "success" = "alert"
+    type: "alert" | "error" | "success" = "alert",
   ) => {
     setModal({
       show: true,
@@ -207,7 +207,7 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -255,7 +255,7 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
       showAlert(
         "Validation Error",
         "Please fill in all required fields correctly",
-        "error"
+        "error",
       );
       return;
     }
@@ -285,7 +285,7 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
         setSuccessMessage(
           mode === "create"
             ? "Countdown batch berhasil dibuat!"
-            : "Countdown batch berhasil diperbarui!"
+            : "Countdown batch berhasil diperbarui!",
         );
         setShowSuccessModal(true);
 
@@ -296,7 +296,7 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
       } else {
         showAlert("Error", data.message || "Failed to save batch", "error");
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving batch:", error);
       showAlert("Error", "Failed to connect to server", "error");
     } finally {
@@ -335,8 +335,8 @@ const CountdownBatchForm: React.FC<CountdownBatchFormProps> = ({
                   modal.type === "success"
                     ? "bg-emerald-100"
                     : modal.type === "error"
-                    ? "bg-red-100"
-                    : "bg-amber-100"
+                      ? "bg-red-100"
+                      : "bg-amber-100"
                 }`}
               >
                 {modal.type === "success" ? (

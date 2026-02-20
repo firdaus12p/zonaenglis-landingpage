@@ -38,7 +38,7 @@ interface AmbassadorFormData {
 interface AmbassadorFormProps {
   setCurrentPage: (page: string) => void;
   mode: "create" | "edit";
-  ambassadorData?: any;
+  ambassadorData?: Partial<AmbassadorFormData> & { id?: number };
 }
 
 const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
@@ -79,7 +79,7 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
   const showAlert = (
     title: string,
     message: string,
-    type: "alert" | "error" | "success" = "alert"
+    type: "alert" | "error" | "success" = "alert",
   ) => {
     setModal({
       show: true,
@@ -148,14 +148,14 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
         formData.type === "Affiliate Campus"
           ? "AFC"
           : formData.type === "Affiliate SMA"
-          ? "AFS"
-          : formData.type === "Affiliate SMP"
-          ? "AFP"
-          : formData.type === "Ambassador Campus"
-          ? "AMC"
-          : formData.type === "Ambassador SMA"
-          ? "AMS"
-          : "AMP"; // Ambassador SMP
+            ? "AFS"
+            : formData.type === "Affiliate SMP"
+              ? "AFP"
+              : formData.type === "Ambassador Campus"
+                ? "AMC"
+                : formData.type === "Ambassador SMA"
+                  ? "AMS"
+                  : "AMP"; // Ambassador SMP
 
       const nameCode =
         formData.name.length >= 3
@@ -214,7 +214,7 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
         `Ambassador ${
           mode === "create" ? "ditambahkan" : "diperbarui"
         } successfully! Affiliate Code: ${affiliateCode}`,
-        "success"
+        "success",
       );
 
       // Navigate back after a brief delay
@@ -227,7 +227,7 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
         `Terjadi kesalahan saat menyimpan data ambassador: ${
           error instanceof Error ? error.message : "Unknown error"
         }`,
-        "error"
+        "error",
       );
     } finally {
       setIsSubmitting(false);
@@ -348,7 +348,7 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      type: e.target.value as any,
+                      type: e.target.value as AmbassadorFormData["type"],
                     }))
                   }
                   className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -540,8 +540,8 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
                 {isSubmitting
                   ? "Menyimpan..."
                   : mode === "create"
-                  ? "Tambah Ambassador"
-                  : "Simpan Perubahan"}
+                    ? "Tambah Ambassador"
+                    : "Simpan Perubahan"}
               </Button>
             </div>
           </form>
@@ -558,8 +558,8 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
                 modal.type === "error"
                   ? "bg-red-50 border-red-200"
                   : modal.type === "success"
-                  ? "bg-green-50 border-green-200"
-                  : "bg-slate-50 border-slate-200"
+                    ? "bg-green-50 border-green-200"
+                    : "bg-slate-50 border-slate-200"
               }`}
             >
               <div className="flex items-center space-x-3">
@@ -583,8 +583,8 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
                     modal.type === "error"
                       ? "text-red-900"
                       : modal.type === "success"
-                      ? "text-green-900"
-                      : "text-slate-900"
+                        ? "text-green-900"
+                        : "text-slate-900"
                   }`}
                 >
                   {modal.title}
@@ -607,8 +607,8 @@ const AmbassadorForm: React.FC<AmbassadorFormProps> = ({
                   modal.type === "error"
                     ? "bg-red-600 hover:bg-red-700"
                     : modal.type === "success"
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-blue-600 hover:bg-blue-700"
+                      ? "bg-green-600 hover:bg-green-700"
+                      : "bg-blue-600 hover:bg-blue-700"
                 }`}
               >
                 OK

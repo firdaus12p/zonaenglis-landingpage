@@ -116,8 +116,10 @@ const Profile = ({
           logout();
         }, 2000);
       }
-    } catch (error: any) {
-      showNotification(error.message || "Gagal update profil", "error");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Gagal update profil";
+      showNotification(message, "error");
     } finally {
       setSavingProfile(false);
     }
@@ -173,7 +175,7 @@ const Profile = ({
 
       showNotification(
         "Password berhasil diubah! Silakan login kembali",
-        "success"
+        "success",
       );
 
       // Reset form
@@ -187,8 +189,10 @@ const Profile = ({
       setTimeout(() => {
         logout();
       }, 2000);
-    } catch (error: any) {
-      showNotification(error.message || "Gagal ubah password", "error");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Gagal ubah password";
+      showNotification(message, "error");
     } finally {
       setSavingPassword(false);
     }

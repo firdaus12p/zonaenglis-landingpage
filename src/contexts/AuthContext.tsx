@@ -95,8 +95,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setUser(data.user);
       localStorage.setItem(TOKEN_KEY, data.token);
       localStorage.setItem(USER_KEY, JSON.stringify(data.user));
-    } catch (error: any) {
-      throw new Error(error.message || "Login gagal. Silakan coba lagi.");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Login gagal. Silakan coba lagi.";
+      throw new Error(message);
     }
   };
 

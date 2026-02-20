@@ -32,8 +32,10 @@ const Login = () => {
     try {
       await login(email, password);
       // Navigation handled by useEffect above
-    } catch (err: any) {
-      setError(err.message || "Login gagal. Silakan coba lagi.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Login gagal. Silakan coba lagi.";
+      setError(message);
     } finally {
       setIsLoading(false);
     }

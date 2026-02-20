@@ -14,6 +14,61 @@ import {
 } from "lucide-react";
 import { API_BASE } from "../../config/api";
 
+interface Ambassador {
+  id: number;
+  name: string;
+  location: string;
+  total_earnings: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+interface ArticlesResponse {
+  success: boolean;
+  data: Array<{
+    id: number;
+    title: string;
+    status: string;
+    published_at: string;
+    created_at: string;
+    [key: string]: unknown;
+  }>;
+}
+
+interface CountdownResponse {
+  success: boolean;
+  data: {
+    name: string;
+    updated_at: string;
+    created_at: string;
+    [key: string]: unknown;
+  } | null;
+}
+
+interface PromoCode {
+  id: number;
+  code: string;
+  created_at: string;
+  [key: string]: unknown;
+}
+
+interface StatItem {
+  name: string;
+  value: string;
+  change: string;
+  changeType: "increase" | "decrease" | "neutral";
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+}
+
+interface ActivityItem {
+  id: number;
+  type: string;
+  message: string;
+  time: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
 const Dashboard = ({
   setCurrentPage,
 }: {
@@ -21,16 +76,7 @@ const Dashboard = ({
 }) => {
   const { token } = useAuth();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<
-    Array<{
-      name: string;
-      value: string;
-      change: string;
-      changeType: "increase" | "decrease" | "neutral";
-      icon: any;
-      color: string;
-    }>
-  >([
+  const [stats, setStats] = useState<StatItem[]>([
     {
       name: "Total Ambassadors",
       value: "0",
@@ -71,15 +117,7 @@ const Dashboard = ({
   const [completionRate, setCompletionRate] = useState("0");
 
   // Recent activities state
-  const [recentActivities, setRecentActivities] = useState<
-    Array<{
-      id: number;
-      type: string;
-      message: string;
-      time: string;
-      icon: any;
-    }>
-  >([]);
+  const [recentActivities, setRecentActivities] = useState<ActivityItem[]>([]);
 
   // === FUNCTION DEFINITIONS (harus sebelum useEffect) ===
 
@@ -125,10 +163,10 @@ const Dashboard = ({
   };
 
   const processDashboardStats = (
-    ambassadors: any,
-    promos: any,
-    countdown: any,
-    articlesData: any
+    ambassadors: Ambassador[],
+    promos: PromoCode[],
+    countdown: CountdownResponse,
+    articlesData: ArticlesResponse,
   ) => {
     try {
       // Count ambassadors (active only)
@@ -149,7 +187,8 @@ const Dashboard = ({
       const publishedArticles =
         articlesData.success && Array.isArray(articlesData.data)
           ? articlesData.data.filter(
-              (article: any) => article.status === "Published"
+              (article: ArticlesResponse["data"][number]) =>
+                article.status === "Published",
             ).length
           : 0;
 
@@ -195,7 +234,7 @@ const Dashboard = ({
     }
   };
 
-  const fetchAdditionalStats = async (ambassadors: any[]) => {
+  const fetchAdditionalStats = async (ambassadors: Ambassador[]) => {
     try {
       // Fetch countdown stats for active students
       const countdownStatsRes = await fetch(`${API_BASE}/countdown/stats`, {
@@ -210,7 +249,7 @@ const Dashboard = ({
 
       // Calculate total revenue from ambassadors (gunakan parameter, bukan fetch lagi!)
       if (Array.isArray(ambassadors)) {
-        const revenue = ambassadors.reduce((sum: number, amb: any) => {
+        const revenue = ambassadors.reduce((sum: number, amb: Ambassador) => {
           return sum + (parseFloat(amb.total_earnings) || 0);
         }, 0);
 
@@ -243,10 +282,10 @@ const Dashboard = ({
   };
 
   const fetchRecentActivities = (
-    ambassadors: any[],
-    articlesData: any,
-    countdown: any,
-    promos: any[]
+    ambassadors: Ambassador[],
+    articlesData: ArticlesResponse,
+    countdown: CountdownResponse,
+    promos: PromoCode[],
   ) => {
     try {
       const activities = [];
@@ -266,11 +305,16 @@ const Dashboard = ({
       // Get recent articles - gunakan parameter!
       if (articlesData.success && Array.isArray(articlesData.data)) {
         const publishedArticles = articlesData.data
-          .filter((a: any) => a.status === "Published")
+          .filter(
+            (a: ArticlesResponse["data"][number]) => a.status === "Published",
+          )
           .sort(
-            (a: any, b: any) =>
+            (
+              a: ArticlesResponse["data"][number],
+              b: ArticlesResponse["data"][number],
+            ) =>
               new Date(b.published_at || b.created_at).getTime() -
-              new Date(a.published_at || a.created_at).getTime()
+              new Date(a.published_at || a.created_at).getTime(),
           );
 
         if (publishedArticles.length > 0) {
@@ -292,7 +336,7 @@ const Dashboard = ({
           type: "batch",
           message: `Countdown batch "${countdown.data.name}" is active`,
           time: getTimeAgo(
-            countdown.data.updated_at || countdown.data.created_at
+            countdown.data.updated_at || countdown.data.created_at,
           ),
           icon: Clock,
         });
@@ -442,8 +486,8 @@ const Dashboard = ({
                           stat.changeType === "increase"
                             ? "text-emerald-600"
                             : stat.changeType === "decrease"
-                            ? "text-amber-600"
-                            : "text-slate-500"
+                              ? "text-amber-600"
+                              : "text-slate-500"
                         }`}
                       >
                         {stat.change}
@@ -454,10 +498,10 @@ const Dashboard = ({
                         stat.color === "blue"
                           ? "bg-blue-100"
                           : stat.color === "emerald"
-                          ? "bg-emerald-100"
-                          : stat.color === "amber"
-                          ? "bg-amber-100"
-                          : "bg-purple-100"
+                            ? "bg-emerald-100"
+                            : stat.color === "amber"
+                              ? "bg-amber-100"
+                              : "bg-purple-100"
                       }`}
                     >
                       <stat.icon
@@ -465,10 +509,10 @@ const Dashboard = ({
                           stat.color === "blue"
                             ? "text-blue-600"
                             : stat.color === "emerald"
-                            ? "text-emerald-600"
-                            : stat.color === "amber"
-                            ? "text-amber-600"
-                            : "text-purple-600"
+                              ? "text-emerald-600"
+                              : stat.color === "amber"
+                                ? "text-amber-600"
+                                : "text-purple-600"
                         }`}
                       />
                     </div>
@@ -501,10 +545,10 @@ const Dashboard = ({
                           action.color === "blue"
                             ? "bg-blue-100 text-blue-600"
                             : action.color === "emerald"
-                            ? "bg-emerald-100 text-emerald-600"
-                            : action.color === "amber"
-                            ? "bg-amber-100 text-amber-600"
-                            : "bg-purple-100 text-purple-600"
+                              ? "bg-emerald-100 text-emerald-600"
+                              : action.color === "amber"
+                                ? "bg-amber-100 text-amber-600"
+                                : "bg-purple-100 text-purple-600"
                         }`}
                       >
                         <action.icon className="h-5 w-5" />

@@ -86,32 +86,54 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
       if (data.success) {
         // Transform snake_case to camelCase
-        const transformedBatches = data.data.map((batch: any) => ({
-          id: batch.id,
-          name: batch.name,
-          startDate: batch.start_date,
-          startTime: batch.start_time,
-          endDate: batch.end_date,
-          endTime: batch.end_time,
-          timezone: batch.timezone,
-          description: batch.description,
-          instructor: batch.instructor,
-          locationMode: batch.location_mode,
-          locationAddress: batch.location_address,
-          price: batch.price,
-          registrationDeadline: batch.registration_deadline,
-          targetStudents: batch.target_students,
-          currentStudents: batch.current_students,
-          status: batch.status,
-          visibility: batch.visibility,
-          createdAt: batch.created_at,
-          updatedAt: batch.updated_at,
-        }));
+        const transformedBatches = data.data.map(
+          (batch: {
+            id: number;
+            name: string;
+            start_date: string;
+            start_time: string;
+            end_date: string;
+            end_time: string;
+            timezone: string;
+            description: string;
+            instructor: string;
+            location_mode: string;
+            location_address: string;
+            price: number;
+            registration_deadline: string;
+            target_students: number;
+            current_students: number;
+            status: string;
+            visibility: string;
+            created_at: string;
+            updated_at: string;
+          }) => ({
+            id: batch.id,
+            name: batch.name,
+            startDate: batch.start_date,
+            startTime: batch.start_time,
+            endDate: batch.end_date,
+            endTime: batch.end_time,
+            timezone: batch.timezone,
+            description: batch.description,
+            instructor: batch.instructor,
+            locationMode: batch.location_mode,
+            locationAddress: batch.location_address,
+            price: batch.price,
+            registrationDeadline: batch.registration_deadline,
+            targetStudents: batch.target_students,
+            currentStudents: batch.current_students,
+            status: batch.status,
+            visibility: batch.visibility,
+            createdAt: batch.created_at,
+            updatedAt: batch.updated_at,
+          }),
+        );
         setBatches(transformedBatches);
       } else {
         setError(data.message || "Failed to fetch batches");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching batches:", err);
       setError("Failed to connect to server");
     } finally {
@@ -135,7 +157,7 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
           upcomingBatches: data.data.upcoming_batches || 0,
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error fetching stats:", err);
     }
   };
@@ -235,7 +257,7 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
             "Content-Type": "application/json",
             Authorization: `Bearer ${token}`,
           },
-        }
+        },
       );
 
       const data = await response.json();
@@ -244,15 +266,15 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         // Update local state
         setBatches((prev) =>
           prev.map((batch) =>
-            batch.id === id ? { ...batch, status: data.data.status } : batch
-          )
+            batch.id === id ? { ...batch, status: data.data.status } : batch,
+          ),
         );
         // Refresh stats
         fetchStats();
       } else {
         alert(data.message || "Gagal mengubah status batch");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error toggling batch status:", err);
       alert("Gagal mengubah status batch");
     }
@@ -272,7 +294,7 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         {
           method: "DELETE",
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
 
       const data = await response.json();
@@ -280,7 +302,7 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       if (data.success) {
         // Remove from local state
         setBatches((prev) =>
-          prev.filter((batch) => batch.id !== batchToDelete.id)
+          prev.filter((batch) => batch.id !== batchToDelete.id),
         );
         // Refresh stats
         fetchStats();
@@ -289,7 +311,7 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       } else {
         setSuccessMessage(data.message || "Gagal menghapus batch");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Error deleting batch:", err);
       setSuccessMessage("Gagal menghapus batch");
     }
@@ -402,7 +424,8 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                         "",
                       batches.find((b) => b.status === "Active")?.startTime ||
                         "",
-                      batches.find((b) => b.status === "Active")?.timezone || ""
+                      batches.find((b) => b.status === "Active")?.timezone ||
+                        "",
                     )}
                   </p>
                 </div>
@@ -518,7 +541,7 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
               const timeRemaining = calculateTimeRemaining(batch);
               const studentProgress = getStudentProgress(
                 batch.currentStudents,
-                batch.targetStudents
+                batch.targetStudents,
               );
 
               return (
@@ -582,7 +605,7 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                         {formatDateTime(
                           batch.startDate,
                           batch.startTime,
-                          batch.timezone
+                          batch.timezone,
                         )}
                       </div>
                     </div>
@@ -687,8 +710,8 @@ const CountdownBatch: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                           studentProgress >= 90
                             ? "bg-emerald-500"
                             : studentProgress >= 70
-                            ? "bg-amber-500"
-                            : "bg-blue-500"
+                              ? "bg-amber-500"
+                              : "bg-blue-500"
                         }`}
                         style={{ width: `${Math.min(studentProgress, 100)}%` }}
                       />

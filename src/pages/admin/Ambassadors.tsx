@@ -104,7 +104,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     "All" | "Ambassador" | "Affiliate"
   >("All");
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(
-    null
+    null,
   );
 
   // Modal States
@@ -123,16 +123,16 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
   // Affiliate Tracking States
   const [selectedAmbassador, setSelectedAmbassador] = useState<number | null>(
-    null
+    null,
   );
   const [affiliateStats, setAffiliateStats] = useState<AffiliateStats | null>(
-    null
+    null,
   );
   const [affiliateLeads, setAffiliateLeads] = useState<AffiliateLead[]>([]);
   const [lostLeads, setLostLeads] = useState<AffiliateLead[]>([]);
   const [deletedLeads, setDeletedLeads] = useState<DeletedLead[]>([]);
   const [activeTab, setActiveTab] = useState<"active" | "lost" | "deleted">(
-    "active"
+    "active",
   );
   const [loadingAffiliate, setLoadingAffiliate] = useState(false);
   const [ambassadorUsageCounts, setAmbassadorUsageCounts] = useState<
@@ -159,25 +159,40 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       console.log("✅ Loaded ambassadors from API:", data);
 
       // Transform API data to match Admin interface
-      const transformedData = data.map((ambassador: any) => ({
-        id: ambassador.id,
-        name: ambassador.name,
-        // Use the role directly from database (new 6-type system)
-        type: ambassador.role as Ambassador["type"],
-        // Determine Ambassador vs Affiliate based on type prefix
-        role: ambassador.role?.startsWith("Ambassador")
-          ? "Ambassador"
-          : "Affiliate",
-        location: ambassador.location || "N/A",
-        address: ambassador.institution || "N/A",
-        photo: ambassador.photo_url || "/images/ambassadors/default.jpg",
-        affiliateCode: ambassador.affiliate_code,
-        joinDate:
-          ambassador.join_date || new Date().toISOString().split("T")[0],
-        email: ambassador.email || "N/A",
-        phone: ambassador.phone || "N/A",
-        testimonial: ambassador.testimonial || "",
-      }));
+      const transformedData = data.map(
+        (ambassador: {
+          id: number;
+          name: string;
+          role: string;
+          location: string;
+          institution: string;
+          photo_url: string;
+          affiliate_code: string;
+          join_date: string;
+          email: string;
+          phone: string;
+          testimonial: string;
+          [key: string]: unknown;
+        }) => ({
+          id: ambassador.id,
+          name: ambassador.name,
+          // Use the role directly from database (new 6-type system)
+          type: ambassador.role as Ambassador["type"],
+          // Determine Ambassador vs Affiliate based on type prefix
+          role: ambassador.role?.startsWith("Ambassador")
+            ? "Ambassador"
+            : "Affiliate",
+          location: ambassador.location || "N/A",
+          address: ambassador.institution || "N/A",
+          photo: ambassador.photo_url || "/images/ambassadors/default.jpg",
+          affiliateCode: ambassador.affiliate_code,
+          joinDate:
+            ambassador.join_date || new Date().toISOString().split("T")[0],
+          email: ambassador.email || "N/A",
+          phone: ambassador.phone || "N/A",
+          testimonial: ambassador.testimonial || "",
+        }),
+      );
 
       setAmbassadors(transformedData);
       console.log("✅ Ambassadors data transformed and loaded");
@@ -186,7 +201,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       showAlert(
         "Gagal Memuat Data",
         "Tidak dapat memuat data ambassador. Pastikan backend server sudah berjalan.",
-        "error"
+        "error",
       );
     }
   };
@@ -235,7 +250,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const showAlert = (
     title: string,
     message: string,
-    type: "alert" | "error" | "success" = "alert"
+    type: "alert" | "error" | "success" = "alert",
   ) => {
     setModal({
       show: true,
@@ -248,7 +263,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const showConfirm = (
     title: string,
     message: string,
-    onConfirm: () => void
+    onConfirm: () => void,
   ) => {
     setModal({
       show: true,
@@ -286,7 +301,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
       // Update local state after successful API call
       const updatedAmbassadors = ambassadors.filter(
-        (ambassador) => ambassador.id !== id
+        (ambassador) => ambassador.id !== id,
       );
       setAmbassadors(updatedAmbassadors);
       setShowDeleteConfirm(null);
@@ -300,7 +315,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       showAlert(
         "Gagal Menghapus",
         "Tidak dapat menghapus ambassador. Silakan coba lagi.",
-        "error"
+        "error",
       );
     }
   };
@@ -333,7 +348,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         `${API_BASE}/affiliate/stats/${ambassadorId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       const data = await response.json();
       if (data.success && data.stats) {
@@ -351,7 +366,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         `${API_BASE}/affiliate/leads/${ambassadorId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       const data = await response.json();
       if (data.success && data.leads) {
@@ -370,7 +385,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         `${API_BASE}/affiliate/lost-leads/${ambassadorId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       const data = await response.json();
       if (data.success && data.leads) {
@@ -387,7 +402,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         `${API_BASE}/affiliate/deleted-leads/${ambassadorId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       const data = await response.json();
       if (data.success && data.leads) {
@@ -422,7 +437,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
   const updateLeadStatus = async (
     leadId: number,
-    status: "pending" | "contacted" | "converted" | "lost"
+    status: "pending" | "contacted" | "converted" | "lost",
   ) => {
     try {
       const response = await fetch(
@@ -437,7 +452,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
             follow_up_status: status,
             registered: status === "converted",
           }),
-        }
+        },
       );
       const data = await response.json();
       if (data.success && selectedAmbassador) {
@@ -457,7 +472,7 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       showAlert(
         "Gagal Update Status",
         "Tidak dapat mengubah status lead. Silakan coba lagi.",
-        "error"
+        "error",
       );
     }
   };
@@ -467,8 +482,8 @@ const Ambassadors: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       lead.urgency === "urgent"
         ? "🔥 URGENT"
         : lead.urgency === "this_month"
-        ? "📅 Bulan Ini"
-        : "👀 Browsing";
+          ? "📅 Bulan Ini"
+          : "👀 Browsing";
 
     const message = `✨ FOLLOW UP PROGRAM ZONA ENGLISH
 
@@ -507,7 +522,7 @@ Tim Zona English siap membantu! 🚀`;
           body: JSON.stringify({
             follow_up_notes: notes,
           }),
-        }
+        },
       );
 
       if (response.ok && selectedAmbassador) {
@@ -552,13 +567,13 @@ Tim Zona English siap membantu! 🚀`;
             showAlert(
               "Berhasil",
               "Lead berhasil dihapus (soft delete).",
-              "success"
+              "success",
             );
           } else {
             showAlert(
               "Gagal Menghapus",
               data.error || "Terjadi kesalahan saat menghapus lead.",
-              "error"
+              "error",
             );
           }
         } catch (error) {
@@ -566,10 +581,10 @@ Tim Zona English siap membantu! 🚀`;
           showAlert(
             "Gagal Menghapus",
             "Tidak dapat menghapus lead. Silakan coba lagi.",
-            "error"
+            "error",
           );
         }
-      }
+      },
     );
   };
 
@@ -587,7 +602,7 @@ Tim Zona English siap membantu! 🚀`;
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
               },
-            }
+            },
           );
 
           const data = await response.json();
@@ -605,13 +620,13 @@ Tim Zona English siap membantu! 🚀`;
             showAlert(
               "Berhasil",
               "Lead berhasil dikembalikan ke Active.",
-              "success"
+              "success",
             );
           } else {
             showAlert(
               "Gagal Restore",
               data.error || "Terjadi kesalahan saat restore lead.",
-              "error"
+              "error",
             );
           }
         } catch (error) {
@@ -619,10 +634,10 @@ Tim Zona English siap membantu! 🚀`;
           showAlert(
             "Gagal Restore",
             "Tidak dapat restore lead. Silakan coba lagi.",
-            "error"
+            "error",
           );
         }
-      }
+      },
     );
   };
 
@@ -646,7 +661,7 @@ Tim Zona English siap membantu! 🚀`;
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                   },
-                }
+                },
               );
 
               const data = await response.json();
@@ -662,14 +677,14 @@ Tim Zona English siap membantu! 🚀`;
                 showAlert(
                   "Berhasil",
                   `Lead "${leadName}" berhasil dihapus PERMANEN dari database.`,
-                  "success"
+                  "success",
                 );
               } else {
                 showAlert(
                   "Gagal Hapus Permanen",
                   data.error ||
                     "Terjadi kesalahan saat menghapus permanen lead.",
-                  "error"
+                  "error",
                 );
               }
             } catch (error) {
@@ -677,12 +692,12 @@ Tim Zona English siap membantu! 🚀`;
               showAlert(
                 "Gagal Hapus Permanen",
                 "Tidak dapat menghapus permanen lead. Silakan coba lagi.",
-                "error"
+                "error",
               );
             }
-          }
+          },
         );
-      }
+      },
     );
   };
 
@@ -1220,7 +1235,7 @@ Tim Zona English siap membantu! 🚀`;
                                   <td className="px-4 py-3 text-sm font-medium text-slate-900">
                                     Rp{" "}
                                     {lead.discount_applied.toLocaleString(
-                                      "id-ID"
+                                      "id-ID",
                                     )}
                                   </td>
                                   <td className="px-4 py-3 text-sm text-slate-600">
@@ -1232,20 +1247,21 @@ Tim Zona English siap membantu! 🚀`;
                                         lead.follow_up_status === "converted"
                                           ? "success"
                                           : lead.follow_up_status ===
-                                            "contacted"
-                                          ? "warning"
-                                          : lead.follow_up_status === "lost"
-                                          ? "danger"
-                                          : "secondary"
+                                              "contacted"
+                                            ? "warning"
+                                            : lead.follow_up_status === "lost"
+                                              ? "danger"
+                                              : "secondary"
                                       }
                                     >
                                       {lead.follow_up_status === "pending"
                                         ? "Pending"
                                         : lead.follow_up_status === "contacted"
-                                        ? "Follow Up"
-                                        : lead.follow_up_status === "converted"
-                                        ? "Conversion"
-                                        : "Lost"}
+                                          ? "Follow Up"
+                                          : lead.follow_up_status ===
+                                              "converted"
+                                            ? "Conversion"
+                                            : "Lost"}
                                     </Badge>
                                   </td>
                                   <td className="px-4 py-3">
@@ -1295,7 +1311,7 @@ Tim Zona English siap membantu! 🚀`;
                                           onClick={() => {
                                             setEditingNotes(lead.id);
                                             setNoteText(
-                                              lead.follow_up_notes || ""
+                                              lead.follow_up_notes || "",
                                             );
                                           }}
                                           className="p-1 text-slate-400 hover:text-blue-600"
@@ -1313,7 +1329,11 @@ Tim Zona English siap membantu! 🚀`;
                                         onChange={(e) =>
                                           updateLeadStatus(
                                             lead.id,
-                                            e.target.value as any
+                                            e.target.value as
+                                              | "pending"
+                                              | "contacted"
+                                              | "converted"
+                                              | "lost",
                                           )
                                         }
                                         className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1415,7 +1435,7 @@ Tim Zona English siap membantu! 🚀`;
                                   <td className="px-4 py-3 text-sm font-medium text-slate-900">
                                     Rp{" "}
                                     {lead.discount_applied.toLocaleString(
-                                      "id-ID"
+                                      "id-ID",
                                     )}
                                   </td>
                                   <td className="px-4 py-3 text-sm text-slate-600">
@@ -1429,7 +1449,11 @@ Tim Zona English siap membantu! 🚀`;
                                         onChange={(e) =>
                                           updateLeadStatus(
                                             lead.id,
-                                            e.target.value as any
+                                            e.target.value as
+                                              | "pending"
+                                              | "contacted"
+                                              | "converted"
+                                              | "lost",
                                           )
                                         }
                                         className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1522,7 +1546,7 @@ Tim Zona English siap membantu! 🚀`;
                                   </td>
                                   <td className="px-4 py-3 text-sm text-slate-600">
                                     {new Date(
-                                      lead.deleted_at
+                                      lead.deleted_at,
                                     ).toLocaleDateString("id-ID")}
                                   </td>
                                   <td className="px-4 py-3 text-sm">
@@ -1555,7 +1579,7 @@ Tim Zona English siap membantu! 🚀`;
                                         onClick={() =>
                                           handlePermanentDelete(
                                             lead.id,
-                                            lead.user_name
+                                            lead.user_name,
                                           )
                                         }
                                         className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-1"
@@ -1590,10 +1614,10 @@ Tim Zona English siap membantu! 🚀`;
                 modal.type === "error"
                   ? "bg-red-50 border-red-200"
                   : modal.type === "success"
-                  ? "bg-green-50 border-green-200"
-                  : modal.type === "confirm"
-                  ? "bg-blue-50 border-blue-200"
-                  : "bg-slate-50 border-slate-200"
+                    ? "bg-green-50 border-green-200"
+                    : modal.type === "confirm"
+                      ? "bg-blue-50 border-blue-200"
+                      : "bg-slate-50 border-slate-200"
               }`}
             >
               <div className="flex items-center space-x-3">
@@ -1622,10 +1646,10 @@ Tim Zona English siap membantu! 🚀`;
                     modal.type === "error"
                       ? "text-red-900"
                       : modal.type === "success"
-                      ? "text-green-900"
-                      : modal.type === "confirm"
-                      ? "text-blue-900"
-                      : "text-slate-900"
+                        ? "text-green-900"
+                        : modal.type === "confirm"
+                          ? "text-blue-900"
+                          : "text-slate-900"
                   }`}
                 >
                   {modal.title}
@@ -1667,8 +1691,8 @@ Tim Zona English siap membantu! 🚀`;
                     modal.type === "error"
                       ? "bg-red-600 hover:bg-red-700"
                       : modal.type === "success"
-                      ? "bg-green-600 hover:bg-green-700"
-                      : "bg-blue-600 hover:bg-blue-700"
+                        ? "bg-green-600 hover:bg-green-700"
+                        : "bg-blue-600 hover:bg-blue-700"
                   }`}
                 >
                   OK

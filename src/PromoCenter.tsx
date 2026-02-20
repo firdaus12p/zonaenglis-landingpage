@@ -90,7 +90,7 @@ const ActiveBatchDisplay = () => {
 
       const offset = timezoneOffsets[activeBatch.timezone] || "+08:00";
       const targetDate = new Date(
-        `${dateOnly}T${activeBatch.start_time}${offset}`
+        `${dateOnly}T${activeBatch.start_time}${offset}`,
       );
       const now = new Date();
       const diff = targetDate.getTime() - now.getTime();
@@ -108,7 +108,7 @@ const ActiveBatchDisplay = () => {
 
       const days = Math.floor(diff / (1000 * 60 * 60 * 24));
       const hours = Math.floor(
-        (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)
+        (diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
       );
       const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
       const seconds = Math.floor((diff % (1000 * 60)) / 1000);
@@ -245,7 +245,7 @@ const ActiveBatchDisplay = () => {
 
           <a
             href={`https://wa.me/6282188080688?text=Halo%2C%20saya%20ingin%20daftar%20batch%20${encodeURIComponent(
-              activeBatch.name
+              activeBatch.name,
             )}`}
             className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-6 py-3 text-sm font-bold text-white hover:bg-emerald-700 transition-all shadow-lg hover:shadow-xl"
           >
@@ -262,7 +262,7 @@ const ActiveBatchDisplay = () => {
                   day: "numeric",
                   month: "long",
                   year: "numeric",
-                }
+                },
               )}
             </p>
           )}
@@ -437,24 +437,32 @@ const GallerySection = () => {
           Intensive: [],
         };
 
-        data.forEach((item: any) => {
-          if (grouped[item.category]) {
-            if (item.media_type === "video" && item.youtube_url) {
-              grouped[item.category].push({
-                type: "video",
-                src: "",
-                alt: item.title,
-                youtube_url: item.youtube_url,
-              });
-            } else if (item.image_url) {
-              grouped[item.category].push({
-                type: "image",
-                src: `${API_BASE.replace("/api", "")}${item.image_url}`,
-                alt: item.title,
-              });
+        data.forEach(
+          (item: {
+            category: string;
+            media_type: string;
+            youtube_url?: string;
+            title: string;
+            image_url?: string;
+          }) => {
+            if (grouped[item.category]) {
+              if (item.media_type === "video" && item.youtube_url) {
+                grouped[item.category].push({
+                  type: "video",
+                  src: "",
+                  alt: item.title,
+                  youtube_url: item.youtube_url,
+                });
+              } else if (item.image_url) {
+                grouped[item.category].push({
+                  type: "image",
+                  src: `${API_BASE.replace("/api", "")}${item.image_url}`,
+                  alt: item.title,
+                });
+              }
             }
-          }
-        });
+          },
+        );
 
         // Transform to galleryData format
         const transformed = [
@@ -550,7 +558,7 @@ const GallerySection = () => {
                   alt={item.alt}
                   loading="lazy"
                 />
-              )
+              ),
             )}
           </div>
         </div>

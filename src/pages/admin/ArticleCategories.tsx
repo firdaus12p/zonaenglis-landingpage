@@ -43,7 +43,7 @@ const ArticleCategories = () => {
         `${API_BASE}/articles/categories/admin/all`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       if (!response.ok) throw new Error("Failed to fetch categories");
       const result = await response.json();
@@ -60,7 +60,7 @@ const ArticleCategories = () => {
     setNotification({ show: true, message, type });
     setTimeout(
       () => setNotification({ show: false, message: "", type: "success" }),
-      3000
+      3000,
     );
   };
 
@@ -115,14 +115,16 @@ const ArticleCategories = () => {
         editingCategory
           ? "Category updated successfully"
           : "Category created successfully",
-        "success"
+        "success",
       );
       setShowModal(false);
       setFormData({ name: "", description: "" });
       fetchCategories();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving category:", error);
-      showNotification(error.message || "Failed to save category", "error");
+      const message =
+        error instanceof Error ? error.message : "Failed to save category";
+      showNotification(message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -144,9 +146,11 @@ const ArticleCategories = () => {
       showNotification("Category deleted successfully", "success");
       setDeleteConfirm(null);
       fetchCategories();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error deleting category:", error);
-      showNotification(error.message || "Failed to delete category", "error");
+      const message =
+        error instanceof Error ? error.message : "Failed to delete category";
+      showNotification(message, "error");
     }
   };
 
@@ -377,8 +381,8 @@ const ArticleCategories = () => {
                     {submitting
                       ? "Saving..."
                       : editingCategory
-                      ? "Update Category"
-                      : "Create Category"}
+                        ? "Update Category"
+                        : "Create Category"}
                   </button>
                   <button
                     type="button"

@@ -256,7 +256,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
     "All" | "Active" | "Inactive" | "Expired" | "Upcoming"
   >("All");
   const [filterType, setFilterType] = useState<"All" | "percentage" | "fixed">(
-    "All"
+    "All",
   );
   const [toast, setToast] = useState<{
     show: boolean;
@@ -531,7 +531,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         `${API_BASE}/promos/deleted-leads/${promoId}`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       const data = await response.json();
       if (data.success && data.leads) {
@@ -544,7 +544,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
   const updatePromoLeadStatus = async (
     leadId: number,
-    status: "pending" | "contacted" | "converted" | "lost"
+    status: "pending" | "contacted" | "converted" | "lost",
   ) => {
     try {
       const response = await fetch(
@@ -556,7 +556,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
             follow_up_status: status,
             registered: status === "converted",
           }),
-        }
+        },
       );
       const data = await response.json();
       if (data.success && selectedPromo) {
@@ -685,7 +685,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
 
   const handlePermanentDeletePromoLead = async (
     leadId: number,
-    leadName: string
+    leadName: string,
   ) => {
     // First confirmation
     setConfirmModal({
@@ -712,7 +712,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                   {
                     method: "DELETE",
                     headers: { "Content-Type": "application/json" },
-                  }
+                  },
                 );
 
                 const data = await response.json();
@@ -881,7 +881,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                           const now = new Date();
                           const diffDays = Math.ceil(
                             (expiry.getTime() - now.getTime()) /
-                              (1000 * 60 * 60 * 24)
+                              (1000 * 60 * 60 * 24),
                           );
                           return diffDays <= 7 && diffDays > 0;
                         }).length
@@ -951,7 +951,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                 const status = getStatus(promo);
                 const usagePercentage = getUsagePercentage(
                   promo.used_count,
-                  promo.usage_limit || 0
+                  promo.usage_limit || 0,
                 );
 
                 return (
@@ -1077,8 +1077,8 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                             usagePercentage >= 90
                               ? "bg-red-500"
                               : usagePercentage >= 70
-                              ? "bg-amber-500"
-                              : "bg-emerald-500"
+                                ? "bg-amber-500"
+                                : "bg-emerald-500"
                           }`}
                           style={{
                             width: `${Math.min(usagePercentage, 100)}%`,
@@ -1363,7 +1363,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                                   <td className="px-4 py-3 text-sm font-medium text-slate-900">
                                     Rp{" "}
                                     {lead.discount_amount.toLocaleString(
-                                      "id-ID"
+                                      "id-ID",
                                     )}
                                   </td>
                                   <td className="px-4 py-3 text-sm text-slate-600">
@@ -1375,16 +1375,16 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                                         lead.follow_up_status === "converted"
                                           ? "success"
                                           : lead.follow_up_status ===
-                                            "contacted"
-                                          ? "warning"
-                                          : "secondary"
+                                              "contacted"
+                                            ? "warning"
+                                            : "secondary"
                                       }
                                     >
                                       {lead.follow_up_status === "pending"
                                         ? "Pending"
                                         : lead.follow_up_status === "contacted"
-                                        ? "Follow Up"
-                                        : "Conversion"}
+                                          ? "Follow Up"
+                                          : "Conversion"}
                                     </Badge>
                                   </td>
                                   <td className="px-4 py-3">
@@ -1394,7 +1394,11 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                                         onChange={(e) =>
                                           updatePromoLeadStatus(
                                             lead.id,
-                                            e.target.value as any
+                                            e.target.value as
+                                              | "pending"
+                                              | "contacted"
+                                              | "converted"
+                                              | "lost",
                                           )
                                         }
                                         className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1486,7 +1490,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                                   <td className="px-4 py-3 text-sm font-medium text-slate-900">
                                     Rp{" "}
                                     {lead.discount_amount.toLocaleString(
-                                      "id-ID"
+                                      "id-ID",
                                     )}
                                   </td>
                                   <td className="px-4 py-3 text-sm text-slate-600">
@@ -1499,7 +1503,11 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                                         onChange={(e) =>
                                           updatePromoLeadStatus(
                                             lead.id,
-                                            e.target.value as any
+                                            e.target.value as
+                                              | "pending"
+                                              | "contacted"
+                                              | "converted"
+                                              | "lost",
                                           )
                                         }
                                         className="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -1591,7 +1599,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                                   </td>
                                   <td className="px-4 py-3 text-sm text-slate-600">
                                     {new Date(
-                                      lead.deleted_at
+                                      lead.deleted_at,
                                     ).toLocaleDateString("id-ID")}
                                   </td>
                                   <td className="px-4 py-3 text-sm">
@@ -1624,7 +1632,7 @@ const PromoCodes: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                                         onClick={() =>
                                           handlePermanentDeletePromoLead(
                                             lead.id,
-                                            lead.user_name
+                                            lead.user_name,
                                           )
                                         }
                                         className="px-3 py-1.5 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center space-x-1"

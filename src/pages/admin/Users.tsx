@@ -49,11 +49,11 @@ const Users = ({
   const [showModal, setShowModal] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(
-    null
+    null,
   );
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [changingPasswordFor, setChangingPasswordFor] = useState<User | null>(
-    null
+    null,
   );
   const [showPassword, setShowPassword] = useState(false);
 
@@ -192,13 +192,15 @@ const Users = ({
 
       showNotification(
         editingUser ? "User berhasil diupdate!" : "User berhasil ditambahkan!",
-        "success"
+        "success",
       );
 
       setShowModal(false);
       fetchUsers();
-    } catch (error: any) {
-      showNotification(error.message || "Gagal menyimpan user", "error");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Gagal menyimpan user";
+      showNotification(message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -239,7 +241,7 @@ const Users = ({
           body: JSON.stringify({
             newPassword: passwordData.newPassword,
           }),
-        }
+        },
       );
 
       const result = await response.json();
@@ -251,8 +253,10 @@ const Users = ({
       showNotification("Password berhasil diubah!", "success");
       setShowPasswordModal(false);
       setPasswordData({ newPassword: "", confirmPassword: "" });
-    } catch (error: any) {
-      showNotification(error.message || "Gagal ubah password", "error");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Gagal ubah password";
+      showNotification(message, "error");
     } finally {
       setSubmitting(false);
     }
@@ -276,8 +280,10 @@ const Users = ({
       showNotification("User berhasil dihapus!", "success");
       setShowDeleteConfirm(null);
       fetchUsers();
-    } catch (error: any) {
-      showNotification(error.message || "Gagal menghapus user", "error");
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Gagal menghapus user";
+      showNotification(message, "error");
     }
   };
 

@@ -62,6 +62,33 @@ interface CodeValidation {
   promoDescription?: string;
 }
 
+interface AmbassadorApiItem {
+  id: number;
+  name: string;
+  role: string;
+  location: string;
+  institution: string;
+  affiliate_code: string;
+  phone: string;
+  testimonial: string;
+  [key: string]: unknown;
+}
+
+interface ProgramApiItem {
+  id: number;
+  title: string;
+  branch: string;
+  type: string;
+  program: string;
+  start_date: string;
+  end_date: string;
+  quota: number;
+  price: string;
+  perks: string | string[];
+  image_url: string;
+  [key: string]: unknown;
+}
+
 interface AppliedCode {
   code: string;
   type: "ambassador" | "promo";
@@ -640,7 +667,7 @@ const PromoCard = ({
         if (
           data.reason &&
           ["inactive", "expired", "quota_full", "not_yet_valid"].includes(
-            data.reason
+            data.reason,
           )
         ) {
           const titles = {
@@ -688,11 +715,11 @@ const PromoCard = ({
                 branch: data.ambassador.location || "",
               }
             : data.type === "promo" && data.promo
-            ? {
-                promoName: data.promo.name,
-                promoDescription: data.promo.description,
-              }
-            : undefined,
+              ? {
+                  promoName: data.promo.name,
+                  promoDescription: data.promo.description,
+                }
+              : undefined,
       };
 
       onApplyCode(codeInput.trim(), validation);
@@ -738,7 +765,7 @@ const PromoCard = ({
             // Show error modal
             setErrorMessage(
               trackData.error ||
-                "Nomor ini sudah menggunakan kode affiliate hari ini. Gunakan nomor lain atau hubungi admin untuk menghapus data."
+                "Nomor ini sudah menggunakan kode affiliate hari ini. Gunakan nomor lain atau hubungi admin untuk menghapus data.",
             );
             setShowErrorModal(true);
 
@@ -749,11 +776,11 @@ const PromoCard = ({
           } else {
             console.error(
               "❌ Tracking failed with status:",
-              trackResponse.status
+              trackResponse.status,
             );
             console.error(
               "❌ Error message:",
-              trackData.error || trackData.message
+              trackData.error || trackData.message,
             );
             console.error("❌ Full response:", trackData);
             // Continue anyway - don't block code application for tracking failures
@@ -1107,7 +1134,7 @@ const PromoCard = ({
         <a
           className="text-sm font-semibold text-blue-700 hover:underline"
           href={`https://wa.me/6282188080688?text=Halo%20ZE%2C%20saya%20mau%20tanya%20tentang%20${encodeURIComponent(
-            promo.title
+            promo.title,
           )}`}
           target="_blank"
           rel="noopener noreferrer"
@@ -1159,10 +1186,10 @@ export default function PromoHub() {
   const [filterProgram, setFilterProgram] = useState("all");
   const [globalCode, setGlobalCode] = useState("");
   const [globalStatus, setGlobalStatus] = useState(
-    "Masukkan kode di sini atau pada kartu promo."
+    "Masukkan kode di sini atau pada kartu promo.",
   );
   const [appliedCodes, setAppliedCodes] = useState<Map<string, AppliedCode>>(
-    new Map()
+    new Map(),
   );
   const [activeLocation, setActiveLocation] = useState<
     "Pettarani" | "Kolaka" | "Kendari"
@@ -1192,7 +1219,7 @@ export default function PromoHub() {
         // Group ambassadors by institution
         const grouped: Record<string, AmbassadorInstitution> = {};
 
-        ambassadorsData.forEach((amb: any) => {
+        ambassadorsData.forEach((amb: AmbassadorApiItem) => {
           const institution = amb.institution || "Lainnya";
           const branch = amb.location as "Pettarani" | "Kolaka" | "Kendari";
 
@@ -1218,7 +1245,7 @@ export default function PromoHub() {
             contact: amb.phone
               ? `https://wa.me/${amb.phone.replace(
                   /\D/g,
-                  ""
+                  "",
                 )}?text=Halo%2C%20saya%20tertarik%20dengan%20Zona%20English`
               : "https://wa.me/6282188080688?text=Halo%2C%20saya%20tertarik%20dengan%20Zona%20English",
             testimonial: amb.testimonial || "Bergabunglah dengan Zona English!",
@@ -1233,7 +1260,7 @@ export default function PromoHub() {
 
         // Transform API data to PromoData format
         const transformedPromos: PromoData[] = programsData.map(
-          (program: any) => ({
+          (program: ProgramApiItem) => ({
             id: program.id.toString(),
             title: program.title,
             branch: program.branch as "Pettarani" | "Kolaka" | "Kendari",
@@ -1260,7 +1287,7 @@ export default function PromoHub() {
             wa:
               program.wa_link ||
               "https://wa.me/6282188080688?text=Daftar%20Program",
-          })
+          }),
         );
 
         setPromos(transformedPromos);
@@ -1307,7 +1334,7 @@ export default function PromoHub() {
 
           const grouped: Record<string, AmbassadorInstitution> = {};
 
-          ambassadorsData.forEach((amb: any) => {
+          ambassadorsData.forEach((amb: AmbassadorApiItem) => {
             const institution = amb.institution || "Lainnya";
             const branch = amb.location as "Pettarani" | "Kolaka" | "Kendari";
 
@@ -1331,7 +1358,7 @@ export default function PromoHub() {
               contact: amb.phone
                 ? `https://wa.me/${amb.phone.replace(
                     /\D/g,
-                    ""
+                    "",
                   )}?text=Halo%2C%20saya%20tertarik%20dengan%20Zona%20English`
                 : "https://wa.me/6282188080688?text=Halo%2C%20saya%20tertarik%20dengan%20Zona%20English",
               testimonial:
@@ -1380,19 +1407,19 @@ export default function PromoHub() {
           setGlobalStatus(
             `✅ Kode ${globalCode.toUpperCase()} valid — ${
               data.ambassador.name
-            } (${data.ambassador.location}). Gunakan pada kartu promo di bawah.`
+            } (${data.ambassador.location}). Gunakan pada kartu promo di bawah.`,
           );
         } else if (data.type === "promo" && data.promo) {
           setGlobalStatus(
             `✅ Kode Promo ${globalCode.toUpperCase()} valid — ${
               data.promo.name
-            }. Gunakan pada kartu promo di bawah.`
+            }. Gunakan pada kartu promo di bawah.`,
           );
         }
       } else {
         setGlobalStatus(
           data.message ||
-            "⚠️ Kode tidak ditemukan. Hubungi Ambassador/Affiliate pada direktori di bawah."
+            "⚠️ Kode tidak ditemukan. Hubungi Ambassador/Affiliate pada direktori di bawah.",
         );
       }
     } catch (error) {
@@ -1404,7 +1431,7 @@ export default function PromoHub() {
   const handleApplyPromoCode = async (
     promoId: string,
     _code: string,
-    validation: AppliedCode
+    validation: AppliedCode,
   ) => {
     const newCodes = new Map(appliedCodes);
     newCodes.set(promoId, validation);
@@ -1421,14 +1448,14 @@ export default function PromoHub() {
     (p: PromoData) =>
       (filterBranch === "all" || p.branch === filterBranch) &&
       (filterType === "all" || p.type === filterType) &&
-      (filterProgram === "all" || p.program === filterProgram)
+      (filterProgram === "all" || p.program === filterProgram),
   );
 
   const filteredAmbassadors = ambassadorInstitutions.filter(
     (amb) =>
       (ambassadorFilterBranch === "all" ||
         amb.branch === ambassadorFilterBranch) &&
-      amb.institution.toLowerCase().includes(searchInstitution.toLowerCase())
+      amb.institution.toLowerCase().includes(searchInstitution.toLowerCase()),
   );
 
   return (
@@ -1484,7 +1511,15 @@ export default function PromoHub() {
               </label>
               <select
                 value={filterBranch}
-                onChange={(e) => setFilterBranch(e.target.value as any)}
+                onChange={(e) =>
+                  setFilterBranch(
+                    e.target.value as
+                      | "all"
+                      | "Pettarani"
+                      | "Kolaka"
+                      | "Kendari",
+                  )
+                }
                 className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-300 focus:outline-none"
               >
                 <option value="all">Semua Cabang</option>
@@ -1651,7 +1686,11 @@ export default function PromoHub() {
           />
           <select
             value={ambassadorFilterBranch}
-            onChange={(e) => setAmbassadorFilterBranch(e.target.value as any)}
+            onChange={(e) =>
+              setAmbassadorFilterBranch(
+                e.target.value as "all" | "Pettarani" | "Kolaka" | "Kendari",
+              )
+            }
             className="rounded-xl border border-slate-200 px-3 py-2 text-sm focus:border-blue-300 focus:outline-none"
           >
             <option value="all">Semua Cabang</option>

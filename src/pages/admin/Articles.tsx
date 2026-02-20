@@ -70,7 +70,7 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
   const [showModal, setShowModal] = useState(false);
   const [editingArticle, setEditingArticle] = useState<Article | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(
-    null
+    null,
   );
   const [notification, setNotification] = useState<{
     show: boolean;
@@ -104,13 +104,13 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
         `${API_BASE}/articles/categories/admin/all`,
         {
           headers: { Authorization: `Bearer ${token}` },
-        }
+        },
       );
       if (!response.ok) throw new Error("Failed to fetch categories");
       const result = await response.json();
       // Extract category names from the result
       const categoryNames = result.data.map(
-        (cat: { name: string }) => cat.name
+        (cat: { name: string }) => cat.name,
       );
       setCategories(categoryNames);
     } catch (error) {
@@ -145,7 +145,7 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       });
       setTimeout(
         () => setNotification({ show: false, message: "", type: "success" }),
-        3000
+        3000,
       );
     } finally {
       setLoading(false);
@@ -297,23 +297,25 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       });
       setTimeout(
         () => setNotification({ show: false, message: "", type: "success" }),
-        3000
+        3000,
       );
       setShowModal(false);
       // Reset image states after successful submit
       setFeaturedImage(null);
       setImagePreview("");
       fetchArticles();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error saving article:", error);
+      const message =
+        error instanceof Error ? error.message : "Failed to save article";
       setNotification({
         show: true,
-        message: error.message || "Failed to save article",
+        message,
         type: "error",
       });
       setTimeout(
         () => setNotification({ show: false, message: "", type: "success" }),
-        3000
+        3000,
       );
     } finally {
       setSubmitting(false);
@@ -336,7 +338,7 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       });
       setTimeout(
         () => setNotification({ show: false, message: "", type: "success" }),
-        3000
+        3000,
       );
       setShowDeleteConfirm(null);
       fetchArticles();
@@ -349,7 +351,7 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
       });
       setTimeout(
         () => setNotification({ show: false, message: "", type: "success" }),
-        3000
+        3000,
       );
     }
   };
@@ -846,7 +848,11 @@ const Articles: React.FC<{ setCurrentPage: (page: string) => void }> = ({
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        status: e.target.value as any,
+                        status: e.target.value as
+                          | "Published"
+                          | "Draft"
+                          | "Scheduled"
+                          | "Archived",
                       })
                     }
                     required

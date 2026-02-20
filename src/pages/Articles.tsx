@@ -305,7 +305,10 @@ const ArticlesList = () => {
       if (!response.ok) throw new Error("Failed to fetch categories");
       const result = await response.json();
       const data = result.data || result; // Handle both {data: [...]} and [...] formats
-      setCategories(["All", ...data.map((c: any) => c.category)]);
+      setCategories([
+        "All",
+        ...data.map((c: { category: string }) => c.category),
+      ]);
     } catch (err) {
       console.error("Error fetching categories:", err);
     }
@@ -317,7 +320,7 @@ const ArticlesList = () => {
       if (!response.ok) throw new Error("Failed to fetch hashtags");
       const result = await response.json();
       const data = result.data || result; // Handle both {data: [...]} and [...] formats
-      setHashtags(data.map((h: any) => h.hashtag));
+      setHashtags(data.map((h: { hashtag: string }) => h.hashtag));
     } catch (err) {
       console.error("Error fetching hashtags:", err);
     }
@@ -443,7 +446,7 @@ const ArticleDetail = () => {
   const [error, setError] = useState("");
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [userReaction, setUserReaction] = useState<"like" | "love" | null>(
-    null
+    null,
   );
   const [commentForm, setCommentForm] = useState({
     user_name: "",
@@ -488,7 +491,7 @@ const ArticleDetail = () => {
     if (!article) return;
     try {
       const response = await fetch(
-        `${API_BASE}/articles/${article.id}/user-reaction`
+        `${API_BASE}/articles/${article.id}/user-reaction`,
       );
       if (response.ok) {
         const data = await response.json();
@@ -535,7 +538,7 @@ const ArticleDetail = () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(commentForm),
-        }
+        },
       );
 
       if (response.ok) {
@@ -872,7 +875,7 @@ const ArticleDetail = () => {
                       </p>
                       <p className="text-sm text-slate-500">
                         {new Date(comment.created_at).toLocaleDateString(
-                          "id-ID"
+                          "id-ID",
                         )}
                       </p>
                     </div>
