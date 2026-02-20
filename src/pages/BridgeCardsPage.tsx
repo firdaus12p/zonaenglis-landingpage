@@ -14,11 +14,12 @@ import { WarmupMode } from "../components/BridgeCards/WarmupMode";
 import { AIPartnerMode } from "../components/BridgeCards/AIPartnerMode";
 import { RealPartnerMode } from "../components/BridgeCards/RealPartnerMode";
 import { CompletionScreen } from "../components/BridgeCards/CompletionScreen";
+import { VoicePracticeMode } from "../components/BridgeCards/VoicePracticeMode";
 
 const BridgeCardsApp: React.FC = () => {
   // Auth must be resolved first so isAuthenticated is passed to the hook
   const { isAuthenticated, isLoading, student } = useBridgeAuth();
-  const { state, voiceState, actions, cards } = useBridgeCards(isAuthenticated);
+  const { state, voiceState, chatState, actions, cards } = useBridgeCards(isAuthenticated);
   const { warmup: warmupCards, partner: partnerCards } = cards;
 
   /** Play TTS audio for correct pronunciation reference */
@@ -144,6 +145,26 @@ const BridgeCardsApp: React.FC = () => {
             masteredCount={state.masteredCards.length}
             reviewCount={state.reviewCards.length}
             onReset={actions.startOver}
+          />
+        );
+
+      case "voicePractice":
+        return (
+          <VoicePracticeMode
+            chatHistory={chatState.chatHistory}
+            turnCount={chatState.turnCount}
+            isChatLoading={chatState.isChatLoading}
+            chatError={chatState.chatError}
+            isSessionComplete={chatState.isSessionComplete}
+            analysisResult={chatState.analysisResult}
+            onInitSession={actions.initChatSession}
+            onChatSubmit={actions.handleChatSubmit}
+            onRetry={() => {
+              actions.resetChatSession();
+              actions.initChatSession();
+            }}
+            onExit={actions.startOver}
+            onPlayTTS={handlePlayTTS}
           />
         );
 

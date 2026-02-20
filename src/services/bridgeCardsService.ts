@@ -3,6 +3,7 @@ import type {
   BridgeCardRecord,
   BridgeStudentProfile,
   BridgeStudentAccount,
+  ChatMessage,
   VoiceAnalysisResult,
 } from "../types/bridgeCards";
 
@@ -121,6 +122,32 @@ export const bridgeCardsService = {
       method: "POST",
       body: JSON.stringify({ text }),
     });
+  },
+
+  // ------------------------------------------------------------------
+  // STUDENT: AI CONVERSATION PRACTICE (use fetchWithStudentAuth)
+  // ------------------------------------------------------------------
+
+  /** Send a user message and receive a conversational reply from Ze AI */
+  async chatRespond(
+    chatHistory: ChatMessage[],
+  ): Promise<{ message: string; shouldEnd: boolean }> {
+    return fetchWithStudentAuth(API_ENDPOINTS.bridgeCards.chat.respond, {
+      method: "POST",
+      body: JSON.stringify({ chatHistory }),
+    });
+  },
+
+  /** Analyze the completed chat session and return a performance report */
+  async chatAnalyze(chatHistory: ChatMessage[]): Promise<VoiceAnalysisResult> {
+    const data = await fetchWithStudentAuth(
+      API_ENDPOINTS.bridgeCards.chat.analyze,
+      {
+        method: "POST",
+        body: JSON.stringify({ chatHistory }),
+      },
+    );
+    return data as VoiceAnalysisResult;
   },
 
   // ------------------------------------------------------------------

@@ -47,6 +47,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({ streak, todayCount, lastPlay
   const warmupStyle = getButtonClasses('warmup', 'text-blue-500', 'group-hover:bg-blue-100', 'bg-blue-50', '', 'bg-gradient-to-br from-blue-500 to-indigo-500');
   const aiPartnerStyle = getButtonClasses('partner', 'text-purple-500', 'group-hover:bg-purple-100', 'bg-purple-50', '', 'bg-gradient-to-br from-purple-500 to-fuchsia-500');
   const realPartnerStyle = getButtonClasses('realPartner', 'text-rose-500', 'group-hover:bg-rose-100', 'bg-rose-50', '', 'bg-gradient-to-br from-rose-500 to-pink-500');
+  const voicePracticeStyle = getButtonClasses('voicePractice', 'text-indigo-500', 'group-hover:bg-indigo-100', 'bg-indigo-50', '', 'bg-gradient-to-br from-indigo-500 to-violet-500');
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-slate-50 p-6 flex items-center justify-center">
@@ -129,6 +130,24 @@ export const MainMenu: React.FC<MainMenuProps> = ({ streak, todayCount, lastPlay
                 </div>
               </div>
               <div className={realPartnerStyle.arrow}>→</div>
+            </div>
+          </button>
+
+          <button
+            onClick={() => onSelectMode('voicePractice')}
+            className={voicePracticeStyle.container}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={voicePracticeStyle.iconWrapper}>
+                  <span className={voicePracticeStyle.icon}>🤖</span>
+                </div>
+                <div>
+                  <h2 className={voicePracticeStyle.title}>AI Voice Practice</h2>
+                  <p className={voicePracticeStyle.subtitle}>Conversation with Ze AI</p>
+                </div>
+              </div>
+              <div className={voicePracticeStyle.arrow}>→</div>
             </div>
           </button>
         </div>

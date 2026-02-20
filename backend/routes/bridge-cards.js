@@ -31,6 +31,9 @@ const VOICEMAKER_API_KEY = process.env.VOICEMAKER_API_KEY || "";
 const VOICEMAKER_API_URL =
   "https://developer.voicemaker.in/api/v1/voice/convert";
 
+// Conversation Practice config
+const MAX_CHAT_TURNS = 6; // Max user turns before Ze AI wraps up
+
 // ====== MIDDLEWARE ======
 
 /**
@@ -507,6 +510,150 @@ router.post("/voice/tts", authenticateBridgeStudent, async (req, res) => {
 });
 
 // ====================================================================
+// STUDENT CHAT ENDPOINTS — AI Conversation Practice
+// ====================================================================
+
+/**
+ * POST /api/bridge-cards/chat/respond
+ * Student: Send a message and receive a conversational response from Ze AI.
+ * Also signals when the conversation should end (after MAX_CHAT_TURNS).
+ */
+router.post("/chat/respond", authenticateBridgeStudent, async (req, res) => {
+  try {
+    const { chatHistory } = req.body;
+
+    if (!Array.isArray(chatHistory)) {
+      return res
+        .status(400)
+        .json({ success: false, message: "chatHistory harus berupa array" });
+    }
+
+    // Prevent token abuse — max 12 messages (6 turns × 2 roles)
+    if (chatHistory.length > 12) {
+      return res.status(400).json({
+        success: false,
+        message: "Panjang chatHistory melebihi batas maksimum (12 pesan)",
+      });
+    }
+
+    // Validate and sanitize each message
+    for (const msg of chatHistory) {
+      if (!msg || !["user", "ai"].includes(msg.role)) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Format pesan tidak valid" });
+      }
+      if (typeof msg.content !== "string" || msg.content.trim().length === 0) {
+        return res
+          .status(400)
+          .json({ success: false, message: "Konten pesan tidak boleh kosong" });
+      }
+      if (msg.content.length > 500) {
+        return res.status(400).json({
+          success: false,
+          message: "Panjang pesan melebihi 500 karakter",
+        });
+      }
+    }
+
+    if (!GROQ_API_KEY) {
+      logger.error("GROQ_API_KEY not configured");
+      return res
+        .status(503)
+        .json({ success: false, message: "Layanan AI belum dikonfigurasi" });
+    }
+
+    // Count completed turns (each user message = 1 turn)
+    const turnCount = chatHistory.filter((m) => m.role === "user").length;
+    const shouldEnd = turnCount >= MAX_CHAT_TURNS;
+
+    const messages = buildConversationMessages(chatHistory, turnCount);
+    const aiResponse = await callGroqConversation(messages);
+
+    if (!aiResponse) {
+      return res
+        .status(502)
+        .json({ success: false, message: "Gagal mendapatkan respons dari AI" });
+    }
+
+    logger.info("Chat respond completed", {
+      studentId: req.student.id,
+      turnCount,
+      shouldEnd,
+    });
+
+    res.json({ success: true, message: aiResponse, shouldEnd });
+  } catch (error) {
+    logger.error("Chat respond error", { error: error.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Terjadi kesalahan pada server" });
+  }
+});
+
+/**
+ * POST /api/bridge-cards/chat/analyze
+ * Student: Analyze the full chat session and return a language performance report.
+ * Reuses the same VoiceAnalysisResult format for consistency with the frontend.
+ */
+router.post("/chat/analyze", authenticateBridgeStudent, async (req, res) => {
+  try {
+    const { chatHistory } = req.body;
+
+    if (!Array.isArray(chatHistory) || chatHistory.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "chatHistory harus berupa array dan tidak boleh kosong",
+      });
+    }
+
+    if (chatHistory.length > 12) {
+      return res.status(400).json({
+        success: false,
+        message: "Panjang chatHistory melebihi batas maksimum (12 pesan)",
+      });
+    }
+
+    // Only user messages matter for analysis — validate presence
+    const userMessages = chatHistory.filter((m) => m.role === "user");
+    if (userMessages.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Tidak ada pesan dari user untuk dianalisis",
+      });
+    }
+
+    if (!GROQ_API_KEY) {
+      logger.error("GROQ_API_KEY not configured");
+      return res
+        .status(503)
+        .json({ success: false, message: "Layanan AI belum dikonfigurasi" });
+    }
+
+    const prompt = buildChatAnalysisPrompt(chatHistory);
+    const analysisResult = await callGroqAPI(prompt);
+
+    if (!analysisResult) {
+      return res
+        .status(502)
+        .json({ success: false, message: "Gagal menganalisis percakapan" });
+    }
+
+    logger.info("Chat analysis completed", {
+      studentId: req.student.id,
+      userMessages: userMessages.length,
+    });
+
+    res.json({ success: true, ...analysisResult });
+  } catch (error) {
+    logger.error("Chat analyze error", { error: error.message });
+    res
+      .status(500)
+      .json({ success: false, message: "Terjadi kesalahan pada server" });
+  }
+});
+
+// ====================================================================
 // ADMIN ENDPOINTS — All require authenticateToken + requireAdmin
 // ====================================================================
 
@@ -921,6 +1068,135 @@ function computeLevelName(totalMastered) {
  * @param {string} targetText - The expected correct sentence
  * @returns {string} The system+user prompt for the AI
  */
+/**
+ * Build OpenAI-format messages array for Ze AI conversation.
+ * Injects Ze AI persona as system prompt and maps chat history to API format.
+ * @param {{ role: 'user'|'ai', content: string }[]} chatHistory - Current conversation
+ * @param {number} turnCount - Number of completed user turns so far
+ * @returns {{ role: string, content: string }[]} Messages for Groq API
+ */
+function buildConversationMessages(chatHistory, turnCount) {
+  const isLastTurn = turnCount >= MAX_CHAT_TURNS;
+
+  const systemPrompt = `You are "Ze AI", a friendly and slightly witty English conversation practice assistant for Zona English language school.
+
+Your personality:
+- Warm, encouraging, and naturally conversational
+- Uses light humor without being distracting
+- Keeps responses SHORT (2-3 sentences max) for a natural back-and-forth rhythm
+- Always responds in English only
+- Corrects errors very gently — never makes the student feel bad
+
+Your job: Have a natural, flowing English conversation with the student. Ask open-ended questions to keep them talking. React naturally to what they say.
+
+${
+    isLastTurn
+      ? `IMPORTANT — THIS IS THE FINAL EXCHANGE: You must end the conversation NOW with a funny, creative excuse to leave (e.g., your cat knocked over your coffee, you just spotted a UFO, your pizza arrived). Keep it short and funny. Then warmly tell the student their results are ready and wish them well!`
+      : `Turn ${turnCount + 1} of ${MAX_CHAT_TURNS}: Keep the conversation going naturally.`
+  }`;
+
+  const apiMessages = [
+    { role: "system", content: systemPrompt },
+    // Map chat history: 'ai' role → 'assistant' for Groq API compatibility
+    ...chatHistory.map((msg) => ({
+      role: msg.role === "ai" ? "assistant" : "user",
+      content: String(msg.content).replace(/<[^>]*>/g, "").trim(),
+    })),
+  ];
+
+  return apiMessages;
+}
+
+/**
+ * Call Groq API for conversational AI response (plain text output).
+ * Distinct from callGroqAPI which is purpose-built for JSON analysis responses.
+ * @param {{ role: string, content: string }[]} messages - Full messages array
+ * @returns {string|null} AI response text or null on failure
+ */
+async function callGroqConversation(messages) {
+  try {
+    const response = await fetch(GROQ_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages,
+        temperature: 0.75, // More creative for natural conversation
+        max_tokens: 256,   // Keep responses concise
+      }),
+    });
+
+    if (!response.ok) {
+      logger.error("Groq conversation API error", {
+        status: response.status,
+        statusText: response.statusText,
+      });
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content?.trim();
+
+    if (!content) {
+      logger.error("Groq conversation API returned empty content");
+      return null;
+    }
+
+    return content;
+  } catch (error) {
+    logger.error("Groq conversation API call failed", { error: error.message });
+    return null;
+  }
+}
+
+/**
+ * Build analysis prompt from a completed chat session.
+ * Formats the conversation as a readable dialogue for the LLM to assess.
+ * @param {{ role: 'user'|'ai', content: string }[]} chatHistory - Completed conversation
+ * @returns {string} Analysis prompt string
+ */
+function buildChatAnalysisPrompt(chatHistory) {
+  const dialogue = chatHistory
+    .map((msg) => {
+      const speaker = msg.role === "user" ? "Student" : "Ze AI";
+      const cleanContent = String(msg.content).replace(/<[^>]*>/g, "").trim();
+      return `${speaker}: ${cleanContent}`;
+    })
+    .join("\n");
+
+  return `You are an English language tutor analyzing a student's performance in a conversation practice session.
+
+Conversation transcript:
+${dialogue}
+
+Evaluate ONLY the student's messages (lines starting with "Student:"). Analyze their grammar, vocabulary usage, and overall fluency based on the text patterns.
+
+Respond with ONLY valid JSON (no markdown, no code fences):
+{
+  "grammarScore": <number 0-100>,
+  "vocabScore": <number 0-100>,
+  "pronunciationScore": <number 0-100>,
+  "corrections": [
+    {
+      "wrong": "<what the student wrote incorrectly>",
+      "right": "<the correct form>",
+      "explanation": "<brief explanation in Bahasa Indonesia>"
+    }
+  ],
+  "overallFeedback": "<encouraging summary feedback in Bahasa Indonesia, 2-3 sentences>"
+}
+
+Scoring rules:
+- grammarScore: Grammar correctness across all student messages
+- vocabScore: Variety and accuracy of vocabulary used
+- pronunciationScore: Word-level accuracy and sentence completeness (text-based proxy)
+- corrections: Up to 5 most important errors from across the whole conversation
+- Always respond in valid JSON only`;
+}
+
 function buildAnalysisPrompt(spokenText, targetText) {
   return `You are an English language tutor analyzing a student's spoken response.
 The student is learning English. Compare what they said to the target sentence.

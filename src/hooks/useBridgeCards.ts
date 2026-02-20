@@ -5,6 +5,7 @@ import type {
   BridgeCardState,
   WarmupCard,
   PartnerCard,
+  ChatMessage,
   VoiceAnalysisResult,
 } from "../types/bridgeCards";
 import {
@@ -17,6 +18,26 @@ import { bridgeCardsService } from "../services/bridgeCardsService";
  * isAuthenticated — must be passed from BridgeAuthContext so the hook
  * fetches cards AFTER the student token exists, not on blind mount.
  */
+
+/** Internal state shape for the AI conversation practice feature. */
+interface ChatState {
+  chatHistory: ChatMessage[];
+  turnCount: number;
+  isChatLoading: boolean;
+  chatError: string | null;
+  isSessionComplete: boolean;
+  analysisResult: VoiceAnalysisResult | null;
+}
+
+const INITIAL_CHAT_STATE: ChatState = {
+  chatHistory: [],
+  turnCount: 0,
+  isChatLoading: false,
+  chatError: null,
+  isSessionComplete: false,
+  analysisResult: null,
+};
+
 export function useBridgeCards(isAuthenticated: boolean) {
   const [warmupCards, setWarmupCards] =
     useState<WarmupCard[]>(fallbackWarmupCards);
@@ -29,6 +50,9 @@ export function useBridgeCards(isAuthenticated: boolean) {
   );
   const [isVoiceLoading, setIsVoiceLoading] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
+
+  // Chat practice state — isolated from all other feature state
+  const [chatState, setChatState] = useState<ChatState>(INITIAL_CHAT_STATE);
 
   const [state, setState] = useState<BridgeCardState>(() => {
     const savedLastMode = localStorage.getItem(
@@ -266,6 +290,103 @@ export function useBridgeCards(isAuthenticated: boolean) {
     setVoiceError(null);
   };
 
+  // ====== CHAT PRACTICE ACTIONS ======
+
+  /**
+   * Initialize a new chat session: resets state and fetches the opening
+   * greeting from Ze AI with an empty history.
+   */
+  const initChatSession = async () => {
+    setChatState({ ...INITIAL_CHAT_STATE, isChatLoading: true });
+    try {
+      const { message } = await bridgeCardsService.chatRespond([]);
+      const aiGreeting: ChatMessage = {
+        role: "ai",
+        content: message,
+        timestamp: Date.now(),
+      };
+      setChatState((prev) => ({
+        ...prev,
+        chatHistory: [aiGreeting],
+        isChatLoading: false,
+      }));
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Gagal memulai sesi percakapan";
+      setChatState((prev) => ({
+        ...prev,
+        isChatLoading: false,
+        chatError: errorMessage,
+      }));
+    }
+  };
+
+  /**
+   * Submit a user message: updates history, fetches Ze AI reply,
+   * and triggers final analysis when the session ends.
+   */
+  const handleChatSubmit = async (spokenText: string) => {
+    if (chatState.isSessionComplete || chatState.isChatLoading) return;
+
+    const userMessage: ChatMessage = {
+      role: "user",
+      content: spokenText,
+      timestamp: Date.now(),
+    };
+    const historyWithUser = [...chatState.chatHistory, userMessage];
+    const newTurnCount = chatState.turnCount + 1;
+
+    setChatState((prev) => ({
+      ...prev,
+      chatHistory: historyWithUser,
+      turnCount: newTurnCount,
+      isChatLoading: true,
+      chatError: null,
+    }));
+
+    try {
+      const { message, shouldEnd } =
+        await bridgeCardsService.chatRespond(historyWithUser);
+      const aiMessage: ChatMessage = {
+        role: "ai",
+        content: message,
+        timestamp: Date.now(),
+      };
+      const finalHistory = [...historyWithUser, aiMessage];
+
+      if (shouldEnd) {
+        const analysisResult =
+          await bridgeCardsService.chatAnalyze(finalHistory);
+        setChatState((prev) => ({
+          ...prev,
+          chatHistory: finalHistory,
+          isChatLoading: false,
+          isSessionComplete: true,
+          analysisResult,
+        }));
+      } else {
+        setChatState((prev) => ({
+          ...prev,
+          chatHistory: finalHistory,
+          isChatLoading: false,
+        }));
+      }
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "Gagal mengirim pesan";
+      setChatState((prev) => ({
+        ...prev,
+        isChatLoading: false,
+        chatError: errorMessage,
+      }));
+    }
+  };
+
+  /** Reset the chat session so the user can retry from the beginning. */
+  const resetChatSession = () => {
+    setChatState(INITIAL_CHAT_STATE);
+  };
+
   return {
     state,
     voiceState: {
@@ -273,6 +394,7 @@ export function useBridgeCards(isAuthenticated: boolean) {
       isVoiceLoading,
       voiceError,
     },
+    chatState,
     cards: {
       warmup: warmupCards,
       partner: partnerCards,
@@ -291,6 +413,9 @@ export function useBridgeCards(isAuthenticated: boolean) {
       switchRole,
       handleVoiceSubmit,
       clearVoiceResult,
+      initChatSession,
+      handleChatSubmit,
+      resetChatSession,
     },
   };
 }

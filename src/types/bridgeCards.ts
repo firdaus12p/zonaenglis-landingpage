@@ -3,6 +3,7 @@ export type CardMode =
   | "warmup"
   | "partner"
   | "realPartner"
+  | "voicePractice"
   | "complete";
 export type StudentRole = "A" | "B";
 
@@ -63,6 +64,12 @@ export interface BridgeStudentAccount {
   isActive?: boolean;
   lastLogin?: string | null;
   createdAt: string;
+}
+
+export interface ChatMessage {
+  role: "user" | "ai";
+  content: string;
+  timestamp: number;
 }
 
 export interface VoiceCorrection {
