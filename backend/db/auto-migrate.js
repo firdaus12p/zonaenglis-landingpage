@@ -439,6 +439,61 @@ const tables = {
       INDEX idx_article_date (article_id, viewed_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `,
+
+  // 20. Bridge Cards - Student accounts (managed by Admin)
+  bridge_students: `
+    CREATE TABLE IF NOT EXISTS bridge_students (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      name VARCHAR(100) NOT NULL,
+      email VARCHAR(100) NOT NULL UNIQUE,
+      student_code VARCHAR(50) NOT NULL UNIQUE,
+      pin_hash VARCHAR(255) NOT NULL,
+      total_mastered INT DEFAULT 0,
+      is_active TINYINT(1) DEFAULT 1,
+      last_login TIMESTAMP NULL DEFAULT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP NULL DEFAULT NULL,
+      INDEX idx_email (email),
+      INDEX idx_student_code (student_code),
+      INDEX idx_is_active (is_active),
+      INDEX idx_deleted_at (deleted_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `,
+
+  // 21. Bridge Cards - Flashcard content (managed by Admin CMS)
+  bridge_cards: `
+    CREATE TABLE IF NOT EXISTS bridge_cards (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      category ENUM('warmup', 'partner') NOT NULL DEFAULT 'warmup',
+      content_front TEXT NOT NULL,
+      content_back TEXT NOT NULL,
+      keywords TEXT DEFAULT NULL,
+      audio_asset VARCHAR(500) DEFAULT NULL,
+      is_active TINYINT(1) DEFAULT 1,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      deleted_at TIMESTAMP NULL DEFAULT NULL,
+      INDEX idx_category (category),
+      INDEX idx_is_active (is_active),
+      INDEX idx_deleted_at (deleted_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `,
+
+  // 22. Bridge Cards - Mastered card tracking (anti-doping: unique per student+card)
+  bridge_mastered: `
+    CREATE TABLE IF NOT EXISTS bridge_mastered (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      student_id INT NOT NULL,
+      card_id INT NOT NULL,
+      mastered_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE KEY unique_student_card (student_id, card_id),
+      INDEX idx_student_id (student_id),
+      INDEX idx_card_id (card_id),
+      CONSTRAINT fk_mastered_student FOREIGN KEY (student_id) REFERENCES bridge_students(id) ON DELETE CASCADE,
+      CONSTRAINT fk_mastered_card FOREIGN KEY (card_id) REFERENCES bridge_cards(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `,
 };
 
 // ====== DEFAULT DATA ======
@@ -448,7 +503,7 @@ const defaultData = {
   admin_users: async () => {
     const [existing] = await db.query(
       "SELECT id FROM admin_users WHERE email = ?",
-      ["admin@zonaenglish.com"]
+      ["admin@zonaenglish.com"],
     );
     if (existing.length === 0) {
       // Generate a secure random password - MUST be changed on first login
@@ -463,16 +518,16 @@ const defaultData = {
           "Administrator",
           passwordHash,
           "super_admin",
-        ]
+        ],
       );
       console.log(
-        `   ✅ Default admin created (admin@zonaenglish.com / ${tempPassword})`
+        `   ✅ Default admin created (admin@zonaenglish.com / ${tempPassword})`,
       );
       console.log(
-        "   ⚠️  WARNING: SAVE THIS PASSWORD! It will NOT be shown again!"
+        "   ⚠️  WARNING: SAVE THIS PASSWORD! It will NOT be shown again!",
       );
       console.log(
-        "   ⚠️  WARNING: Default admin MUST change password on first login!"
+        "   ⚠️  WARNING: Default admin MUST change password on first login!",
       );
     }
   },
@@ -482,7 +537,7 @@ const defaultData = {
     // Check if settings table has 'label' column (production may have different schema)
     try {
       const [columns] = await db.query(
-        "SHOW COLUMNS FROM settings LIKE 'label'"
+        "SHOW COLUMNS FROM settings LIKE 'label'",
       );
       const hasLabelColumn = columns.length > 0;
 
@@ -549,7 +604,7 @@ const defaultData = {
               setting.category,
               setting.label,
               setting.public,
-            ]
+            ],
           );
         } else {
           // Fallback for tables without label column
@@ -562,7 +617,7 @@ const defaultData = {
               setting.type,
               setting.category,
               setting.public,
-            ]
+            ],
           );
         }
       }
@@ -611,7 +666,7 @@ const defaultData = {
     for (const cat of categories) {
       await db.query(
         `INSERT IGNORE INTO article_categories (name, slug, description) VALUES (?, ?, ?)`,
-        [cat.name, cat.slug, cat.description]
+        [cat.name, cat.slug, cat.description],
       );
     }
     console.log("   ✅ Default article categories ensured");
@@ -642,14 +697,14 @@ async function runColumnMigrations() {
     try {
       // Check if column exists
       const [columns] = await db.query(
-        `SHOW COLUMNS FROM ${migration.table} LIKE '${migration.column}'`
+        `SHOW COLUMNS FROM ${migration.table} LIKE '${migration.column}'`,
       );
 
       if (columns.length === 0) {
         // Column doesn't exist, add it
         await db.query(migration.addSQL);
         console.log(
-          `   ✅ Added column ${migration.column} to ${migration.table}`
+          `   ✅ Added column ${migration.column} to ${migration.table}`,
         );
       }
     } catch (error) {
@@ -657,7 +712,7 @@ async function runColumnMigrations() {
       if (!error.message.includes("doesn't exist")) {
         console.error(
           `   ⚠️  Column migration ${migration.table}.${migration.column}:`,
-          error.message
+          error.message,
         );
       }
     }
@@ -676,10 +731,10 @@ async function runAutoMigration() {
     // Get list of existing tables
     const [existingTables] = await db.query(
       `SELECT TABLE_NAME FROM information_schema.tables 
-       WHERE table_schema = DATABASE()`
+       WHERE table_schema = DATABASE()`,
     );
     const existingTableNames = existingTables.map(
-      (t) => t.TABLE_NAME || t.table_name
+      (t) => t.TABLE_NAME || t.table_name,
     );
 
     let createdCount = 0;
@@ -705,7 +760,7 @@ async function runAutoMigration() {
 
     console.log("");
     console.log(
-      `📊 Summary: ${createdCount} created, ${existingCount} already exist`
+      `📊 Summary: ${createdCount} created, ${existingCount} already exist`,
     );
 
     // Run column migrations for existing tables

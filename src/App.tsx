@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import ProtectedRoute from "./components/ProtectedRoute";
 import { Gift, Users as UsersIcon } from "lucide-react";
 import { Button } from "./components";
+import BridgeCardsPage from "./pages/BridgeCardsPage";
 
 // Admin Dashboard Components
 import {
@@ -30,6 +31,10 @@ import Gallery from "./pages/admin/Gallery";
 import HomepageVideo from "./pages/admin/HomepageVideo";
 import PromoClaims from "./pages/admin/PromoClaims";
 import ArticleCategories from "./pages/admin/ArticleCategories";
+import BridgeCardsAdmin from "./pages/admin/BridgeCardsAdmin";
+import BridgeCardForm from "./pages/admin/BridgeCardForm";
+import { BridgeStudents } from "./pages/admin/BridgeStudents";
+import { BridgeStudentForm } from "./pages/admin/BridgeStudentForm";
 
 function App() {
   const navigate = useNavigate();
@@ -62,6 +67,7 @@ function App() {
           <Route path="/promo-hub" element={<PromoHub />} />
           <Route path="/articles" element={<Articles />} />
           <Route path="/articles/:slug" element={<Articles />} />
+          <Route path="/bridge-cards" element={<BridgeCardsPage />} />
 
           {/* Hidden Admin Login - Only accessible via direct URL */}
           <Route path="/ze-admin-portal-2025" element={<Login />} />
@@ -272,6 +278,66 @@ function App() {
             element={
               <ProtectedRoute requireAdmin>
                 <PromoClaims />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/bridge-cards"
+            element={
+              <ProtectedRoute requireAdmin>
+                <BridgeCardsAdmin setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/bridge-cards/new"
+            element={
+              <ProtectedRoute requireAdmin>
+                <BridgeCardForm
+                  setCurrentPage={(page) => navigate(page)}
+                  mode="create"
+                />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/bridge-cards/edit/:id"
+            element={
+              <ProtectedRoute requireAdmin>
+                <BridgeCardForm
+                  setCurrentPage={(page) => navigate(page)}
+                  mode="edit"
+                />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/bridge-cards/students"
+            element={
+              <ProtectedRoute requireAdmin>
+                <BridgeStudents setCurrentPage={(page) => navigate(page)} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/bridge-cards/students/new"
+            element={
+              <ProtectedRoute requireAdmin>
+                <BridgeStudentForm
+                  setCurrentPage={(page) => navigate(page)}
+                  mode="create"
+                />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/bridge-cards/students/edit/:id"
+            element={
+              <ProtectedRoute requireAdmin>
+                <BridgeStudentForm
+                  setCurrentPage={(page) => navigate(page)}
+                  mode="edit"
+                />
               </ProtectedRoute>
             }
           />

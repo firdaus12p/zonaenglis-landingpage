@@ -7,6 +7,7 @@ import {
   Users,
   MessageCircle,
   BookOpen,
+  Layers,
 } from "lucide-react";
 import { Button } from "./components";
 import { WHATSAPP_LINKS } from "./constants/cta";
@@ -82,6 +83,12 @@ export default function Navbar({ currentPage, setCurrentPage }: NavbarProps) {
       label: "Articles",
       icon: BookOpen,
       description: "Tips & artikel belajar bahasa Inggris",
+    },
+    {
+      key: "/bridge-cards",
+      label: "Bridge Cards",
+      icon: Layers,
+      description: "Latihan interaktif bahasa Inggris",
     },
   ];
 

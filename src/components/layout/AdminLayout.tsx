@@ -13,10 +13,11 @@ import {
   LogOut,
   ChevronDown,
   Gift,
-  Image,
-  Video,
+  Image as ImageIcon,
   MessageCircle,
   FolderOpen,
+  BrainCircuit,
+  Video,
 } from "lucide-react";
 
 interface AdminLayoutProps {
@@ -110,9 +111,24 @@ const AdminLayout = ({
       current: currentPage.startsWith("/admin/users"),
     },
     {
+      name: "Bridge Cards",
+      page: "/admin/bridge-cards",
+      icon: BrainCircuit,
+      current:
+        currentPage === "/admin/bridge-cards" ||
+        currentPage.startsWith("/admin/bridge-cards/new") ||
+        currentPage.startsWith("/admin/bridge-cards/edit"),
+    },
+    {
+      name: "Kelola Siswa",
+      page: "/admin/bridge-cards/students",
+      icon: Users,
+      current: currentPage.startsWith("/admin/bridge-cards/students"),
+    },
+    {
       name: "Galeri Kegiatan",
       page: "/admin/gallery",
-      icon: Image,
+      icon: ImageIcon,
       current: currentPage.startsWith("/admin/gallery"),
     },
     {

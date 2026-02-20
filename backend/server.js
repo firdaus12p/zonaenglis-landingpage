@@ -61,7 +61,7 @@ app.use(
       return callback(new Error("CORS not allowed from this origin"));
     },
     credentials: true,
-  })
+  }),
 );
 
 // ====== SECURITY HEADERS (Helmet) ======
@@ -91,7 +91,7 @@ app.use(
         upgradeInsecureRequests: NODE_ENV === "production" ? [] : null,
       },
     },
-  })
+  }),
 );
 
 // ====== GLOBAL RATE LIMITER ======
@@ -119,7 +119,7 @@ app.use(
     res.setHeader("Cache-Control", "public, max-age=31536000"); // 1 year cache
     next();
   },
-  express.static(path.join(__dirname, "uploads"))
+  express.static(path.join(__dirname, "uploads")),
 );
 
 // ====== REQUEST LOGGING ======
@@ -139,6 +139,7 @@ import countdownRoutes from "./routes/countdown.js";
 import articlesRoutes from "./routes/articles.js";
 import settingsRoutes from "./routes/settings.js";
 import galleryRoutes from "./routes/gallery.js";
+import bridgeCardsRoutes from "./routes/bridge-cards.js";
 import { rateLimiterStatsMiddleware } from "./utils/rate-limiter-monitor.js";
 import { authenticateToken } from "./routes/auth.js";
 import { formTokenEndpoint } from "./middleware/public-form-protection.js";
@@ -158,7 +159,7 @@ app.get("/api/sitemap.xml", async (req, res) => {
   try {
     const db = (await import("./db/connection.js")).default;
     const [articles] = await db.query(
-      `SELECT slug, updated_at FROM articles WHERE status = 'published' AND deleted_at IS NULL ORDER BY published_at DESC`
+      `SELECT slug, updated_at FROM articles WHERE status = 'published' AND deleted_at IS NULL ORDER BY published_at DESC`,
     );
 
     const baseUrl = "https://zonaenglish.com";
@@ -219,7 +220,7 @@ app.get("/api/form-token", formTokenEndpoint);
 app.get(
   "/api/admin/rate-limiter-stats",
   authenticateToken,
-  rateLimiterStatsMiddleware
+  rateLimiterStatsMiddleware,
 );
 
 // ====== API Docs (aman di production) ======
@@ -257,6 +258,7 @@ app.use("/api/countdown", countdownRoutes);
 app.use("/api/articles", articlesRoutes);
 app.use("/api/settings", settingsRoutes);
 app.use("/api/gallery", galleryRoutes);
+app.use("/api/bridge-cards", bridgeCardsRoutes);
 
 // ====== 404 Handler ======
 app.use((req, res) => {

@@ -55,4 +55,17 @@ export const API_ENDPOINTS = {
   affiliate: `${API_BASE}/affiliate`,
   // Validate
   validate: `${API_BASE}/validate`,
+  // Bridge Cards
+  bridgeCards: {
+    base: `${API_BASE}/bridge-cards`,
+    auth: `${API_BASE}/bridge-cards/auth/login`,
+    verify: `${API_BASE}/bridge-cards/auth/verify`,
+    leaderboard: `${API_BASE}/bridge-cards/leaderboard`,
+    submitMastered: `${API_BASE}/bridge-cards/mastered`,
+    admin: {
+      cards: `${API_BASE}/bridge-cards/admin/cards`,
+      students: `${API_BASE}/bridge-cards/admin/students`,
+      leaderboard: `${API_BASE}/bridge-cards/admin/leaderboard`,
+    },
+  },
 } as const;
