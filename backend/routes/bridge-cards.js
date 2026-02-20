@@ -34,23 +34,19 @@ const authenticateBridgeStudent = (req, res, next) => {
     const decoded = jwt.verify(token, JWT_SECRET);
 
     if (decoded.type !== "bridge_student") {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          message: "Token bukan untuk siswa Bridge Cards",
-        });
+      return res.status(403).json({
+        success: false,
+        message: "Token bukan untuk siswa Bridge Cards",
+      });
     }
 
     req.student = decoded;
     next();
   } catch {
-    return res
-      .status(401)
-      .json({
-        success: false,
-        message: "Token tidak valid atau sudah kadaluarsa",
-      });
+    return res.status(401).json({
+      success: false,
+      message: "Token tidak valid atau sudah kadaluarsa",
+    });
   }
 };
 
@@ -59,11 +55,9 @@ const authenticateBridgeStudent = (req, res, next) => {
  */
 const requireAdmin = (req, res, next) => {
   if (req.user.role !== "admin" && req.user.role !== "super_admin") {
-    return res
-      .status(403)
-      .json({
-        error: "Akses ditolak. Hanya admin yang dapat mengakses fitur ini",
-      });
+    return res.status(403).json({
+      error: "Akses ditolak. Hanya admin yang dapat mengakses fitur ini",
+    });
   }
   next();
 };
@@ -88,7 +82,7 @@ router.post("/auth/login", async (req, res) => {
 
     // Find student by email OR student_code
     const [students] = await db.query(
-      "SELECT id, name, email, student_code, pin_hash, total_mastered, is_active FROM bridge_students WHERE (email = ? OR student_code = ?) AND is_active = 1 AND deleted_at IS NULL",
+      "SELECT id, name, email, student_code, pin_hash, total_mastered, is_active, created_at FROM bridge_students WHERE (email = ? OR student_code = ?) AND is_active = 1 AND deleted_at IS NULL",
       [credential, credential],
     );
 
@@ -142,6 +136,7 @@ router.post("/auth/login", async (req, res) => {
         studentCode: student.student_code,
         totalMastered: student.total_mastered,
         levelName,
+        createdAt: student.created_at,
       },
     });
   } catch (error) {
@@ -159,7 +154,7 @@ router.post("/auth/login", async (req, res) => {
 router.get("/auth/verify", authenticateBridgeStudent, async (req, res) => {
   try {
     const [students] = await db.query(
-      "SELECT id, name, email, student_code, total_mastered FROM bridge_students WHERE id = ? AND is_active = 1 AND deleted_at IS NULL",
+      "SELECT id, name, email, student_code, total_mastered, created_at FROM bridge_students WHERE id = ? AND is_active = 1 AND deleted_at IS NULL",
       [req.student.id],
     );
 
@@ -181,6 +176,7 @@ router.get("/auth/verify", authenticateBridgeStudent, async (req, res) => {
         studentCode: student.student_code,
         totalMastered: student.total_mastered,
         levelName,
+        createdAt: student.created_at,
       },
     });
   } catch (error) {
@@ -392,11 +388,9 @@ router.post(
       const { category, contentFront, contentBack, keywords } = req.body;
 
       if (!category || !contentFront || !contentBack) {
-        return res
-          .status(400)
-          .json({
-            error: "category, contentFront, dan contentBack wajib diisi",
-          });
+        return res.status(400).json({
+          error: "category, contentFront, dan contentBack wajib diisi",
+        });
       }
 
       // Convert keywords from comma-separated to stored format
@@ -435,11 +429,9 @@ router.put(
       const cardId = req.params.id;
 
       if (!category || !contentFront || !contentBack) {
-        return res
-          .status(400)
-          .json({
-            error: "category, contentFront, dan contentBack wajib diisi",
-          });
+        return res.status(400).json({
+          error: "category, contentFront, dan contentBack wajib diisi",
+        });
       }
 
       const keywordsStr = keywords || null;
@@ -635,11 +627,9 @@ router.put(
       res.json({ success: true, message: "Data siswa berhasil diperbarui" });
     } catch (error) {
       if (error.code === "ER_DUP_ENTRY") {
-        return res
-          .status(409)
-          .json({
-            error: "Email atau Student Code sudah digunakan siswa lain",
-          });
+        return res.status(409).json({
+          error: "Email atau Student Code sudah digunakan siswa lain",
+        });
       }
       logger.error("Admin: Error updating student", { error: error.message });
       res.status(500).json({ error: "Gagal memperbarui data siswa" });

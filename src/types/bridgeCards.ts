@@ -42,6 +42,7 @@ export interface BridgeStudentProfile {
   name: string;
   totalMastered: number;
   levelName: string;
+  createdAt: string;
 }
 
 export interface BridgeCardRecord {
