@@ -62,6 +62,10 @@ export const API_ENDPOINTS = {
     verify: `${API_BASE}/bridge-cards/auth/verify`,
     leaderboard: `${API_BASE}/bridge-cards/leaderboard`,
     submitMastered: `${API_BASE}/bridge-cards/mastered`,
+    voice: {
+      analyze: `${API_BASE}/bridge-cards/voice/analyze`,
+      tts: `${API_BASE}/bridge-cards/voice/tts`,
+    },
     admin: {
       cards: `${API_BASE}/bridge-cards/admin/cards`,
       students: `${API_BASE}/bridge-cards/admin/students`,

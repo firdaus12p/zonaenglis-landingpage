@@ -46,6 +46,26 @@ if (NODE_ENV === "production") {
   }
 }
 
+// ====== AI FEATURES VALIDATION (semua environment) ======
+const aiApiKeys = {
+  GROQ_API_KEY: "AI voice analysis (Groq)",
+  VOICEMAKER_API_KEY: "Text-to-speech (Voicemaker)",
+};
+
+const missingAiKeys = Object.entries(aiApiKeys).filter(
+  ([key]) => !process.env[key],
+);
+
+if (missingAiKeys.length > 0) {
+  missingAiKeys.forEach(([key, feature]) => {
+    serverLogger.warn(
+      `AI feature disabled — ${feature}: ${key} not set in .env`,
+    );
+  });
+} else {
+  serverLogger.info("✅ AI API keys validated (Groq + Voicemaker)");
+}
+
 // ====== CORS ======
 const allowedOrigins = process.env.CORS_ORIGIN
   ? process.env.CORS_ORIGIN.split(",").map((o) => o.trim())

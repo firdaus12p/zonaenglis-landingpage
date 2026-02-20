@@ -3,6 +3,7 @@ import type {
   BridgeCardRecord,
   BridgeStudentProfile,
   BridgeStudentAccount,
+  VoiceAnalysisResult,
 } from "../types/bridgeCards";
 
 /**
@@ -92,6 +93,34 @@ export const bridgeCardsService = {
   /** Fetch student leaderboard */
   async getLeaderboard(): Promise<BridgeStudentProfile[]> {
     return fetchWithStudentAuth(API_ENDPOINTS.bridgeCards.leaderboard);
+  },
+
+  // ------------------------------------------------------------------
+  // STUDENT: AI VOICE PRACTICE (use fetchWithStudentAuth)
+  // ------------------------------------------------------------------
+
+  /** Submit spoken text for AI analysis against target */
+  async analyzeVoice(
+    cardId: number,
+    spokenText: string,
+    targetText: string,
+  ): Promise<VoiceAnalysisResult> {
+    const data = await fetchWithStudentAuth(
+      API_ENDPOINTS.bridgeCards.voice.analyze,
+      {
+        method: "POST",
+        body: JSON.stringify({ cardId, spokenText, targetText }),
+      },
+    );
+    return data as VoiceAnalysisResult;
+  },
+
+  /** Generate TTS audio for correct pronunciation */
+  async getTTS(text: string): Promise<{ audioUrl: string }> {
+    return fetchWithStudentAuth(API_ENDPOINTS.bridgeCards.voice.tts, {
+      method: "POST",
+      body: JSON.stringify({ text }),
+    });
   },
 
   // ------------------------------------------------------------------

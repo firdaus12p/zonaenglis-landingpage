@@ -1,9 +1,11 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import { useBridgeCards } from "../hooks/useBridgeCards";
 import {
   useBridgeAuth,
   BridgeAuthProvider,
 } from "../contexts/BridgeAuthContext";
+import { bridgeCardsService } from "../services/bridgeCardsService";
+import { SERVER_URL } from "../config/api";
 import { BridgeCardsLogin } from "../components/BridgeCards/BridgeCardsLogin";
 
 // Components
@@ -16,8 +18,26 @@ import { CompletionScreen } from "../components/BridgeCards/CompletionScreen";
 const BridgeCardsApp: React.FC = () => {
   // Auth must be resolved first so isAuthenticated is passed to the hook
   const { isAuthenticated, isLoading, student } = useBridgeAuth();
-  const { state, actions, cards } = useBridgeCards(isAuthenticated);
+  const { state, voiceState, actions, cards } = useBridgeCards(isAuthenticated);
   const { warmup: warmupCards, partner: partnerCards } = cards;
+
+  /** Play TTS audio for correct pronunciation reference */
+  const handlePlayTTS = useCallback(async (text: string) => {
+    try {
+      const { audioUrl } = await bridgeCardsService.getTTS(text);
+      const audio = new Audio(`${SERVER_URL}${audioUrl}`);
+      await audio.play();
+    } catch {
+      // Fallback: browser-native speech synthesis
+      if ("speechSynthesis" in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = "en-US";
+        utterance.rate = 0.9;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+  }, []);
 
   // Days since registration (1-indexed). Shown as streak on MainMenu.
   const daysSinceRegistration: number = student?.createdAt
@@ -88,6 +108,18 @@ const BridgeCardsApp: React.FC = () => {
             onCheckAnswer={actions.checkAnswer}
             onNext={actions.nextCard}
             onExit={actions.startOver}
+            voiceResult={voiceState.voiceResult}
+            voiceError={voiceState.voiceError}
+            isVoiceLoading={voiceState.isVoiceLoading}
+            onVoiceSubmit={(spokenText) =>
+              actions.handleVoiceSubmit(
+                partnerCards[state.currentCard].id,
+                spokenText,
+                partnerCards[state.currentCard].expected,
+              )
+            }
+            onPlayTTS={handlePlayTTS}
+            onClearVoice={actions.clearVoiceResult}
           />
         );
 

@@ -1,11 +1,19 @@
 // Bridge Cards Routes
-// Handles: Student auth, flashcard content, mastered tracking, admin CMS, student management
+// Handles: Student auth, flashcard content, mastered tracking, AI voice practice, admin CMS, student management
 import express from "express";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import crypto from "crypto";
+import fs from "fs/promises";
+import path from "path";
+import { fileURLToPath } from "url";
 import db from "../db/connection.js";
 import { authenticateToken } from "./auth.js";
 import { createLogger } from "../utils/logger.js";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const TTS_CACHE_DIR = path.join(__dirname, "..", "uploads", "tts");
 
 const router = express.Router();
 const logger = createLogger("BRIDGE-CARDS");
@@ -14,6 +22,14 @@ const logger = createLogger("BRIDGE-CARDS");
 const JWT_SECRET =
   process.env.JWT_SECRET || "zona-english-dev-secret-DO-NOT-USE-IN-PRODUCTION";
 const BRIDGE_JWT_EXPIRES_IN = "30d"; // Student tokens last 30 days
+
+// AI Voice Practice config
+const GROQ_API_KEY = process.env.GROQ_API_KEY || "";
+const GROQ_API_URL = "https://api.groq.com/openai/v1/chat/completions";
+const GROQ_MODEL = "llama-3.3-70b-versatile";
+const VOICEMAKER_API_KEY = process.env.VOICEMAKER_API_KEY || "";
+const VOICEMAKER_API_URL =
+  "https://developer.voicemaker.in/api/v1/voice/convert";
 
 // ====== MIDDLEWARE ======
 
@@ -303,6 +319,190 @@ router.get("/leaderboard", authenticateBridgeStudent, async (req, res) => {
   } catch (error) {
     logger.error("Error fetching leaderboard", { error: error.message });
     res.status(500).json({ error: "Gagal memuat leaderboard" });
+  }
+});
+
+// ====================================================================
+// STUDENT: AI VOICE PRACTICE ENDPOINTS
+// ====================================================================
+
+/**
+ * POST /api/bridge-cards/voice/analyze
+ * Student: Submit spoken text for AI analysis against target text
+ * Returns grammar/vocab/pronunciation scores + corrections
+ */
+router.post("/voice/analyze", authenticateBridgeStudent, async (req, res) => {
+  try {
+    const { cardId, spokenText, targetText } = req.body;
+    const studentId = req.student.id;
+
+    // Input validation
+    if (!cardId || !spokenText || !targetText) {
+      return res.status(400).json({
+        success: false,
+        message: "cardId, spokenText, dan targetText wajib diisi",
+      });
+    }
+
+    // Sanitize inputs — strip HTML tags to prevent stored XSS
+    const cleanSpoken = String(spokenText)
+      .replace(/<[^>]*>/g, "")
+      .trim();
+    const cleanTarget = String(targetText)
+      .replace(/<[^>]*>/g, "")
+      .trim();
+
+    if (cleanSpoken.length === 0 || cleanSpoken.length > 1000) {
+      return res.status(400).json({
+        success: false,
+        message: "spokenText harus 1-1000 karakter",
+      });
+    }
+
+    // Verify card exists (non-blocking: still analyze if card is fallback/not in DB)
+    const [cardRows] = await db.query(
+      "SELECT id FROM bridge_cards WHERE id = ? AND is_active = 1 AND deleted_at IS NULL",
+      [cardId],
+    );
+    const cardExistsInDB = cardRows.length > 0;
+
+    // Check Groq API key availability
+    if (!GROQ_API_KEY) {
+      logger.error("GROQ_API_KEY not configured");
+      return res.status(503).json({
+        success: false,
+        message: "Layanan AI belum dikonfigurasi",
+      });
+    }
+
+    // Call Groq LLM for analysis
+    const aiPrompt = buildAnalysisPrompt(cleanSpoken, cleanTarget);
+    const aiResponse = await callGroqAPI(aiPrompt);
+
+    if (!aiResponse) {
+      return res.status(502).json({
+        success: false,
+        message: "Gagal mendapatkan analisis dari AI",
+      });
+    }
+
+    // Save to history — only if card exists in DB (skip for fallback/static cards)
+    if (cardExistsInDB) {
+      await db.query(
+        `INSERT INTO bridge_voice_history
+           (student_id, card_id, spoken_text, target_text, grammar_score, vocab_score, pronunciation_score, feedback_json)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          studentId,
+          cardId,
+          cleanSpoken,
+          cleanTarget,
+          aiResponse.grammarScore,
+          aiResponse.vocabScore,
+          aiResponse.pronunciationScore,
+          JSON.stringify(aiResponse),
+        ],
+      );
+    } else {
+      logger.warn("Voice analysis: card not in DB, skipping history save", {
+        cardId,
+        studentId,
+      });
+    }
+
+    logger.info("Voice analysis completed", {
+      studentId,
+      cardId,
+      grammarScore: aiResponse.grammarScore,
+    });
+
+    res.json({
+      success: true,
+      ...aiResponse,
+    });
+  } catch (error) {
+    logger.error("Voice analysis error", { error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan saat menganalisis suara",
+    });
+  }
+});
+
+/**
+ * POST /api/bridge-cards/voice/tts
+ * Student: Generate TTS audio for correct pronunciation reference
+ * Caches generated audio to avoid redundant API calls
+ */
+router.post("/voice/tts", authenticateBridgeStudent, async (req, res) => {
+  try {
+    const { text } = req.body;
+
+    if (!text || String(text).trim().length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "text wajib diisi",
+      });
+    }
+
+    const cleanText = String(text)
+      .replace(/<[^>]*>/g, "")
+      .trim();
+
+    if (cleanText.length > 500) {
+      return res.status(400).json({
+        success: false,
+        message: "text maksimal 500 karakter",
+      });
+    }
+
+    // Check cache first
+    const cacheKey = crypto
+      .createHash("md5")
+      .update(cleanText.toLowerCase())
+      .digest("hex");
+    const cacheFile = path.join(TTS_CACHE_DIR, `${cacheKey}.mp3`);
+
+    try {
+      await fs.access(cacheFile);
+      // Cache hit — return existing file URL
+      return res.json({
+        success: true,
+        audioUrl: `/uploads/tts/${cacheKey}.mp3`,
+      });
+    } catch {
+      // Cache miss — proceed to generate
+    }
+
+    // Check Voicemaker API key availability
+    if (!VOICEMAKER_API_KEY) {
+      logger.error("VOICEMAKER_API_KEY not configured");
+      return res.status(503).json({
+        success: false,
+        message: "Layanan TTS belum dikonfigurasi",
+      });
+    }
+
+    // Call Voicemaker.in API
+    const audioUrl = await callVoicemakerAPI(cleanText, cacheKey);
+
+    if (!audioUrl) {
+      return res.status(502).json({
+        success: false,
+        message: "Gagal menghasilkan audio",
+      });
+    }
+
+    res.json({
+      success: true,
+      audioUrl,
+    });
+  } catch (error) {
+    logger.error("TTS generation error", { error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Terjadi kesalahan saat menghasilkan audio",
+    });
   }
 });
 
@@ -711,6 +911,195 @@ function computeLevelName(totalMastered) {
   if (totalMastered >= 20) return "Intermediate";
   if (totalMastered >= 5) return "Beginner";
   return "Newbie";
+}
+
+// ====== AI VOICE PRACTICE HELPERS ======
+
+/**
+ * Build the analysis prompt for Groq LLM
+ * @param {string} spokenText - What the student said (from speech-to-text)
+ * @param {string} targetText - The expected correct sentence
+ * @returns {string} The system+user prompt for the AI
+ */
+function buildAnalysisPrompt(spokenText, targetText) {
+  return `You are an English language tutor analyzing a student's spoken response.
+The student is learning English. Compare what they said to the target sentence.
+
+Target sentence: "${targetText}"
+Student said: "${spokenText}"
+
+Analyze and respond with ONLY valid JSON (no markdown, no code fences):
+{
+  "grammarScore": <number 0-100>,
+  "vocabScore": <number 0-100>,
+  "pronunciationScore": <number 0-100>,
+  "corrections": [
+    {
+      "wrong": "<what the student said incorrectly>",
+      "right": "<the correct form>",
+      "explanation": "<brief explanation in Bahasa Indonesia>"
+    }
+  ],
+  "overallFeedback": "<encouraging feedback in Bahasa Indonesia, 1-2 sentences>"
+}
+
+Scoring rules:
+- grammarScore: Evaluate grammar correctness (tenses, articles, prepositions, word order)
+- vocabScore: How accurately the vocabulary matches the target
+- pronunciationScore: Word-level accuracy comparing transcribed text to target (missing/extra/wrong words)
+- If the student's text is identical to the target, all scores should be 100 and corrections empty
+- corrections array should contain specific wrong->right pairs, max 5 items
+- Always respond in valid JSON only`;
+}
+
+/**
+ * Call Groq API for AI-powered text analysis
+ * @param {string} prompt - The analysis prompt
+ * @returns {object|null} Parsed analysis result or null on failure
+ */
+async function callGroqAPI(prompt) {
+  try {
+    const response = await fetch(GROQ_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${GROQ_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [
+          {
+            role: "system",
+            content:
+              "You are a precise English language analysis tool. Always respond with valid JSON only.",
+          },
+          { role: "user", content: prompt },
+        ],
+        temperature: 0.3,
+        max_tokens: 1024,
+      }),
+    });
+
+    if (!response.ok) {
+      logger.error("Groq API error", {
+        status: response.status,
+        statusText: response.statusText,
+      });
+      return null;
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content;
+
+    if (!content) {
+      logger.error("Groq API returned empty content");
+      return null;
+    }
+
+    // Parse JSON from AI response — strip code fences if present
+    const jsonStr = content
+      .replace(/```json\s*/g, "")
+      .replace(/```\s*/g, "")
+      .trim();
+    const parsed = JSON.parse(jsonStr);
+
+    // Clamp scores to 0-100 range
+    return {
+      grammarScore: Math.max(
+        0,
+        Math.min(100, Math.round(Number(parsed.grammarScore) || 0)),
+      ),
+      vocabScore: Math.max(
+        0,
+        Math.min(100, Math.round(Number(parsed.vocabScore) || 0)),
+      ),
+      pronunciationScore: Math.max(
+        0,
+        Math.min(100, Math.round(Number(parsed.pronunciationScore) || 0)),
+      ),
+      corrections: Array.isArray(parsed.corrections)
+        ? parsed.corrections.slice(0, 5).map((c) => ({
+            wrong: String(c.wrong || ""),
+            right: String(c.right || ""),
+            explanation: String(c.explanation || ""),
+          }))
+        : [],
+      overallFeedback: String(parsed.overallFeedback || "Terus berlatih! 💪"),
+    };
+  } catch (error) {
+    logger.error("Groq API call failed", { error: error.message });
+    return null;
+  }
+}
+
+/**
+ * Call Voicemaker.in API to generate TTS audio
+ * Downloads and caches the audio file locally
+ * @param {string} text - Text to convert to speech
+ * @param {string} cacheKey - MD5 hash used as filename
+ * @returns {string|null} Relative URL to cached audio or null on failure
+ */
+async function callVoicemakerAPI(text, cacheKey) {
+  try {
+    // Ensure cache directory exists
+    await fs.mkdir(TTS_CACHE_DIR, { recursive: true });
+
+    const response = await fetch(VOICEMAKER_API_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${VOICEMAKER_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        Engine: "neural",
+        VoiceId: "ai3-Jony",
+        LanguageCode: "en-US",
+        Text: text,
+        OutputFormat: "mp3",
+        SampleRate: "48000",
+        Effect: "default",
+        MasterSpeed: "0",
+        MasterVolume: "0",
+        MasterPitch: "0",
+      }),
+    });
+
+    if (!response.ok) {
+      logger.error("Voicemaker API error", {
+        status: response.status,
+        statusText: response.statusText,
+      });
+      return null;
+    }
+
+    const data = await response.json();
+
+    if (!data.success || !data.path) {
+      logger.error("Voicemaker API returned no audio path", { data });
+      return null;
+    }
+
+    // Download the audio file and save to local cache
+    const audioResponse = await fetch(data.path);
+    if (!audioResponse.ok) {
+      logger.error("Failed to download Voicemaker audio", {
+        status: audioResponse.status,
+      });
+      return null;
+    }
+
+    const audioBuffer = Buffer.from(await audioResponse.arrayBuffer());
+    const localPath = path.join(TTS_CACHE_DIR, `${cacheKey}.mp3`);
+    await fs.writeFile(localPath, audioBuffer);
+
+    const relativeUrl = `/uploads/tts/${cacheKey}.mp3`;
+    logger.info("TTS audio cached", { cacheKey, text: text.substring(0, 50) });
+
+    return relativeUrl;
+  } catch (error) {
+    logger.error("Voicemaker API call failed", { error: error.message });
+    return null;
+  }
 }
 
 export default router;

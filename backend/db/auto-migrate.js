@@ -494,6 +494,27 @@ const tables = {
       CONSTRAINT fk_mastered_card FOREIGN KEY (card_id) REFERENCES bridge_cards(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `,
+
+  // 23. Bridge Cards - Voice practice history (AI Voice Practice feature)
+  bridge_voice_history: `
+    CREATE TABLE IF NOT EXISTS bridge_voice_history (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      student_id INT NOT NULL,
+      card_id INT NOT NULL,
+      spoken_text TEXT NOT NULL,
+      target_text TEXT NOT NULL,
+      grammar_score TINYINT UNSIGNED DEFAULT 0,
+      vocab_score TINYINT UNSIGNED DEFAULT 0,
+      pronunciation_score TINYINT UNSIGNED DEFAULT 0,
+      feedback_json JSON DEFAULT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_voice_student (student_id),
+      INDEX idx_voice_card (card_id),
+      INDEX idx_voice_created (created_at),
+      CONSTRAINT fk_voice_student FOREIGN KEY (student_id) REFERENCES bridge_students(id) ON DELETE CASCADE,
+      CONSTRAINT fk_voice_card FOREIGN KEY (card_id) REFERENCES bridge_cards(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `,
 };
 
 // ====== DEFAULT DATA ======

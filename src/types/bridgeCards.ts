@@ -64,3 +64,17 @@ export interface BridgeStudentAccount {
   lastLogin?: string | null;
   createdAt: string;
 }
+
+export interface VoiceCorrection {
+  wrong: string;
+  right: string;
+  explanation: string;
+}
+
+export interface VoiceAnalysisResult {
+  grammarScore: number;
+  vocabScore: number;
+  pronunciationScore: number;
+  corrections: VoiceCorrection[];
+  overallFeedback: string;
+}

@@ -5,6 +5,7 @@ import type {
   BridgeCardState,
   WarmupCard,
   PartnerCard,
+  VoiceAnalysisResult,
 } from "../types/bridgeCards";
 import {
   partnerCards as fallbackPartnerCards,
@@ -21,6 +22,13 @@ export function useBridgeCards(isAuthenticated: boolean) {
     useState<WarmupCard[]>(fallbackWarmupCards);
   const [partnerCards, setPartnerCards] =
     useState<PartnerCard[]>(fallbackPartnerCards);
+
+  // Voice practice state — isolated from card game state
+  const [voiceResult, setVoiceResult] = useState<VoiceAnalysisResult | null>(
+    null,
+  );
+  const [isVoiceLoading, setIsVoiceLoading] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
 
   const [state, setState] = useState<BridgeCardState>(() => {
     const savedLastMode = localStorage.getItem(
@@ -227,8 +235,44 @@ export function useBridgeCards(isAuthenticated: boolean) {
     }));
   };
 
+  // ====== VOICE PRACTICE ACTIONS ======
+
+  const handleVoiceSubmit = async (
+    cardId: number,
+    spokenText: string,
+    targetText: string,
+  ) => {
+    setIsVoiceLoading(true);
+    setVoiceResult(null);
+    setVoiceError(null);
+    try {
+      const result = await bridgeCardsService.analyzeVoice(
+        cardId,
+        spokenText,
+        targetText,
+      );
+      setVoiceResult(result);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Gagal menganalisis suara";
+      setVoiceError(message);
+    } finally {
+      setIsVoiceLoading(false);
+    }
+  };
+
+  const clearVoiceResult = () => {
+    setVoiceResult(null);
+    setVoiceError(null);
+  };
+
   return {
     state,
+    voiceState: {
+      voiceResult,
+      isVoiceLoading,
+      voiceError,
+    },
     cards: {
       warmup: warmupCards,
       partner: partnerCards,
@@ -245,6 +289,8 @@ export function useBridgeCards(isAuthenticated: boolean) {
       checkAnswer,
       startOver,
       switchRole,
+      handleVoiceSubmit,
+      clearVoiceResult,
     },
   };
 }
