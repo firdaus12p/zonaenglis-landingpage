@@ -639,12 +639,33 @@ router.post("/chat/analyze", authenticateBridgeStudent, async (req, res) => {
         .json({ success: false, message: "Gagal menganalisis percakapan" });
     }
 
+    // Record session completion — UNIQUE(student_id, session_date) prevents duplicate daily credits
+    let sessionCredited = false;
+    try {
+      await db.query(
+        `INSERT INTO bridge_chat_sessions
+           (student_id, grammar_score, vocab_score, pronunciation_score, session_date)
+           VALUES (?, ?, ?, ?, CURDATE())`,
+        [
+          req.student.id,
+          analysisResult.grammarScore,
+          analysisResult.vocabScore,
+          analysisResult.pronunciationScore,
+        ],
+      );
+      sessionCredited = true;
+    } catch (dupError) {
+      // ER_DUP_ENTRY = student already completed a session today — no extra credit
+      if (dupError.code !== "ER_DUP_ENTRY") throw dupError;
+    }
+
     logger.info("Chat analysis completed", {
       studentId: req.student.id,
       userMessages: userMessages.length,
+      sessionCredited,
     });
 
-    res.json({ success: true, ...analysisResult });
+    res.json({ success: true, ...analysisResult, sessionCredited });
   } catch (error) {
     logger.error("Chat analyze error", { error: error.message });
     res

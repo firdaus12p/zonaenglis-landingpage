@@ -5,6 +5,7 @@ import type {
   BridgeStudentAccount,
   ChatMessage,
   VoiceAnalysisResult,
+  ChatAnalysisResult,
 } from "../types/bridgeCards";
 
 /**
@@ -138,8 +139,8 @@ export const bridgeCardsService = {
     });
   },
 
-  /** Analyze the completed chat session and return a performance report */
-  async chatAnalyze(chatHistory: ChatMessage[]): Promise<VoiceAnalysisResult> {
+  /** Analyze the completed chat session and return a performance report with daily credit status */
+  async chatAnalyze(chatHistory: ChatMessage[]): Promise<ChatAnalysisResult> {
     const data = await fetchWithStudentAuth(
       API_ENDPOINTS.bridgeCards.chat.analyze,
       {
@@ -147,7 +148,7 @@ export const bridgeCardsService = {
         body: JSON.stringify({ chatHistory }),
       },
     );
-    return data as VoiceAnalysisResult;
+    return data as ChatAnalysisResult;
   },
 
   // ------------------------------------------------------------------

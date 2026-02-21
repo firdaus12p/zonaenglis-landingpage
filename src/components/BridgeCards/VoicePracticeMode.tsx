@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useCallback } from "react";
+import React, { useEffect, useRef, useCallback, useState } from "react";
 import DOMPurify from "dompurify";
-import type { ChatMessage, VoiceAnalysisResult } from "../../types/bridgeCards";
+import type { ChatMessage, ChatAnalysisResult } from "../../types/bridgeCards";
 import { VoiceRecorder } from "./VoiceRecorder";
 
 interface VoicePracticeModeProps {
@@ -9,7 +9,7 @@ interface VoicePracticeModeProps {
   isChatLoading: boolean;
   chatError: string | null;
   isSessionComplete: boolean;
-  analysisResult: VoiceAnalysisResult | null;
+  analysisResult: ChatAnalysisResult | null;
   onInitSession: () => void;
   onChatSubmit: (spokenText: string) => void;
   onRetry: () => void;
@@ -97,7 +97,7 @@ const AnalysisReport = ({
   onRetry,
   onExit,
 }: {
-  result: VoiceAnalysisResult;
+  result: ChatAnalysisResult;
   onRetry: () => void;
   onExit: () => void;
 }) => {
@@ -107,6 +107,18 @@ const AnalysisReport = ({
 
   return (
     <div className="space-y-4 animate-in slide-in-from-bottom-2 fade-in duration-300">
+      {/* Daily session credit status */}
+      {result.sessionCredited ? (
+        <div className="flex items-center gap-2 rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs font-semibold text-emerald-700">
+          <span>🏆</span>
+          <span>Session completed! Credits awarded for today.</span>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 rounded-xl bg-slate-50 border border-slate-200 px-3 py-2 text-xs font-medium text-slate-500">
+          <span>ℹ️</span>
+          <span>Credits already awarded for today.</span>
+        </div>
+      )}
       {/* Score bars */}
       <div className="flex gap-3">
         <ScoreBar label="Grammar" icon="⚡" score={result.grammarScore} />
@@ -194,12 +206,8 @@ export const VoicePracticeMode: React.FC<VoicePracticeModeProps> = ({
   const chatEndRef = useRef<HTMLDivElement>(null);
   // Track how many AI messages have already triggered TTS to avoid replaying
   const ttsPlayedCountRef = useRef(0);
-
-  // Kick off the session (Ze AI sends opening greeting) once on mount
-  useEffect(() => {
-    onInitSession();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Controls whether the session has been started by the user (prevents auto-token spend)
+  const [hasStarted, setHasStarted] = useState(false);
 
   // Auto-scroll to the latest message whenever chatHistory changes
   useEffect(() => {
@@ -220,14 +228,53 @@ export const VoicePracticeMode: React.FC<VoicePracticeModeProps> = ({
     });
   }, [chatHistory, onPlayTTS]);
 
-  // Retry: reset TTS counter then delegate to parent
+  // Start the session: record user intent, then fetch first AI greeting
+  const handleStart = useCallback(() => {
+    setHasStarted(true);
+    onInitSession();
+  }, [onInitSession]);
+
+  // Retry: reset TTS counter and started state, then delegate to parent
   const handleRetry = useCallback(() => {
     ttsPlayedCountRef.current = 0;
+    setHasStarted(false);
     onRetry();
   }, [onRetry]);
 
   const MAX_TURNS = 6;
   const isInputDisabled = isChatLoading || isSessionComplete;
+
+  // ── Pre-start screen — shown until user explicitly starts the session ──────
+  if (!hasStarted) {
+    return (
+      <div className="min-h-[calc(100vh-64px)] bg-slate-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm border border-slate-200 p-8 text-center">
+          <div className="w-16 h-16 rounded-full bg-indigo-100 flex items-center justify-center text-3xl mx-auto mb-5">
+            🎙️
+          </div>
+          <h2 className="text-xl font-bold text-slate-800 mb-2">
+            AI Voice Practice
+          </h2>
+          <p className="text-sm text-slate-500 mb-6 leading-relaxed">
+            Latih percakapan bahasa Inggris kamu bersama Ze AI selama 6 giliran.
+            Hasilmu akan dianalisis di akhir sesi.
+          </p>
+          <button
+            onClick={handleStart}
+            className="w-full bg-indigo-600 hover:bg-indigo-700 focus:ring-4 focus:ring-indigo-100 text-white font-bold py-3.5 px-6 rounded-xl transition-all shadow-md hover:shadow-lg active:scale-[0.98]"
+          >
+            Mulai Sesi
+          </button>
+          <button
+            onClick={onExit}
+            className="mt-3 w-full py-2.5 rounded-xl border border-slate-200 text-slate-500 text-sm font-medium hover:bg-slate-50 transition-colors"
+          >
+            ← Kembali
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-[calc(100vh-64px)] bg-slate-50 flex items-center justify-center p-4">

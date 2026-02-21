@@ -515,6 +515,22 @@ const tables = {
       CONSTRAINT fk_voice_card FOREIGN KEY (card_id) REFERENCES bridge_cards(id) ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `,
+
+  // 24. Bridge Cards - AI chat session completions (prevents duplicate daily credits)
+  bridge_chat_sessions: `
+    CREATE TABLE IF NOT EXISTS bridge_chat_sessions (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      student_id INT NOT NULL,
+      grammar_score TINYINT UNSIGNED DEFAULT 0,
+      vocab_score TINYINT UNSIGNED DEFAULT 0,
+      pronunciation_score TINYINT UNSIGNED DEFAULT 0,
+      session_date DATE NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      INDEX idx_chat_sessions_student (student_id),
+      UNIQUE KEY uq_chat_session_daily (student_id, session_date),
+      CONSTRAINT fk_chat_session_student FOREIGN KEY (student_id) REFERENCES bridge_students(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+  `,
 };
 
 // ====== DEFAULT DATA ======

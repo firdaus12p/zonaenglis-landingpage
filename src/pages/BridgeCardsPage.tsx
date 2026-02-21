@@ -162,7 +162,6 @@ const BridgeCardsApp: React.FC = () => {
             onChatSubmit={actions.handleChatSubmit}
             onRetry={() => {
               actions.resetChatSession();
-              actions.initChatSession();
             }}
             onExit={actions.startOver}
             onPlayTTS={handlePlayTTS}

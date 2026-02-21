@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "skills": {
+    "javascript-pro": {
+      "source": "jeffallan/claude-skills",
+      "sourceType": "github",
+      "computedHash": "45e6585c4a05da6bdd44c698ca5e8e66a809ee5f6937d33a4b243c10758eacd9"
+    },
+    "typescript-expert": {
+      "source": "davila7/claude-code-templates",
+      "sourceType": "github",
+      "computedHash": "e9849ebd067e2b7b620cdbd4d02468215f52d03ba7ad7830e9d980f13bc3a58e"
+    }
+  }
+}

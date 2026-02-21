@@ -7,6 +7,7 @@ import type {
   PartnerCard,
   ChatMessage,
   VoiceAnalysisResult,
+  ChatAnalysisResult,
 } from "../types/bridgeCards";
 import {
   partnerCards as fallbackPartnerCards,
@@ -26,7 +27,7 @@ interface ChatState {
   isChatLoading: boolean;
   chatError: string | null;
   isSessionComplete: boolean;
-  analysisResult: VoiceAnalysisResult | null;
+  analysisResult: ChatAnalysisResult | null;
 }
 
 const INITIAL_CHAT_STATE: ChatState = {

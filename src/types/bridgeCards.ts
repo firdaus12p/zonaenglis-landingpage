@@ -85,3 +85,9 @@ export interface VoiceAnalysisResult {
   corrections: VoiceCorrection[];
   overallFeedback: string;
 }
+
+/** Extended result returned by /chat/analyze — includes daily session credit status. */
+export interface ChatAnalysisResult extends VoiceAnalysisResult {
+  /** true = first session today, credits awarded; false = already credited today */
+  sessionCredited: boolean;
+}
