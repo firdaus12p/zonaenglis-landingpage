@@ -19,7 +19,8 @@ import { VoicePracticeMode } from "../components/BridgeCards/VoicePracticeMode";
 const BridgeCardsApp: React.FC = () => {
   // Auth must be resolved first so isAuthenticated is passed to the hook
   const { isAuthenticated, isLoading, student } = useBridgeAuth();
-  const { state, voiceState, chatState, actions, cards } = useBridgeCards(isAuthenticated);
+  const { state, voiceState, chatState, actions, cards } =
+    useBridgeCards(isAuthenticated);
   const { warmup: warmupCards, partner: partnerCards } = cards;
 
   /** Play TTS audio for correct pronunciation reference */

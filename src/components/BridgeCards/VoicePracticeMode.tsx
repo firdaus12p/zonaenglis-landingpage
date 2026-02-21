@@ -58,9 +58,7 @@ const ChatBubble = ({ message }: { message: ChatMessage }) => {
   });
 
   return (
-    <div
-      className={`flex gap-2 ${isAi ? "justify-start" : "justify-end"}`}
-    >
+    <div className={`flex gap-2 ${isAi ? "justify-start" : "justify-end"}`}>
       {isAi && (
         <div className="flex-shrink-0 w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-base">
           🤖
@@ -113,11 +111,7 @@ const AnalysisReport = ({
       <div className="flex gap-3">
         <ScoreBar label="Grammar" icon="⚡" score={result.grammarScore} />
         <ScoreBar label="Vocab" icon="📚" score={result.vocabScore} />
-        <ScoreBar
-          label="Fluency"
-          icon="🎤"
-          score={result.pronunciationScore}
-        />
+        <ScoreBar label="Fluency" icon="🎤" score={result.pronunciationScore} />
       </div>
 
       {/* Corrections */}
@@ -142,9 +136,13 @@ const AnalysisReport = ({
                 <li key={idx} className="text-xs space-y-0.5">
                   <div className="flex gap-1.5 items-center">
                     <span className="text-red-500">✗</span>
-                    <span className="text-red-600 line-through">{safeWrong}</span>
+                    <span className="text-red-600 line-through">
+                      {safeWrong}
+                    </span>
                     <span className="text-slate-400 mx-0.5">→</span>
-                    <span className="font-medium text-green-700">{safeRight}</span>
+                    <span className="font-medium text-green-700">
+                      {safeRight}
+                    </span>
                   </div>
                   <p className="text-slate-500 pl-4">{safeExplanation}</p>
                 </li>
@@ -261,7 +259,10 @@ export const VoicePracticeMode: React.FC<VoicePracticeModeProps> = ({
         {/* ── Chat area ── */}
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 min-h-[300px] max-h-[420px]">
           {chatHistory.map((msg, idx) => (
-            <ChatBubble key={`${msg.role}-${msg.timestamp}-${idx}`} message={msg} />
+            <ChatBubble
+              key={`${msg.role}-${msg.timestamp}-${idx}`}
+              message={msg}
+            />
           ))}
 
           {isChatLoading && <ThinkingIndicator />}

@@ -1090,17 +1090,19 @@ Your personality:
 Your job: Have a natural, flowing English conversation with the student. Ask open-ended questions to keep them talking. React naturally to what they say.
 
 ${
-    isLastTurn
-      ? `IMPORTANT — THIS IS THE FINAL EXCHANGE: You must end the conversation NOW with a funny, creative excuse to leave (e.g., your cat knocked over your coffee, you just spotted a UFO, your pizza arrived). Keep it short and funny. Then warmly tell the student their results are ready and wish them well!`
-      : `Turn ${turnCount + 1} of ${MAX_CHAT_TURNS}: Keep the conversation going naturally.`
-  }`;
+  isLastTurn
+    ? `IMPORTANT — THIS IS THE FINAL EXCHANGE: You must end the conversation NOW with a funny, creative excuse to leave (e.g., your cat knocked over your coffee, you just spotted a UFO, your pizza arrived). Keep it short and funny. Then warmly tell the student their results are ready and wish them well!`
+    : `Turn ${turnCount + 1} of ${MAX_CHAT_TURNS}: Keep the conversation going naturally.`
+}`;
 
   const apiMessages = [
     { role: "system", content: systemPrompt },
     // Map chat history: 'ai' role → 'assistant' for Groq API compatibility
     ...chatHistory.map((msg) => ({
       role: msg.role === "ai" ? "assistant" : "user",
-      content: String(msg.content).replace(/<[^>]*>/g, "").trim(),
+      content: String(msg.content)
+        .replace(/<[^>]*>/g, "")
+        .trim(),
     })),
   ];
 
@@ -1125,7 +1127,7 @@ async function callGroqConversation(messages) {
         model: GROQ_MODEL,
         messages,
         temperature: 0.75, // More creative for natural conversation
-        max_tokens: 256,   // Keep responses concise
+        max_tokens: 256, // Keep responses concise
       }),
     });
 
@@ -1162,7 +1164,9 @@ function buildChatAnalysisPrompt(chatHistory) {
   const dialogue = chatHistory
     .map((msg) => {
       const speaker = msg.role === "user" ? "Student" : "Ze AI";
-      const cleanContent = String(msg.content).replace(/<[^>]*>/g, "").trim();
+      const cleanContent = String(msg.content)
+        .replace(/<[^>]*>/g, "")
+        .trim();
       return `${speaker}: ${cleanContent}`;
     })
     .join("\n");
